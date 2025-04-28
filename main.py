@@ -24,7 +24,7 @@ from vfx_Scheduler import VFXMessageScheduler
 
 # Global instance of the VFX message scheduler
 vfx_scheduler = VFXMessageScheduler()
-
+strategyChannel_scheduler = VFXMessageScheduler("./bot_data/strategy_messages.json")
 # Add this class definition before your handler functions
 class ForwardedMessageFilter(MessageFilter):
     """Custom filter for forwarded messages."""
@@ -1143,13 +1143,13 @@ async def send_hourly_welcome(context: ContextTypes.DEFAULT_TYPE) -> None:
     
     # Get the appropriate session message
     if current_hour == 0:
-        message = vfx_scheduler.get_welcome_message("00:00")  # Tokyo session
+        message = vfx_scheduler.get_welcome_message(0)  # Tokyo session
         session_name = "Tokyo"
     elif current_hour == 8:
-        message = vfx_scheduler.get_welcome_message("08:00")  # London session
+        message = vfx_scheduler.get_welcome_message(8)  # London session
         session_name = "London"
     elif current_hour == 13:
-        message = vfx_scheduler.get_welcome_message("13:00")  # NY session
+        message = vfx_scheduler.get_welcome_message(13)  # NY session
         session_name = "New York"
     
     # Send to channel
@@ -1190,6 +1190,29 @@ async def send_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
         db.update_analytics(messages_sent=1)
     except Exception as e:
         logger.error(f"Failed to update analytics: {e}")
+
+
+async def send_strategy_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send the next interval message to the strategy channel."""
+    # Get the next interval message from the strategy scheduler
+    try:
+        message = strategyChannel_scheduler.get_next_interval_message()
+        
+        print(f"Retrieved strategy interval message: {message[:50]}...")
+        
+        # Send to strategy channel with HTML parsing enabled
+        await context.bot.send_message(
+            chat_id=STRATEGY_CHANNEL_ID, 
+            text=message,
+            parse_mode='HTML'  # Enable HTML formatting
+        )
+        logger.info(f"Sent strategy interval message to channel {STRATEGY_CHANNEL_ID} at {datetime.now()}")
+        
+        # Update analytics
+        db.update_analytics(messages_sent=1)
+    except Exception as e:
+        logger.error(f"Failed to send strategy interval message: {e}")
+        print(f"Error in send_strategy_interval_message: {e}")
 
 # Admin command to manage scheduled messages
 async def manage_messages_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1793,10 +1816,13 @@ def main() -> None:
     
     print(f"Admin ID is set to {ADMIN_USER_ID}")
     try:
-        # Try to initialize the scheduler
+        # Try to initialize schedulers
         from vfx_Scheduler import VFXMessageScheduler
-        scheduler = VFXMessageScheduler()
-        print(f"Scheduler initialized with {len(scheduler.get_all_messages())} messages")
+        global vfx_scheduler, strategy_scheduler
+        vfx_scheduler = VFXMessageScheduler()
+        strategy_scheduler = VFXMessageScheduler(config_path="./bot_data/strategy_messages.json")
+        print(f"Main scheduler initialized with {len(vfx_scheduler.get_all_messages())} messages")
+        print(f"Strategy scheduler initialized with {len(strategy_scheduler.get_all_messages())} messages")
     except Exception as e:
         print(f"Error initializing scheduler: {e}")
     
@@ -1946,6 +1972,41 @@ def main() -> None:
     seconds_until_next_hour = (next_hour - now).total_seconds()
     
     job_queue.run_once(log_all_chats, 5)
+    
+    # Market session messages (on weekdays only)
+    # Calculate first run time for each market session
+    # Tokyo session (00:00)
+    tokyo_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if tokyo_time <= now:
+        tokyo_time += timedelta(days=1)
+    seconds_until_tokyo = (tokyo_time - now).total_seconds()
+    
+    # London session (08:00)
+    london_time = now.replace(hour=8, minute=0, second=0, microsecond=0)
+    if london_time <= now:
+        london_time += timedelta(days=1)
+    seconds_until_london = (london_time - now).total_seconds()
+    
+    # NY session (13:00)
+    ny_time = now.replace(hour=13, minute=0, second=0, microsecond=0)
+    if ny_time <= now:
+        ny_time += timedelta(days=1)
+    seconds_until_ny = (ny_time - now).total_seconds()
+    
+    job_queue.run_once(send_hourly_welcome, seconds_until_tokyo)
+    job_queue.run_daily(send_hourly_welcome, time=time(hour=0, minute=0))
+    
+    job_queue.run_once(send_hourly_welcome, seconds_until_london)
+    job_queue.run_daily(send_hourly_welcome, time=time(hour=8, minute=0))
+    
+    job_queue.run_once(send_hourly_welcome, seconds_until_ny)
+    job_queue.run_daily(send_hourly_welcome, time=time(hour=13, minute=0))
+    
+    
+    
+    """------------------------------
+    Send message at specified hours
+    ---------------------------------"""
      # Schedule hourly welcome messages - runs at the start of every hour
     job_queue.run_repeating(
         send_hourly_welcome, 
@@ -1953,6 +2014,10 @@ def main() -> None:
         first=seconds_until_next_hour  # Time in seconds until first run
     )
     
+    
+    """---------------------------------
+    Send Messages at specified intervals
+    ------------------------------------"""
     # Schedule interval messages - runs every 20 minutes
     # Calculate time until next 20-minute mark
     minutes_now = now.minute
@@ -1970,10 +2035,27 @@ def main() -> None:
         first=seconds_until_next_interval  # Time in seconds until first run
     )
     
+     # Schedule strategy channel messages - every 45 minutes (different frequency)
+    minutes_until_strategy = 30 - (minutes_now % 30)
+    if minutes_until_strategy == 0:
+        minutes_until_strategy = 30
+    
+    next_strategy = now + timedelta(minutes=minutes_until_strategy)
+    next_strategy = next_strategy.replace(second=0, microsecond=0)
+    seconds_until_strategy = (next_strategy - now).total_seconds()
+    
+    job_queue.run_repeating(
+        send_strategy_interval_message,
+        interval=timedelta(minutes=30),
+        first=seconds_until_strategy
+    )
+    
     # Log scheduled jobs
     logger.info(f"Scheduled hourly welcome messages starting in {seconds_until_next_hour:.2f} seconds")
     logger.info(f"Scheduled interval messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
-    
+    logger.info(f"Tokyo session messages scheduled at 00:00 (in {seconds_until_tokyo/3600:.1f} hours)")
+    logger.info(f"London session messages scheduled at 08:00 (in {seconds_until_london/3600:.1f} hours)")
+    logger.info(f"NY session messages scheduled at 13:00 (in {seconds_until_ny/3600:.1f} hours)")
     
     # Run the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)
