@@ -1,0 +1,18 @@
+{
+    "bot_token": "8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694",
+    "admin_user_id": 7823596188,
+    "channel_id": "-1002575685046",
+    "group_id": -1002428210575,
+    "message_interval_hours": 1,
+    "data_dir": "./bot_data",
+    "messages": {
+        "welcome": "Welcome to our Trading Community! \ud83d\ude80 Please complete the authentication process to access our trading signals.",
+        "periodic": "\ud83d\udcca TRADING SIGNALS UPDATE: Remember to check our latest market analysis and signals! Join our premium channel for exclusive access to advanced trading strategies.",
+        "private_welcome": "Welcome to our Trading Community! \ud83d\udcc8 To provide you with personalized trading recommendations, please answer a few questions:"
+    },
+    "auth": {
+        "captcha_enabled": true,
+        "max_attempts": 3,
+        "account_format_regex": "^TR\\d{8}$"
+    }
+}

@@ -1,0 +1,44 @@
+{
+    "hourly": {
+        "00:00": "\ud83d\udcca It's midnight! Time to review your trading strategy for tomorrow.",
+        "01:00": "\ud83d\udca4 Markets are quiet now. Rest well to trade better tomorrow!",
+        "02:00": "\ud83d\udcc9 Asian markets are active. Keep an eye on emerging trends.",
+        "03:00": "\ud83d\udccb Use this time to update your trading journal.",
+        "04:00": "\ud83d\udcda Improve your trading skills with our educational resources.",
+        "05:00": "\ud83c\udf05 Early bird gets the worm! Prepare for the European market opening.",
+        "06:00": "\u23f0 European markets will open soon. Get ready for new opportunities!",
+        "07:00": "\ud83d\ude80 European session has started. Watch for initial momentum.",
+        "08:00": "\ud83d\udcca Check out our latest trading signals for the European session.",
+        "09:00": "\ud83d\udcbc Peak trading time in Europe. Stay focused and stick to your strategy.",
+        "10:00": "\ud83d\udcb9 US pre-market activity is starting. Get ready for potential volatility.",
+        "11:00": "\ud83d\udd04 Overlapping session between Europe and US pre-market. Great opportunities!",
+        "12:00": "\ud83d\udd5b Noon check-in: Have you stuck to your trading plan today?",
+        "13:00": "\ud83c\uddfa\ud83c\uddf8 US markets opening soon. Prepare for increased volatility.",
+        "14:00": "\ud83d\udcc8 US session in full swing. Our analysts are monitoring key levels.",
+        "15:00": "\ud83d\udd0d Mid-US session - this is often when key reversals happen.",
+        "16:00": "\ud83d\udcdd Time to evaluate your open positions and adjust your stops.",
+        "17:00": "\ud83c\udf0e European markets closing. Review your day trades.",
+        "18:00": "\ud83d\udcca Check our premium channel for after-hours analysis.",
+        "19:00": "\ud83d\udd1a US markets approaching close. Secure your profits and manage risk.",
+        "20:00": "\ud83d\udcd1 Time to review your trading performance for the day.",
+        "21:00": "\ud83c\udf20 Asian markets opening soon. New opportunities on the horizon!",
+        "22:00": "\ud83d\udd2e Looking ahead: Check our forecasts for tomorrow's trading session.",
+        "23:00": "\ud83d\udccb End of day summary: See our analysts' take on today's market moves."
+    },
+    "daily": {
+        "Monday": "\ud83d\ude80 Welcome to a new trading week! Check our weekly outlook in the premium channel.",
+        "Tuesday": "\ud83d\udcbc Tuesday trading tip: Consistency beats intensity. Stick to your strategy!",
+        "Wednesday": "\ud83d\udcca Mid-week market update: See how our predictions are playing out.",
+        "Thursday": "\ud83d\udcc8 Economic calendar highlight: Check major announcements coming tomorrow.",
+        "Friday": "\ud83c\udfaf Friday focus: Remember to close positions before the weekend if that's your strategy.",
+        "Saturday": "\ud83d\udcda Weekend learning: Check our educational resources to improve your skills.",
+        "Sunday": "\ud83d\udd2e Sunday market preview: Get ready for the week ahead with our analysis."
+    },
+    "weekly": {
+        "Week 1": "\ud83c\udf1f First week of the month: Major economic indicators are releasing soon.",
+        "Week 2": "\ud83d\udcb9 Second week outlook: Mid-month momentum is building.",
+        "Week 3": "\ud83d\udcdd Options expiration approaching: Be aware of potential volatility.",
+        "Week 4": "\ud83d\udd04 Month-end flows may affect market movements this week.",
+        "Week 5": "\ud83d\udcca Rare fifth week of the month: Check our special analysis."
+    }
+}

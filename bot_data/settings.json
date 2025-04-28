@@ -1,0 +1,9 @@
+{
+    "welcome_message": "Welcome to our Trading Community! Please complete the authentication process.",
+    "periodic_message": "\ud83d\udcca Remember to check our latest trading signals! Join our premium channel for exclusive access.",
+    "private_welcome_message": "Thanks for reaching out! To better serve you, please answer a few questions:",
+    "message_interval_hours": 12,
+    "captcha_enabled": true,
+    "max_auth_attempts": 3,
+    "admin_ids": []
+}

@@ -1,0 +1,1984 @@
+import logging
+import polars as pl
+from datetime import datetime, time, timedelta
+import asyncio
+import os
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ConversationHandler,
+    filters,
+    ContextTypes,
+)
+
+# Import custom modules
+from auth_system import TradingAccountAuth
+from db_manager import TradingBotDatabase
+from telegram.ext.filters import MessageFilter
+from vfx_Scheduler import VFXMessageScheduler
+
+
+
+# Global instance of the VFX message scheduler
+vfx_scheduler = VFXMessageScheduler()
+
+# Add this class definition before your handler functions
+class ForwardedMessageFilter(MessageFilter):
+    """Custom filter for forwarded messages."""
+    
+    def filter(self, message):
+        """Returns True if the message has forward_origin attribute."""
+        return hasattr(message, 'forward_origin')
+
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+# Initialize database and auth system
+db = TradingBotDatabase(data_dir="./bot_data")
+auth = TradingAccountAuth(db_path="./bot_data/trading_accounts.csv")
+
+# Define conversation states
+(RISK_APPETITE, DEPOSIT_AMOUNT, TRADING_ACCOUNT, CAPTCHA_RESPONSE) = range(4)
+
+# Configuration
+BOT_TOKEN = "8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694"
+ADMIN_USER_ID = [7823596188, 7396303047]
+ADMIN_USER_ID_2 = 7396303047
+
+MAIN_CHANNEL_ID = "-1002586937373"
+
+STRATEGY_CHANNEL_ID = "-1002575685046"
+STRATEGY_GROUP_ID = -1002428210575
+
+SIGNALS_CHANNEL_ID = "-1002697690452"
+SIGNALS_GROUP_ID = -1002685536346
+
+PROP_CHANNEL_ID = "-1002675985847"
+PROP_GROUP_ID = -1002673182167
+
+# Get message templates from database
+WELCOME_MSG = db.get_setting("welcome_message", "Welcome to our Trading Community! Please complete the authentication process.")
+PRIVATE_WELCOME_MSG = db.get_setting("private_welcome_message", "Thanks for reaching out! To better serve you, please answer a few questions:")
+
+
+# -------------------------------------- HELPER FUNCTIONs ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+async def is_user_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Check if user is an admin in direct chats or the current chat."""
+    user_id = update.effective_user.id
+    print(f"Checking admin status for user ID: {user_id}")
+    print(f"Admin IDs list: {ADMIN_USER_ID}")
+    
+    # Always allow hardcoded admin
+    if user_id in ADMIN_USER_ID:
+        print(f"User {user_id} is in the hardcoded admin list")
+        return True
+    
+    # If in direct chat, check if user is admin in the main group/channel
+    if update.effective_chat.type == "private":
+        try:
+            # Check if user is admin in the main group
+            group_member = await context.bot.get_chat_member(STRATEGY_GROUP_ID, user_id)
+            if group_member.status in ['owner', 'administrator']:
+                return True
+                
+            # Also check if user is admin in the main channel
+            channel_member = await context.bot.get_chat_member(MAIN_CHANNEL_ID, user_id)
+            if channel_member.status in ['owner', 'administrator']:
+                return True
+        except Exception as e:
+            print(f"Error checking admin status in group/channel: {e}")
+    
+    # If in a group chat, check if user is admin in the current chat
+    else:
+        try:
+            chat_id = update.effective_chat.id
+            chat_member = await context.bot.get_chat_member(chat_id, user_id)
+            return chat_member.status in ['owner', 'administrator']
+        except Exception as e:
+            print(f"Error checking admin status: {e}")
+    
+    return False
+
+async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Welcome new members to the group/channel."""
+    for new_user in update.message.new_chat_members:
+        # Add user to database
+        db.add_user({
+            "user_id": new_user.id,
+            "username": new_user.username,
+            "first_name": new_user.first_name,
+            "last_name": new_user.last_name
+        })
+        
+        # Add to group members
+        db.add_to_group(new_user.id)
+        
+        # Send welcome message
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Welcome {new_user.first_name} to our trading community! {WELCOME_MSG}"
+        )
+        
+        # Initiate authentication process
+        await start_authentication(update, context, new_user.id)
+        
+        # Update analytics
+        db.update_analytics(new_users=1)
+
+async def start_authentication(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int) -> None:
+    """Start authentication process for new users."""
+    # Check if user is already verified
+    user_data = db.get_user(user_id)
+    if user_data and user_data["is_verified"]:
+        # User is already verified
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Welcome back! You're already verified in our system."
+        )
+        return
+    
+    # Start authentication with a button
+    keyboard = [
+        [InlineKeyboardButton("Complete Authentication", callback_data=f"auth_{user_id}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Please complete authentication to access all features.",
+        reply_markup=reply_markup
+    )
+
+async def auth_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle authentication button callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    # Extract user_id from callback data
+    callback_data = query.data
+    if callback_data.startswith("auth_"):
+        user_id = int(callback_data.split("_")[1])
+        
+        # Check if user can attempt authentication
+        if not auth.can_attempt_auth(user_id):
+            await query.edit_message_text(
+                text="Too many failed attempts. Please try again later or contact an admin."
+            )
+            return ConversationHandler.END
+        
+        # Generate CAPTCHA
+        captcha_question, captcha_answer = auth.generate_captcha()
+        
+        # Store the answer and user ID in user_data
+        context.user_data["captcha_answer"] = captcha_answer
+        context.user_data["auth_user_id"] = user_id
+        
+        # Store the chat_id where the auth process started
+        context.user_data["auth_chat_id"] = update.effective_chat.id
+        
+        await query.edit_message_text(
+            text=f"Authentication: {captcha_question} Reply with the number."
+        )
+        
+        # This is crucial - we're returning a state to the conversation handler
+        return CAPTCHA_RESPONSE
+
+async def handle_captcha_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle user's response to CAPTCHA."""
+    print(f"Received captcha response: {update.message.text}")
+    print(f"User data: {context.user_data}")
+    
+    if "captcha_answer" in context.user_data and "auth_user_id" in context.user_data:
+        try:
+            user_answer = int(update.message.text.strip())
+            expected_answer = context.user_data["captcha_answer"]
+            user_id = context.user_data["auth_user_id"]
+            
+            print(f"User answer: {user_answer}, Expected: {expected_answer}")
+            
+            if user_answer == expected_answer:
+                # Correct answer
+                await update.message.reply_text("CAPTCHA solved correctly! Now please enter your trading account number for verification.")
+                
+                # Record successful attempt
+                auth.record_attempt(user_id, True)
+                
+                # Keep the user_id for the trading account verification step
+                context.user_data["pending_account_verify"] = user_id
+                del context.user_data["captcha_answer"]
+                del context.user_data["auth_user_id"]
+                
+                return TRADING_ACCOUNT
+            else:
+                # Incorrect answer
+                await update.message.reply_text("Incorrect answer. Please try again.")
+                
+                # Record failed attempt
+                auth.record_attempt(user_id, False)
+                
+                # Generate new CAPTCHA
+                captcha_question, captcha_answer = auth.generate_captcha()
+                context.user_data["captcha_answer"] = captcha_answer
+                
+                await update.message.reply_text(f"New authentication challenge: {captcha_question}")
+                return CAPTCHA_RESPONSE
+        except ValueError:
+            await update.message.reply_text("Please enter a valid number.")
+            return CAPTCHA_RESPONSE
+    
+    # If we get here, there's no CAPTCHA data in context
+    # This usually means this is a regular message, not part of CAPTCHA verification
+    print("No captcha data found in context")
+    return ConversationHandler.END
+
+async def handle_account_verification(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle trading account verification."""
+    if "pending_account_verify" in context.user_data:
+        user_id = context.user_data["pending_account_verify"]
+        account_number = update.message.text.strip()
+        
+        # Validate account format
+        if not auth.validate_account_format(account_number):
+            await update.message.reply_text("Invalid account format. Please enter a valid trading account number (e.g., TR12345678).")
+            return TRADING_ACCOUNT
+        
+        # Verify the account
+        if auth.verify_account(account_number, user_id):
+            # Account verified successfully
+            await update.message.reply_text("Trading account verified successfully! You now have full access to the group.")
+            
+            # Mark user as verified in database
+            db.mark_user_verified(user_id)
+            
+            # Update user info
+            db.add_user({
+                "user_id": user_id,
+                "trading_account": account_number,
+                "is_verified": True
+            })
+            
+            # Clear verification data
+            del context.user_data["pending_account_verify"]
+            
+            # End conversation
+            return ConversationHandler.END
+        else:
+            # Account not found or already linked
+            await update.message.reply_text("Account not found or already linked to another user. Please contact an admin for assistance.")
+            
+            # Clear verification data
+            del context.user_data["pending_account_verify"]
+            
+            # End conversation
+            return ConversationHandler.END
+    else:
+        # Regular message handling
+        pass
+
+async def private_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle private messages to the bot and start the user info conversation."""
+    user = update.effective_user
+    
+    # Check if this is a direct message to the bot
+    if update.effective_chat.type == "private":
+        # Update user activity
+        db.update_user_activity(user.id)
+        
+        # Send welcome message and start conversation
+        await update.message.reply_text(
+            f"{PRIVATE_WELCOME_MSG}\n\nFirst, what's your risk appetite from 1-10?"
+        )
+        return RISK_APPETITE
+    
+    # For group messages, just update user activity
+    db.update_user_activity(user.id)
+    
+    # Update analytics
+    db.update_analytics(messages_sent=1)
+    
+    return ConversationHandler.END
+
+async def risk_appetite(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Store risk appetite and ask for deposit amount."""
+    try:
+        risk = int(update.message.text)
+        if 1 <= risk <= 10:
+            user_id = update.effective_user.id
+            
+            # Store in user_data for conversation
+            if "user_info" not in context.user_data:
+                context.user_data["user_info"] = {}
+            context.user_data["user_info"]["risk_appetite"] = risk
+            
+            # Update in database
+            db.add_user({
+                "user_id": user_id,
+                "risk_appetite": risk
+            })
+            
+            await update.message.reply_text(
+                "Thanks! Now, how much do you plan to deposit? (100-10,000)"
+            )
+            return DEPOSIT_AMOUNT
+        else:
+            await update.message.reply_text("Please enter a number between 1 and 10.")
+            return RISK_APPETITE
+    except ValueError:
+        await update.message.reply_text("Please enter a valid number between 1 and 10.")
+        return RISK_APPETITE
+
+async def deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Store deposit amount and ask for trading account number."""
+    try:
+        amount = int(update.message.text)
+        if 100 <= amount <= 10000:
+            user_id = update.effective_user.id
+            
+            # Store in user_data for conversation
+            context.user_data["user_info"]["deposit_amount"] = amount
+            
+            # Update in database
+            db.add_user({
+                "user_id": user_id,
+                "deposit_amount": amount
+            })
+            
+            await update.message.reply_text(
+                "Great! Finally, please enter your trading account number for verification."
+            )
+            return TRADING_ACCOUNT
+        else:
+            await update.message.reply_text("Please enter an amount between 100 and 10,000.")
+            return DEPOSIT_AMOUNT
+    except ValueError:
+        await update.message.reply_text("Please enter a valid amount between 100 and 10,000.")
+        return DEPOSIT_AMOUNT
+
+async def trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Store trading account and complete the conversation."""
+    account_number = update.message.text.strip()
+    user_id = update.effective_user.id
+    
+    # SUPER AGGRESSIVE DEBUGGING
+    print(f"===== TRADING ACCOUNT FUNCTION =====")
+    print(f"Received: {account_number} from user {user_id}")
+    print(f"Current context.user_data: {context.user_data}")
+    
+    # Force a response to the user first, so they're not left hanging
+    await update.message.reply_text("Processing your trading account...")
+    
+    try:
+        # Validate account format with explicit debug
+        is_valid = auth.validate_account_format(account_number)
+        print(f"Account format validation result: {is_valid}")
+        
+        if not is_valid:
+            await update.message.reply_text("Invalid account format. Please enter a 6-digit account number.")
+            return TRADING_ACCOUNT
+        
+        # Get stored user data or create if missing
+        if "user_info" not in context.user_data:
+            print("WARNING: user_info missing from context, creating empty dict")
+            context.user_data["user_info"] = {}
+        
+        # Store in user_data
+        context.user_data["user_info"]["trading_account"] = account_number
+        print(f"Stored account in user_data: {context.user_data}")
+        
+        # Update in database
+        db_result = db.add_user({
+            "user_id": user_id,
+            "trading_account": account_number
+        })
+        print(f"Database update result: {db_result}")
+        
+        # Always respond to user with success message, even if verification fails
+        await update.message.reply_text(
+            "Thank you for providing your trading account! "
+            "Our team will review your information and add you to the appropriate VIP channels shortly."
+        )
+        
+        # Try to send admin notification independently
+        asyncio.create_task(send_account_notification(context, user_id, account_number))
+        
+        # Clean up conversation data safely
+        if "user_info" in context.user_data:
+            user_info_copy = context.user_data["user_info"].copy()  # Keep a copy for logging
+            del context.user_data["user_info"]
+            print(f"Cleaned up user_info, contained: {user_info_copy}")
+        
+        print("===== TRADING ACCOUNT FUNCTION COMPLETED =====")
+        return ConversationHandler.END
+        
+    except Exception as e:
+        print(f"CRITICAL ERROR in trading_account: {e}")
+        # Provide a fallback response
+        await update.message.reply_text(
+            "We encountered an issue processing your account. Please try again or contact support."
+        )
+        return ConversationHandler.END
+
+async def send_account_notification(context, user_id, account_number):
+    """Send notification about new account separately to avoid blocking the main flow."""
+    try:
+        # Get user info from database instead of context
+        user_info = db.get_user(user_id)
+        print(f"Retrieved user info from DB: {user_info}")
+        
+        if not user_info:
+            print(f"WARNING: User {user_id} not found in database")
+            return
+        
+        # Build minimal report
+        report = (
+            f"📊 New User Profile 📊\n"
+            f"User: {user_info.get('first_name', 'Unknown')} {user_info.get('last_name', '')}\n"
+            f"Risk Appetite: {user_info.get('risk_appetite', 'Not specified')}/10\n"
+            f"Deposit Amount: ${user_info.get('deposit_amount', 'Not specified')}\n"
+            f"Trading Account: {account_number}\n"
+            f"User ID: {user_id}\n\n"
+            f"This user needs to be added to VIP channels based on their interests."
+        )
+        
+        # Send to all admins
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(chat_id=admin_id, text=report)
+                print(f"Successfully sent notification to admin {admin_id}")
+            except Exception as e:
+                print(f"Failed to send notification to admin {admin_id}: {e}")
+    except Exception as e:
+        print(f"Error in send_account_notification: {e}")
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log the error and send a message to the admin."""
+    # Log the error
+    logger.error("Exception while handling an update:", exc_info=context.error)
+    
+    # Send error message to admin
+    error_message = f"⚠️ Bot Error ⚠️\n\n{context.error}\n\nUpdate: {update}"
+    if len(error_message) > 4000:  # Telegram message length limit
+        error_message = error_message[:4000] + "..."
+    
+    try:
+        await context.bot.send_message(
+            chat_id=ADMIN_USER_ID, 
+            text=error_message
+        )
+    except Exception as e:
+        logger.error(f"Failed to send error message to admin: {e}")
+    
+    # Diagnostic information
+    if update and update.effective_chat:
+        try:
+            chat_type = update.effective_chat.type
+            chat_id = update.effective_chat.id
+            logger.info(f"Error occurred in {chat_type} chat {chat_id}")
+        except:
+            pass
+    
+    if update and update.message:
+        try:
+            message_text = update.message.text
+            logger.info(f"Message that caused error: {message_text}")
+        except:
+            pass
+    
+    if context.user_data:
+        try:
+            logger.info(f"User data: {context.user_data}")
+        except:
+            pass
+
+async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle messages forwarded by the admin from users."""
+    # Debug output
+    print(f"Received message in chat {update.effective_chat.id} from user {update.effective_user.id}")
+    print(f"Admin ID is {ADMIN_USER_ID}")
+    print(f"Message properties: {update.message}")
+    
+    # Check if this is the admin's chat
+    if update.effective_user.id not in ADMIN_USER_ID:
+        print("Not from admin, skipping admin forward handler")
+        return
+    
+    # Check for forwarded message using multiple methods
+    is_forwarded = False
+    original_sender_id = None
+    original_sender_name = "Unknown User"
+    
+    # Method 1: Check for forward_origin (newer Telegram API)
+    if hasattr(update.message, 'forward_origin'):
+        print("Message has forward_origin property")
+        is_forwarded = True
+        
+        if hasattr(update.message.forward_origin, 'sender_user') and update.message.forward_origin.sender_user:
+            original_sender_id = update.message.forward_origin.sender_user.id
+            original_sender_name = update.message.forward_origin.sender_user.first_name
+            print(f"Sender from forward_origin: {original_sender_id} ({original_sender_name})")
+        elif hasattr(update.message.forward_origin, 'sender_user_name'):
+            original_sender_name = update.message.forward_origin.sender_user_name
+            print(f"Hidden sender from forward_origin: {original_sender_name}")
+    
+    # Method 2: Check for forward_from (older Telegram API)
+    elif hasattr(update.message, 'forward_from') and update.message.forward_from:
+        print("Message has forward_from property")
+        is_forwarded = True
+        original_sender_id = update.message.forward_from.id
+        original_sender_name = update.message.forward_from.first_name
+        print(f"Sender from forward_from: {original_sender_id} ({original_sender_name})")
+    
+    # Method 3: Check for forward_sender_name (for privacy-enabled users)
+    elif hasattr(update.message, 'forward_sender_name') and update.message.forward_sender_name:
+        print("Message has forward_sender_name property")
+        is_forwarded = True
+        original_sender_name = update.message.forward_sender_name
+        print(f"Hidden sender from forward_sender_name: {original_sender_name}")
+    
+    # If it's a forwarded message
+    if is_forwarded:
+        print(f"This is a forwarded message from {original_sender_name}")
+        
+        # Handle user with visible info
+        if original_sender_id:
+            # Store original sender ID for future communication
+            user_data = {
+                "user_id": original_sender_id,
+                "first_name": original_sender_name,
+                "last_name": "" if not hasattr(update.message.forward_origin.sender_user, 'last_name') else update.message.forward_origin.sender_user.last_name,
+                "username": "" if not hasattr(update.message.forward_origin.sender_user, 'username') else update.message.forward_origin.sender_user.username
+            }
+            db.add_user(user_data)
+            
+            # Ask admin if they want to start conversation with this user
+            keyboard = [
+                [InlineKeyboardButton("Start Conversation", callback_data=f"start_conv_{original_sender_id}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                f"Message forwarded from {original_sender_name} (ID: {original_sender_id}). Would you like to start a conversation with this user?",
+                reply_markup=reply_markup
+            )
+        else:
+            # For hidden users, generate a session ID
+            timestamp = int(datetime.now().timestamp())
+            session_id = f"hidden_{hash(original_sender_name)}_{timestamp}"
+            
+            # Store this session for later reference
+            if "hidden_users" not in context.bot_data:
+                context.bot_data["hidden_users"] = {}
+            
+            context.bot_data["hidden_users"][session_id] = {
+                "name": original_sender_name,
+                "first_seen": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "last_message": update.message.text
+            }
+            
+            # Ask admin if they want to send instructions to this user
+            keyboard = [
+                [InlineKeyboardButton("Send Instructions", callback_data=f"instr_{session_id}")],
+                [InlineKeyboardButton("Record Info Manually", callback_data=f"manual_{session_id}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                f"Message forwarded from {original_sender_name} who has privacy settings enabled.\n\n"
+                f"Options:\n"
+                f"1) Send Instructions: Send a message asking them to contact the bot\n"
+                f"2) Record Info Manually: You can manually input their information\n\n"
+                f"Message content: \"{update.message.text}\"",
+                reply_markup=reply_markup
+            )
+    
+    # If it's just a regular message from the admin
+    else:
+        print("This is a regular message from admin")
+        # Check if admin is currently in a conversation with a user
+        if "current_user_conv" in context.user_data:
+            user_id = context.user_data["current_user_conv"]
+            print(f"Admin is in conversation with user {user_id}")
+            
+            # Forward the admin's reply to that user
+            try:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=f"Admin: {update.message.text}"
+                )
+                await update.message.reply_text(f"Message sent to user {user_id}")
+            except Exception as e:
+                print(f"Error sending message to user: {e}")
+                await update.message.reply_text(f"Failed to send message: {e}")
+        else:
+            print("Admin is not in a conversation with any user")
+            # Admin is not in a conversation with anyone
+            await update.message.reply_text(
+                "You're not currently in a conversation with any user. "
+                "Forward a message from a user to start a conversation."
+            )
+
+async def handle_referral(context, user, ref_code):
+    """Handle referral codes separately to avoid message leakage."""
+    try:
+        # Extract the referring admin's ID
+        referring_admin_id = int(ref_code.split("_")[1])
+        print(f"User {user.id} was referred by admin {referring_admin_id}")
+        
+        # Store this connection in the database or context
+        context.bot_data.setdefault("admin_user_connections", {})
+        context.bot_data["admin_user_connections"][user.id] = referring_admin_id
+        
+        # Notify ONLY the admin
+        try:
+            await context.bot.send_message(
+                chat_id=referring_admin_id,
+                text=f"✅ {user.first_name} (ID: {user.id}) has connected with the bot through your link! You can now communicate with them."
+            )
+            print(f"Sent connection notification to admin {referring_admin_id}")
+        except Exception as e:
+            print(f"Failed to send admin notification: {e}")
+    except Exception as e:
+        print(f"Error processing referral: {e}")
+
+# -------------------------------------- COMMANDS ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send welcome message when the command /start is issued."""
+    user = update.effective_user
+    user_id = user.id
+    
+    # Debug output to console only
+    print(f"User ID {user_id} ({user.first_name}) started the bot")
+    
+    # Handle referral parameter in a separate async function to avoid message leakage
+    if context.args and context.args[0].startswith("ref_"):
+        # Don't await here, let it run independently
+        asyncio.create_task(handle_referral(context, user, context.args[0]))
+    
+    # Add user to database if not exists
+    db.add_user({
+        "user_id": user.id,
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name
+    })
+    
+    # Update user activity
+    db.update_user_activity(user.id)
+    
+    # Send welcome message - this is the FIRST message the user should see
+    await update.message.reply_text(f"Hello {user.first_name}! I'm your trading assistant bot.")
+    
+    # Update analytics
+    db.update_analytics(active_users=1)
+    
+    # If this is a private chat, start the conversation
+    if update.effective_chat.type == "private":
+        await update.message.reply_text(
+            f"{PRIVATE_WELCOME_MSG}\n\nFirst, what's your risk appetite from 1-10?"
+        )
+        return RISK_APPETITE
+    
+    return ConversationHandler.END
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a help message with all available commands."""
+    # user_id = update.effective_user.id
+    is_admin = await is_user_admin(update, context)
+    
+    # Basic commands for all users
+    help_text = (
+        "Here are the available commands:\n\n"
+        "/start - Start the bot and begin profile creation\n"
+        "/help - Show this help message\n"
+        "/cancel - Cancel the current conversation\n"
+    )
+    
+    # Add admin-specific commands if the user is an admin
+    if is_admin:
+        admin_help = (
+            "\nAdmin Commands:\n"
+            "/stats - Show bot statistics\n"
+            "/users - List recent users to start a conversation with\n"
+            "/endchat - End the current user conversation\n"
+            "/updatemsg - Update scheduled messages\n"
+            "/viewmsgs - View currently scheduled messages\n"
+            "/managemsg - Manage VFX channel messaging system\n\n"
+            
+            "VFX Message Management:\n"
+            "/managemsg view hourly - View all hourly welcome messages\n"
+            "/managemsg view interval - View all interval messages\n"
+            "/managemsg add hourly <set-time (9)> <Your message> - Set message for 9:00 AM\n"
+            "/managemsg add interval signal_buy Your message - Add a new interval message\n"
+            "/managemsg remove interval signal_buy - Remove an interval message\n"
+            "/managemsg reset - Reset interval message rotation\n\n"
+            
+            "Admin Features:\n"
+            "- Forward a message from a user to start a conversation with them\n"
+            "- Any regular message you send will be forwarded to the current user in conversation\n"
+            "- The VFX messaging system sends welcome messages hourly and rotates through\n"
+            "  different promotional messages every 20 minutes\n"
+        )
+        help_text += admin_help
+    
+    await update.message.reply_text(help_text)
+    
+    # Update user activity
+    db.update_user_activity(update.effective_user.id)
+    
+    # Update analytics
+    db.update_analytics(commands_used=1)
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Provide statistics about the bot usage to admins."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    # Get stats from database
+    total_users = db.users_df.height
+    verified_users = db.users_df.filter(pl.col("is_verified") == True).height
+    active_users_7d = db.get_active_users(days=7)
+    active_users_30d = db.get_active_users(days=30)
+    
+    # Format stats message
+    stats_msg = (
+        f"📊 Bot Statistics 📊\n\n"
+        f"Total Users: {total_users}\n"
+        f"Verified Users: {verified_users}\n"
+        f"Active Users (7 days): {active_users_7d}\n"
+        f"Active Users (30 days): {active_users_30d}\n"
+        f"Current Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    
+    await update.message.reply_text(stats_msg)
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancel the conversation."""
+    await update.message.reply_text("Information collection cancelled.")
+    
+    # Clean up conversation data if exists
+    if "user_info" in context.user_data:
+        del context.user_data["user_info"]
+    
+    return ConversationHandler.END
+   
+async def start_form_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Start the registration form during an ongoing conversation."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    if "current_user_conv" in context.user_data:
+        user_id = context.user_data["current_user_conv"]
+        user_info = db.get_user(user_id)
+        user_name = user_info.get("first_name", "User") if user_info else "User"
+        
+        try:
+            # Send the registration form questions
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=f"{PRIVATE_WELCOME_MSG}\n\nFirst, what's your risk appetite from 1-10?"
+            )
+            
+            await update.message.reply_text(
+                f"✅ Registration form sent to {user_name} (ID: {user_id}).\n"
+                f"The user's responses will now be collected for the registration process."
+            )
+        except Exception as e:
+            await update.message.reply_text(f"Error sending registration form: {e}")
+    else:
+        await update.message.reply_text(
+            "You're not currently in a conversation with any user. "
+            "Forward a message from a user to start a conversation first."
+        )
+
+async def end_user_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """End the current user conversation."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    if "current_user_conv" in context.user_data:
+        user_id = context.user_data["current_user_conv"]
+        del context.user_data["current_user_conv"]
+        
+        await update.message.reply_text(f"Conversation with user {user_id} ended.")
+    else:
+        await update.message.reply_text("You're not currently in a conversation with any user.")
+
+async def add_to_vip_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to add a user to VIP channels."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    # Check for arguments
+    args = context.args
+    if len(args) < 2:
+        await update.message.reply_text(
+            "Usage: /addtovip <user_id> <channel_type>\n"
+            "Channel types: signals, strategy, propcapital, all"
+        )
+        return
+    
+    try:
+        user_id = args[0]
+        channel_type = args[1].lower()
+        
+        # Validate user ID
+        user_info = db.get_user(user_id)
+        if not user_info:
+            await update.message.reply_text(f"User ID {user_id} not found in database.")
+            return
+        
+        # Map channel type to channel IDs
+        channel_mapping = {
+            "signals": (SIGNALS_CHANNEL_ID, SIGNALS_GROUP_ID),
+            "strategy": (STRATEGY_CHANNEL_ID, STRATEGY_GROUP_ID),
+            "propcapital": (PROP_CHANNEL_ID, PROP_GROUP_ID),
+        }
+        
+        channels_to_add = []
+        if channel_type == "all":
+            for channel_pair in channel_mapping.values():
+                channels_to_add.append(channel_pair)
+        elif channel_type in channel_mapping:
+            channels_to_add.append(channel_mapping[channel_type])
+        else:
+            await update.message.reply_text(f"Invalid channel type. Use signals, strategy, propcapital, or all.")
+            return
+        
+        # Generate invite links for each channel/group
+        success_messages = []
+        for channel_id, group_id in channels_to_add:
+            try:
+                # Create chat invite link with member limit=1 (one-time use)
+                channel_invite = await context.bot.create_chat_invite_link(
+                    chat_id=channel_id,
+                    member_limit=1,
+                    name=f"Invite for user {user_id}"
+                )
+                
+                group_invite = await context.bot.create_chat_invite_link(
+                    chat_id=group_id,
+                    member_limit=1,
+                    name=f"Invite for user {user_id}"
+                )
+                
+                # Get channel/group names
+                channel_chat = await context.bot.get_chat(channel_id)
+                group_chat = await context.bot.get_chat(group_id)
+                
+                success_messages.append(
+                    f"✅ Invite links for {channel_chat.title}:\n"
+                    f"Channel: {channel_invite.invite_link}\n"
+                    f"Group: {group_invite.invite_link}\n"
+                )
+            except Exception as e:
+                await update.message.reply_text(f"Error creating invite for {channel_id}: {e}")
+        
+        # Format response with all invite links
+        if success_messages:
+            response = f"🔗 VIP Access for {user_info['first_name']} (ID: {user_id}):\n\n"
+            response += "\n".join(success_messages)
+            response += "\nPlease send these links to the user."
+            
+            await update.message.reply_text(response)
+            
+            # Also record this in the database
+            db.add_user({
+                "user_id": user_id,
+                "vip_channels": channel_type,
+                "vip_added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+        else:
+            await update.message.reply_text("Failed to create any invite links.")
+        
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
+async def forward_mt5_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to forward MT5 account details to the copier team."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    # Check for arguments
+    args = context.args
+    if len(args) < 1:
+        await update.message.reply_text(
+            "Usage: /forwardmt5 <user_id>"
+        )
+        return
+    
+    try:
+        user_id = args[0]
+        
+        # Validate user ID
+        user_info = db.get_user(user_id)
+        if not user_info:
+            await update.message.reply_text(f"User ID {user_id} not found in database.")
+            return
+        
+        # Check if user has trading account
+        trading_account = user_info.get("trading_account")
+        if not trading_account:
+            await update.message.reply_text(f"User {user_id} does not have a trading account registered.")
+            return
+        
+        # Get risk appetite and deposit amount
+        risk_appetite = user_info.get("risk_appetite", "Not specified")
+        deposit_amount = user_info.get("deposit_amount", "Not specified")
+        
+        # Format message for copier team
+        copier_message = (
+            f"🔄 New Trading Account for Copier System 🔄\n\n"
+            f"User: {user_info.get('first_name', 'Unknown')} {user_info.get('last_name', '')}\n"
+            f"Trading Account: {trading_account}\n"
+            f"Risk Level: {risk_appetite}/10\n"
+            f"Deposit Amount: ${deposit_amount}\n"
+            f"Date Added: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"👉 Please add this account to the copier system."
+        )
+        
+        # Here you would forward to your copier team's chat or group
+        # For now, we'll just send it back to the admin
+        await update.message.reply_text(
+            f"✅ Trading account forwarded to copier team:\n\n{copier_message}\n\n"
+            f"(In production, this would be sent to your copier team's chat)"
+        )
+        
+        # Record this in the database
+        db.add_user({
+            "user_id": user_id,
+            "copier_forwarded": True,
+            "copier_forwarded_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
+async def test_account_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Test command to directly check account validation."""
+    user_id = update.effective_user.id
+    
+    if len(context.args) == 0:
+        await update.message.reply_text("Usage: /testaccount <account_number>")
+        return
+    
+    account_number = context.args[0]
+    
+    await update.message.reply_text(f"Testing account number: {account_number}")
+    
+    # Test validation
+    is_valid = auth.validate_account_format(account_number)
+    await update.message.reply_text(f"Format validation result: {is_valid}")
+    
+    # Test verification
+    try:
+        verification_result = auth.verify_account(account_number, user_id)
+        await update.message.reply_text(f"Verification result: {verification_result}")
+    except Exception as e:
+        await update.message.reply_text(f"Verification error: {e}")
+    
+    await update.message.reply_text("Test completed.")
+
+# -------------------------------------- MANUAL FUNCTIONS ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+
+async def manual_entry_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle the 'Record Info Manually' button callback for hidden users."""
+    query = update.callback_query
+    await query.answer()
+    
+    print(f"Received manual entry callback: {query.data}")
+    callback_data = query.data
+    
+    if callback_data.startswith("manual_"):
+        try:
+            session_id = callback_data[7:]  # Remove 'manual_' prefix
+            print(f"Starting manual entry for session: {session_id}")
+            
+            # Store the session ID for the conversation
+            context.user_data["manual_entry_session"] = session_id
+            
+            # Get hidden user info
+            if "hidden_users" in context.bot_data and session_id in context.bot_data["hidden_users"]:
+                user_name = context.bot_data["hidden_users"][session_id]["name"]
+                
+                await query.edit_message_text(
+                    text=f"📝 Manual profile entry for {user_name}\n\n"
+                         f"You'll now be asked a series of questions to fill in their profile.\n\n"
+                         f"First, what is their risk appetite (1-10)?"
+                )
+                
+                return RISK_APPETITE_MANUAL
+            else:
+                await query.edit_message_text(
+                    text="⚠️ User session information not found. Please try forwarding a new message."
+                )
+                return ConversationHandler.END
+        except Exception as e:
+            print(f"Error processing manual entry callback: {e}")
+            await query.edit_message_text(
+                text=f"⚠️ Error starting manual entry: {e}"
+            )
+            return ConversationHandler.END
+
+async def risk_appetite_manual(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle risk appetite input for manual entry."""
+    try:
+        risk = int(update.message.text)
+        if 1 <= risk <= 10:
+            # Store in user_data for conversation
+            if "manual_entry_data" not in context.user_data:
+                context.user_data["manual_entry_data"] = {}
+            context.user_data["manual_entry_data"]["risk_appetite"] = risk
+            
+            await update.message.reply_text(
+                "Thanks! Now, what is their approximate deposit amount? (100-10,000)"
+            )
+            return DEPOSIT_AMOUNT_MANUAL
+        else:
+            await update.message.reply_text("Please enter a number between 1 and 10.")
+            return RISK_APPETITE_MANUAL
+    except ValueError:
+        await update.message.reply_text("Please enter a valid number between 1 and 10.")
+        return RISK_APPETITE_MANUAL
+
+
+async def deposit_amount_manual(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle deposit amount input for manual entry."""
+    try:
+        amount = int(update.message.text)
+        if 100 <= amount <= 10000:
+            # Store in user_data for conversation
+            context.user_data["manual_entry_data"]["deposit_amount"] = amount
+            
+            await update.message.reply_text(
+                "Great! Finally, what is their trading account number? (e.g. TR12345678)"
+            )
+            return TRADING_ACCOUNT_MANUAL
+        else:
+            await update.message.reply_text("Please enter an amount between 100 and 10,000.")
+            return DEPOSIT_AMOUNT_MANUAL
+    except ValueError:
+        await update.message.reply_text("Please enter a valid amount between 100 and 10,000.")
+        return DEPOSIT_AMOUNT_MANUAL
+
+async def trading_account_manual(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle trading account input for manual entry."""
+    account_number = update.message.text.strip()
+    
+    # Validate account format
+    if not auth.validate_account_format(account_number):
+        await update.message.reply_text("Invalid account format. Please enter a valid trading account number (e.g., TR12345678).")
+        return TRADING_ACCOUNT_MANUAL
+    
+    # Store in user_data
+    context.user_data["manual_entry_data"]["trading_account"] = account_number
+    
+    # Get session info
+    session_id = context.user_data["manual_entry_session"]
+    user_name = context.bot_data["hidden_users"][session_id]["name"]
+    
+    # Create a virtual user entry in the database using the session ID as reference
+    virtual_user_id = f"virtual_{session_id[:8]}"
+    
+    # Add to database with manual entry data
+    user_data = {
+        "user_id": virtual_user_id,
+        "first_name": user_name,
+        "last_name": "Hidden User",
+        "username": None,
+        "risk_appetite": context.user_data["manual_entry_data"]["risk_appetite"],
+        "deposit_amount": context.user_data["manual_entry_data"]["deposit_amount"],
+        "trading_account": account_number,
+        "is_verified": True,  # Mark as verified since admin is entering data
+        "notes": f"Manually entered by admin. Original name: {user_name}"
+    }
+    
+    # Save to database
+    db.add_user(user_data)
+    
+    # Format collected data for review
+    report = (
+        f"✅ Manual profile completed for {user_name}\n\n"
+        f"Risk Appetite: {context.user_data['manual_entry_data']['risk_appetite']}/10\n"
+        f"Deposit Amount: ${context.user_data['manual_entry_data']['deposit_amount']}\n"
+        f"Trading Account: {account_number}\n"
+        f"Reference ID: {virtual_user_id}\n\n"
+        f"This profile has been saved and marked as verified."
+    )
+    
+    await update.message.reply_text(report)
+    
+    # Clean up conversation data
+    del context.user_data["manual_entry_session"]
+    del context.user_data["manual_entry_data"]
+    
+    return ConversationHandler.END
+
+
+
+# -------------------------------------- VFX Messages ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+async def send_hourly_welcome(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send hour-specific market session messages to the group and channel."""
+    current_hour = datetime.now().hour
+    current_weekday = datetime.now().weekday()
+    
+    # Only send messages at market opening hours on weekdays (0-4 are Monday-Friday)
+    if current_hour not in [0, 8, 13] or current_weekday > 4:  # Skip weekends (5=Saturday, 6=Sunday)
+        return  # Exit if not a market opening hour or if it's weekend
+    
+    # Get the appropriate session message
+    if current_hour == 0:
+        message = vfx_scheduler.get_welcome_message("00:00")  # Tokyo session
+        session_name = "Tokyo"
+    elif current_hour == 8:
+        message = vfx_scheduler.get_welcome_message("08:00")  # London session
+        session_name = "London"
+    elif current_hour == 13:
+        message = vfx_scheduler.get_welcome_message("13:00")  # NY session
+        session_name = "New York"
+    
+    # Send to channel
+    try:
+        await context.bot.send_message(
+            chat_id=MAIN_CHANNEL_ID, 
+            text=message,
+            parse_mode='HTML'
+        )
+        logger.info(f"Sent {session_name} session message at {datetime.now()} (Weekday: {current_weekday})")
+    except Exception as e:
+        logger.error(f"Failed to send {session_name} session message: {e}")
+    
+    # Update analytics
+    try:
+        db.update_analytics(messages_sent=1)
+    except Exception as e:
+        logger.error(f"Failed to update analytics: {e}")
+
+async def send_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send the next interval message to the channel."""
+    # Get the next interval message
+    message = vfx_scheduler.get_next_interval_message()
+    
+    try:
+        # Send to channel with HTML parsing enabled
+        await context.bot.send_message(
+            chat_id=MAIN_CHANNEL_ID, 
+            text=message,
+            parse_mode='HTML'  # Enable HTML formatting
+        )
+        logger.info(f"Sent interval message at {datetime.now()}")
+    except Exception as e:
+        logger.error(f"Failed to send interval message: {e}")
+    
+    # Update analytics
+    try:
+        db.update_analytics(messages_sent=1)
+    except Exception as e:
+        logger.error(f"Failed to update analytics: {e}")
+
+# Admin command to manage scheduled messages
+async def manage_messages_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to manage scheduled messages."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    # Check arguments
+    args = context.args
+    if len(args) < 1:
+        await update.message.reply_text(
+            "Usage: /managemsg <action> [arguments]\n\n"
+            "Actions:\n"
+            "- view hourly/interval/all: View messages\n"
+            "- add hourly <hour> <message>: Add hourly message\n"
+            "- add interval <name> <message>: Add interval message\n"
+            "- remove hourly/interval <key>: Remove message\n"
+            "- reset: Reset interval rotation\n"
+        )
+        return
+    
+    action = args[0].lower()
+    
+    if action == "view":
+        # View messages
+        if len(args) < 2:
+            await update.message.reply_text("Please specify what to view: hourly, interval, or all")
+            return
+        
+        view_type = args[1].lower()
+        
+        if view_type == "hourly":
+            hourly_msgs = vfx_scheduler.get_all_messages("hourly")
+            if hourly_msgs:
+                message = "Hourly Welcome Messages:\n\n"
+                for hour, msg in sorted(hourly_msgs.items()):
+                    message += f"{hour}: {msg[:50]}...\n\n"
+                
+                # Split into multiple messages if too long
+                if len(message) > 4000:
+                    chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                    for chunk in chunks:
+                        await update.message.reply_text(chunk)
+                else:
+                    await update.message.reply_text(message)
+            else:
+                await update.message.reply_text("No hourly messages configured.")
+        
+        elif view_type == "interval":
+            interval_msgs = vfx_scheduler.get_all_messages("interval")
+            if interval_msgs:
+                message = "Interval Messages:\n\n"
+                for msg in interval_msgs:
+                    message += f"{msg['name']}: {msg['message'][:50]}...\n\n"
+                
+                # Split into multiple messages if too long
+                if len(message) > 4000:
+                    chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                    for chunk in chunks:
+                        await update.message.reply_text(chunk)
+                else:
+                    await update.message.reply_text(message)
+            else:
+                await update.message.reply_text("No interval messages configured.")
+        
+        elif view_type == "all":
+            all_msgs = vfx_scheduler.get_all_messages()
+            await update.message.reply_text("All message types available. Use 'view hourly' or 'view interval' to see specific messages.")
+        
+        else:
+            await update.message.reply_text("Invalid view type. Use hourly, interval, or all.")
+    
+    elif action == "add":
+        # Add message
+        if len(args) < 3:
+            await update.message.reply_text("Insufficient arguments for add command.")
+            return
+        
+        msg_type = args[1].lower()
+        
+        if msg_type == "hourly":
+            try:
+                hour = int(args[2])
+                message = " ".join(args[3:])
+                
+                if vfx_scheduler.add_message("hourly", hour, message):
+                    await update.message.reply_text(f"Added hourly message for {hour}:00")
+                else:
+                    await update.message.reply_text("Failed to add hourly message.")
+            except ValueError:
+                await update.message.reply_text("Hour must be a number between 0 and 23")
+        
+        elif msg_type == "interval":
+            if len(args) < 4:
+                await update.message.reply_text("Insufficient arguments for add interval command.")
+                return
+            
+            name = args[2]
+            message = " ".join(args[3:])
+            
+            if vfx_scheduler.add_message("interval", name, message):
+                await update.message.reply_text(f"Added interval message '{name}'")
+            else:
+                await update.message.reply_text("Failed to add interval message.")
+        
+        else:
+            await update.message.reply_text("Invalid message type. Use hourly or interval.")
+    
+    elif action == "remove":
+        # Remove message
+        if len(args) < 3:
+            await update.message.reply_text("Insufficient arguments for remove command.")
+            return
+        
+        msg_type = args[1].lower()
+        key = args[2]
+        
+        if msg_type == "hourly":
+            if vfx_scheduler.remove_message("hourly", key):
+                await update.message.reply_text(f"Removed hourly message for {key}")
+            else:
+                await update.message.reply_text("Failed to remove hourly message.")
+        
+        elif msg_type == "interval":
+            if vfx_scheduler.remove_message("interval", key):
+                await update.message.reply_text(f"Removed interval message '{key}'")
+            else:
+                await update.message.reply_text("Failed to remove interval message.")
+        
+        else:
+            await update.message.reply_text("Invalid message type. Use hourly or interval.")
+    
+    elif action == "reset":
+        # Reset interval rotation
+        vfx_scheduler.reset_interval_rotation()
+        await update.message.reply_text("Reset interval message rotation.")
+    
+    else:
+        await update.message.reply_text("Invalid action. Use view, add, remove, or reset.")
+
+
+# -------------------------------------- DMs Handlers ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+async def send_instructions_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'Send Instructions' button callback for hidden users."""
+    query = update.callback_query
+    await query.answer()
+    
+    print(f"Received instruction callback: {query.data}")
+    callback_data = query.data
+    
+    if callback_data.startswith("instr_"):
+        try:
+            session_id = callback_data[6:]  # Remove 'instr_' prefix
+            print(f"Sending instructions for session: {session_id}")
+            
+            # Get hidden user info
+            if "hidden_users" in context.bot_data and session_id in context.bot_data["hidden_users"]:
+                user_name = context.bot_data["hidden_users"][session_id]["name"]
+                
+                # Add new option to directly initiate the registration
+                keyboard = [
+                    [InlineKeyboardButton("Initialize Registration", callback_data=f"init_reg_{session_id}")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await query.edit_message_text(
+                    text=f"Options for {user_name}:\n\n"
+                         f"1. Click 'Initialize Registration' to have the bot send registration questions directly to this user.\n\n"
+                         f"Or copy and paste these simple instructions to the user:\n\n"
+                         f"To set up your trading profile, please send a message directly to our bot @YourBotUsername",
+                    reply_markup=reply_markup
+                )
+                
+                print(f"Instructions options provided for {user_name}")
+            else:
+                await query.edit_message_text(
+                    text="⚠️ User session information not found. Please try forwarding a new message."
+                )
+        except Exception as e:
+            print(f"Error processing instruction callback: {e}")
+            await query.edit_message_text(
+                text=f"⚠️ Error generating instructions: {e}"
+            )
+
+async def initialize_registration_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'Initialize Registration' button callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    print(f"Received initialize registration callback: {query.data}")
+    callback_data = query.data
+    
+    if callback_data.startswith("init_reg_"):
+        try:
+            session_id = callback_data[9:]  # Remove 'init_reg_' prefix
+            print(f"Initializing registration for session: {session_id}")
+            
+            # Get hidden user info
+            if "hidden_users" in context.bot_data and session_id in context.bot_data["hidden_users"]:
+                user_name = context.bot_data["hidden_users"][session_id]["name"]
+                # Get the original message content
+                original_message = context.bot_data["hidden_users"][session_id]["last_message"]
+                
+                # This is where we'd normally need the user's chat ID to message them directly
+                # Since this is a hidden user, we can't get their chat ID directly
+                
+                await query.edit_message_text(
+                    text=f"✅ Registration initiated for {user_name}\n\n"
+                         f"Since this user has privacy settings enabled, you need to:\n\n"
+                         f"1. Open their chat\n"
+                         f"2. Copy and paste this message:\n\n"
+                         f"{PRIVATE_WELCOME_MSG}\n\n"
+                         f"First, what's your risk appetite from 1-10?\n\n"
+                         f"(Unfortunately, due to Telegram's privacy settings, the bot can't message them first)"
+                )
+                
+            else:
+                await query.edit_message_text(
+                    text="⚠️ User session information not found. Please try forwarding a new message."
+                )
+        except Exception as e:
+            print(f"Error processing initialize registration callback: {e}")
+            await query.edit_message_text(
+                text=f"⚠️ Error initializing registration: {e}"
+            )
+
+async def start_user_conversation_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'Start Conversation' button callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    print(f"Received callback: {query.data}")
+    callback_data = query.data
+    
+    if callback_data.startswith("start_conv_"):
+        try:
+            user_id = int(callback_data.split("_")[2])
+            print(f"Starting conversation with user ID: {user_id}")
+            
+            # Store the current conversation user
+            context.user_data["current_user_conv"] = user_id
+            
+            # Get user info
+            user_info = db.get_user(user_id)
+            user_name = user_info.get("first_name", "User") if user_info else "User"
+            
+            # Create a deep link with user ID as parameter
+            bot_username = await context.bot.get_me()
+            bot_username = bot_username.username
+            deep_link = f"https://t.me/{bot_username}?start=ref_{user_id}"
+            
+            # Prepare copy-paste templates for admin
+            registration_template = (
+                f"Thank you for your message! To set up your trading profile quickly, "
+                f"please click this link to chat with our bot: {deep_link}\n\n"
+                f"Once you click, just send /start to begin the registration process."
+            )
+            
+            casual_template = (
+                f"Thanks for reaching out! I'd be happy to help with your questions. "
+                f"For faster assistance, please connect with our trading bot: {deep_link}\n\n"
+                f"Once connected, I'll be able to chat with you directly through the bot."
+            )
+            
+            # Create keyboard with copy buttons
+            keyboard = [
+                [InlineKeyboardButton("Copy Registration Message", callback_data=f"copy_reg_{user_id}")],
+                [InlineKeyboardButton("Copy Casual Message", callback_data=f"copy_casual_{user_id}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text(
+                text=f"Due to Telegram's privacy restrictions, the bot can't message {user_name} first.\n\n"
+                     f"Please copy and paste one of these messages to the user:\n\n"
+                     f"1. Registration message:\n{registration_template}\n\n"
+                     f"2. Casual message:\n{casual_template}\n\n"
+                     f"These messages include a special link that will connect the user to our bot.",
+                reply_markup=reply_markup
+            )
+            
+            # Store templates for copy buttons
+            context.user_data["reg_template"] = registration_template
+            context.user_data["casual_template"] = casual_template
+            
+            print(f"Provided message templates for user {user_id}")
+        except Exception as e:
+            print(f"Error processing callback: {e}")
+            await query.edit_message_text(
+                text=f"⚠️ Error processing request: {e}"
+            )
+
+async def send_registration_form_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'Send Registration Form' button callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    print(f"Received send form callback: {query.data}")
+    callback_data = query.data
+    
+    if callback_data.startswith("send_form_"):
+        try:
+            user_id = int(callback_data.split("_")[2])
+            print(f"Sending registration form to user ID: {user_id}")
+            
+            # Store the current conversation user
+            context.user_data["current_user_conv"] = user_id
+            
+            # Get user info
+            user_info = db.get_user(user_id)
+            user_name = user_info.get("first_name", "User") if user_info else "User"
+            
+            # Send welcome message to user with the registration questions
+            try:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=f"{PRIVATE_WELCOME_MSG}\n\nFirst, what's your risk appetite from 1-10?"
+                )
+                
+                # Confirm to admin
+                await query.edit_message_text(
+                    text=f"✅ Registration form sent to {user_name} (ID: {user_id}).\n\n"
+                    f"The risk appetite question has been sent to the user.\n\n"
+                    f"Any regular messages you send to me now will be forwarded to {user_name}.\n"
+                    f"Use /endchat to end this conversation when finished."
+                )
+                
+                print(f"Successfully sent registration form to user {user_id}")
+            except Exception as e:
+                print(f"Error sending message to user: {e}")
+                await query.edit_message_text(
+                    text=f"⚠️ Failed to send registration form to user: {e}"
+                )
+        except Exception as e:
+            print(f"Error processing callback: {e}")
+            await query.edit_message_text(
+                text=f"⚠️ Error processing request: {e}"
+            )
+
+async def start_casual_conversation_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'Start Casual Conversation' button callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    print(f"Received start casual conversation callback: {query.data}")
+    callback_data = query.data
+    
+    if callback_data.startswith("start_casual_"):
+        try:
+            user_id = int(callback_data.split("_")[2])
+            print(f"Starting casual conversation with user ID: {user_id}")
+            
+            # Store the current conversation user
+            context.user_data["current_user_conv"] = user_id
+            
+            # Get user info
+            user_info = db.get_user(user_id)
+            user_name = user_info.get("first_name", "User") if user_info else "User"
+            
+            # Send a friendly greeting to user
+            try:
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=f"Hello {user_name}! Thanks for reaching out. One of our trading specialists will be assisting you today. How can we help you with your trading journey?"
+                )
+                
+                # Confirm to admin
+                await query.edit_message_text(
+                    text=f"✅ Started casual conversation with {user_name} (ID: {user_id}).\n\n"
+                    f"A friendly greeting has been sent to the user.\n\n"
+                    f"Any regular messages you send to me now will be forwarded to {user_name}.\n"
+                    f"Use /endchat to end this conversation when finished.\n\n"
+                    f"If you want to switch to the registration form later, use /startform"
+                )
+                
+                print(f"Successfully started casual conversation with user {user_id}")
+            except Exception as e:
+                print(f"Error sending message to user: {e}")
+                await query.edit_message_text(
+                    text=f"⚠️ Failed to start casual conversation with user: {e}"
+                )
+        except Exception as e:
+            print(f"Error processing callback: {e}")
+            await query.edit_message_text(
+                text=f"⚠️ Error processing request: {e}"
+            )
+
+async def copy_template_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the template copy button callbacks."""
+    query = update.callback_query
+    await query.answer(text="Message template copied to clipboard!", show_alert=False)
+    
+    callback_data = query.data
+    
+    if callback_data.startswith("copy_reg_"):
+        user_id = int(callback_data.split("_")[2])
+        template = context.user_data.get("reg_template", "Template not found")
+        
+        await query.edit_message_text(
+            text=f"✅ Registration template ready to paste:\n\n{template}\n\n"
+                 f"After the user clicks the link and connects with the bot, "
+                 f"you'll be notified and can communicate with them through the bot."
+        )
+    
+    elif callback_data.startswith("copy_casual_"):
+        user_id = int(callback_data.split("_")[2])
+        template = context.user_data.get("casual_template", "Template not found")
+        
+        await query.edit_message_text(
+            text=f"✅ Casual template ready to paste:\n\n{template}\n\n"
+                 f"After the user clicks the link and connects with the bot, "
+                 f"you'll be notified and can communicate with them through the bot."
+        )
+
+
+
+
+# -------------------------------------- MAIN ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+(RISK_APPETITE_MANUAL, DEPOSIT_AMOUNT_MANUAL, TRADING_ACCOUNT_MANUAL) = range(100, 103)  # Using different ranges to avoid conflicts
+
+async def list_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """List recent users for the admin to contact."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    # Get recent users
+    recent_users = db.users_df.sort("last_active", descending=True).head(10)
+    
+    if recent_users.height == 0:
+        await update.message.reply_text("No users found in the database.")
+        return
+    
+    # Format the user list with buttons
+    message = "Recent users:\n\n"
+    keyboard = []
+    
+    for i in range(recent_users.height):
+        user_id = recent_users["user_id"][i]
+        username = recent_users["username"][i] if recent_users["username"][i] else "No username"
+        first_name = recent_users["first_name"][i] if recent_users["first_name"][i] else "Unknown"
+        last_active = recent_users["last_active"][i]
+        
+        message += f"{i+1}. {first_name} (@{username}) - Last active: {last_active}\n"
+        keyboard.append([InlineKeyboardButton(f"Message {first_name}", callback_data=f"start_conv_{user_id}")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(message, reply_markup=reply_markup)
+
+async def log_all_chats(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Log information about all chats the bot is a member of."""
+    print("\n[CHAT ID DEBUG] Listing all chats the bot can access:")
+    
+    try:
+        # Get the bot's information
+        bot_info = await context.bot.get_me()
+        print(f"Bot username: @{bot_info.username}")
+        
+        # For all updates, extract unique chat IDs
+        with open("all_chat_ids.log", "w") as f:
+            f.write(f"=== Bot Chat IDs as of {datetime.now()} ===\n\n")
+            
+            # Log information about the chats we already know
+            f.write("Known chats:\n")
+            f.write(f"GROUP_ID: {STRATEGY_GROUP_ID}\n")
+            f.write(f"CHANNEL_ID: {MAIN_CHANNEL_ID}\n\n")
+            
+            f.write("=== Attempting to get information about channels ===\n")
+            
+            # Try to get chat information for channels we know about
+            try:
+                # Get info about the known channel
+                channel_chat = await context.bot.get_chat(MAIN_CHANNEL_ID)
+                f.write(f"Channel: {channel_chat.title} (ID: {channel_chat.id})\n")
+                print(f"[CHAT ID DEBUG] Channel: {channel_chat.title} (ID: {channel_chat.id})")
+            except Exception as e:
+                f.write(f"Error getting known channel info: {e}\n")
+                
+            # Try to get chat information for groups we know about
+            try:
+                # Get info about the known group
+                group_chat = await context.bot.get_chat(STRATEGY_GROUP_ID)
+                f.write(f"Group: {group_chat.title} (ID: {group_chat.id})\n")
+                print(f"[CHAT ID DEBUG] Group: {group_chat.title} (ID: {group_chat.id})")
+            except Exception as e:
+                f.write(f"Error getting known group info: {e}\n")
+                
+    except Exception as e:
+        print(f"[CHAT ID DEBUG] Error listing chats: {e}")
+        with open("all_chat_ids.log", "a") as f:
+            f.write(f"Error listing chats: {e}\n")
+
+async def silent_update_logger(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Silently log any update to the terminal and file without responding."""
+    # Skip if this is a command or we've already processed it
+    if not update or not update.effective_chat:
+        return
+        
+    chat_id = update.effective_chat.id
+    chat_type = update.effective_chat.type
+    chat_title = update.effective_chat.title if hasattr(update.effective_chat, 'title') else "Direct message"
+    
+    print(f"[SILENT LOGGER] New activity in: {chat_title}")
+    print(f"[SILENT LOGGER] Chat ID: {chat_id}, type: {chat_type}")
+    
+    with open("silent_chat_ids.log", "a") as f:
+        f.write(f"{datetime.now()}: {chat_title} - {chat_id} ({chat_type})\n")
+
+
+(RISK_APPETITE, DEPOSIT_AMOUNT, TRADING_INTEREST, TRADING_ACCOUNT, CAPTCHA_RESPONSE) = range(5)
+async def deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Store deposit amount and ask for trading interests."""
+    try:
+        amount = int(update.message.text)
+        if 100 <= amount <= 10000:
+            user_id = update.effective_user.id
+            
+            # Store in user_data for conversation
+            context.user_data["user_info"]["deposit_amount"] = amount
+            
+            # Update in database
+            db.add_user({
+                "user_id": user_id,
+                "deposit_amount": amount
+            })
+            
+            # Ask for trading interests with buttons
+            keyboard = [
+                [InlineKeyboardButton("Trading Signals", callback_data="interest_signals")],
+                [InlineKeyboardButton("Trading Strategy", callback_data="interest_strategy")],
+                [InlineKeyboardButton("Prop Capital", callback_data="interest_propcapital")],
+                [InlineKeyboardButton("All Services", callback_data="interest_all")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                "Great! Which of our VIP services are you interested in?",
+                reply_markup=reply_markup
+            )
+            
+            return TRADING_INTEREST
+        else:
+            await update.message.reply_text("Please enter an amount between 100 and 10,000.")
+            return DEPOSIT_AMOUNT
+    except ValueError:
+        await update.message.reply_text("Please enter a valid amount between 100 and 10,000.")
+        return DEPOSIT_AMOUNT
+
+async def trading_interest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle selection of trading interests."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    callback_data = query.data
+    interest = callback_data.replace("interest_", "")
+    
+    # Store the interest in user data
+    if "user_info" not in context.user_data:
+        context.user_data["user_info"] = {}
+    context.user_data["user_info"]["trading_interest"] = interest
+    
+    # Update in database - add a trading_interest field to your db schema
+    db.add_user({
+        "user_id": user_id,
+        "trading_interest": interest
+    })
+    
+    # Map interests to appropriate VIP channels
+    vip_channels = {
+        "signals": SIGNALS_CHANNEL_ID,
+        "strategy": STRATEGY_CHANNEL_ID,
+        "propcapital": PROP_CHANNEL_ID,
+        "all": [SIGNALS_CHANNEL_ID, STRATEGY_CHANNEL_ID, PROP_CHANNEL_ID]
+    }
+    
+    # Store assigned channels in user data for admin reference
+    if interest == "all":
+        context.user_data["user_info"]["assigned_channels"] = vip_channels["all"]
+    else:
+        context.user_data["user_info"]["assigned_channels"] = [vip_channels[interest]]
+    
+    await query.edit_message_text(
+        f"Thanks for selecting your interest! Now please enter your trading account number for verification."
+    )
+    
+    return TRADING_ACCOUNT
+
+
+
+# ********************************************************** #
+
+def main() -> None:
+    """Start the bot."""
+    # Create the Application
+    print("Starting bot...")
+    print("Setting up VFX message scheduler...")
+    
+    print(f"Admin ID is set to {ADMIN_USER_ID}")
+    try:
+        # Try to initialize the scheduler
+        from vfx_Scheduler import VFXMessageScheduler
+        scheduler = VFXMessageScheduler()
+        print(f"Scheduler initialized with {len(scheduler.get_all_messages())} messages")
+    except Exception as e:
+        print(f"Error initializing scheduler: {e}")
+    
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    # Create instance of custom filter for forwarded messages
+    forwarded_filter = ForwardedMessageFilter()
+
+    # Add handler for messages forwarded to the admin
+    application.add_handler(MessageHandler(
+        filters.User(user_id=ADMIN_USER_ID) & ~filters.COMMAND,
+        handle_admin_forward,
+        block=True
+    ))
+
+    # Add handler for regular admin messages (not forwarded)
+    application.add_handler(MessageHandler(
+        filters.User(user_id=ADMIN_USER_ID) & filters.TEXT & ~forwarded_filter & ~filters.COMMAND,
+        handle_admin_forward,
+        block=True
+    ))
+    
+    # Add callback handlers for all button types
+    application.add_handler(CallbackQueryHandler(
+        start_user_conversation_callback,
+        pattern=r"^start_conv_\d+$"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        send_instructions_callback,
+        pattern=r"^instr_"
+    ))
+    
+    # Add callback handlers for all button types
+    application.add_handler(CallbackQueryHandler(
+        start_user_conversation_callback,
+        pattern=r"^start_conv_\d+$"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        send_instructions_callback,
+        pattern=r"^instr_"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        initialize_registration_callback,
+        pattern=r"^init_reg_"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        send_registration_form_callback,
+        pattern=r"^send_form_"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        start_casual_conversation_callback,
+        pattern=r"^start_casual_"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        copy_template_callback,
+        pattern=r"^copy_(reg|casual)_\d+$"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        trading_interest_callback,
+        pattern=r"^interest_"
+    ))
+    
+    # Add conversation handler for manual entry
+    manual_entry_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(manual_entry_callback, pattern=r"^manual_")
+        ],
+        states={
+            RISK_APPETITE_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, risk_appetite_manual)],
+            DEPOSIT_AMOUNT_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, deposit_amount_manual)],
+            TRADING_ACCOUNT_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, trading_account_manual)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        name="manual_entry_conversation",
+    )
+    application.add_handler(manual_entry_handler)
+    
+    # Add admin-specific command handlers
+    application.add_handler(CommandHandler("users", list_users_command))
+    application.add_handler(CommandHandler("endchat", end_user_conversation))
+    application.add_handler(CommandHandler("startform", start_form_command))
+    application.add_handler(CommandHandler("addtovip", add_to_vip_command))
+    application.add_handler(CommandHandler("forwardmt5", forward_mt5_command))
+    application.add_handler(CommandHandler("testaccount", test_account_command))
+
+    application.add_handler(MessageHandler(filters.ALL, silent_update_logger), group=999)
+
+
+    # Add conversation handler for the CAPTCHA and authentication process
+    auth_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(auth_callback, pattern=r"^auth_\d+$")
+        ],
+        states={
+            CAPTCHA_RESPONSE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_captcha_response)],
+            TRADING_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_account_verification)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+        per_chat=False,  # This allows the conversation to span across multiple chats
+        name="auth_conversation",
+    )
+    application.add_handler(auth_conv_handler)
+    
+    # Add conversation handler for private messages (user info collection)
+    # This should be AFTER the admin handlers to avoid conflicts
+    private_conv_handler = ConversationHandler(
+        entry_points=[
+            CommandHandler("start", start),
+            MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, private_message)
+        ],
+        states={
+            RISK_APPETITE: [MessageHandler(filters.TEXT & ~filters.COMMAND, risk_appetite)],
+            DEPOSIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deposit_amount)],
+            TRADING_INTEREST: [CallbackQueryHandler(trading_interest_callback, pattern=r"^interest_")],
+            TRADING_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, trading_account)],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+    application.add_handler(private_conv_handler)
+    
+    # Add handlers for other functionalities
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("stats", stats_command))
+    application.add_handler(CommandHandler("managemsg", manage_messages_command))
+    # application.add_handler(CommandHandler("updatemsg", update_message_command))
+    # application.add_handler(CommandHandler("viewmsgs", view_messages_command))
+
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
+    
+    # Add error handler
+    application.add_error_handler(error_handler)
+    
+    # # Add periodic job for sending messages (interval from settings)
+    job_queue = application.job_queue
+    
+    
+    # Calculate the first run time for hourly job - at the start of the next hour
+    now = datetime.now()
+    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    seconds_until_next_hour = (next_hour - now).total_seconds()
+    
+    job_queue.run_once(log_all_chats, 5)
+     # Schedule hourly welcome messages - runs at the start of every hour
+    job_queue.run_repeating(
+        send_hourly_welcome, 
+        interval=timedelta(hours=1),
+        first=seconds_until_next_hour  # Time in seconds until first run
+    )
+    
+    # Schedule interval messages - runs every 20 minutes
+    # Calculate time until next 20-minute mark
+    minutes_now = now.minute
+    minutes_until_next_interval = 20 - (minutes_now % 20)
+    if minutes_until_next_interval == 0:
+        minutes_until_next_interval = 20
+    
+    next_interval = now + timedelta(minutes=minutes_until_next_interval)
+    next_interval = next_interval.replace(second=0, microsecond=0)
+    seconds_until_next_interval = (next_interval - now).total_seconds()
+    
+    job_queue.run_repeating(
+        send_interval_message,
+        interval=timedelta(minutes=20),
+        first=seconds_until_next_interval  # Time in seconds until first run
+    )
+    
+    # Log scheduled jobs
+    logger.info(f"Scheduled hourly welcome messages starting in {seconds_until_next_hour:.2f} seconds")
+    logger.info(f"Scheduled interval messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
+    
+    
+    # Run the bot
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+# Main running name # 
+if __name__ == "__main__":
+    main()
