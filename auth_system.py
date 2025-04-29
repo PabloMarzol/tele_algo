@@ -40,59 +40,95 @@ class TradingAccountAuth:
             # First try to convert to integer to see if it's numeric
             account_int = int(account_number)
             
-            # Now check if it's 6 digits (between 100000 and 999999)
+            # Now check if it's a valid account number format
+            # For Vortex FX, accounts appear to be 6-digit numbers based on Accounts_List.csv
             if 100000 <= account_int <= 999999:
                 print(f"Account {account_number} validation: SUCCESS")
                 return True
             else:
-                print(f"Account {account_number} validation: FAILED - not 6 digits")
+                print(f"Account {account_number} validation: FAILED - not a valid account number")
                 return False
         except ValueError:
             print(f"Account {account_number} validation: FAILED - not numeric")
             return False
     
+    def validate_account_format(self, account_number):
+        """Check if the account number matches the expected format."""
+        try:
+            # First try to convert to integer to see if it's numeric
+            account_int = int(account_number)
+            
+            # Now check if it's a valid account number format
+            # For Vortex FX, accounts appear to be 6-digit numbers based on Accounts_List.csv
+            if 100000 <= account_int <= 999999:
+                print(f"Account {account_number} validation: SUCCESS")
+                return True
+            else:
+                print(f"Account {account_number} validation: FAILED - not a valid account number")
+                return False
+        except ValueError:
+            print(f"Account {account_number} validation: FAILED - not numeric")
+            return False
+
     def verify_account(self, account_number, user_id):
-        """Verify if the account number exists in the database."""
-        # Check if the account exists
-        filtered = self.trading_accounts.filter(
-            pl.col("account_number") == account_number
-        )
-        
-        if filtered.height > 0:
-            # Update the user_id for this account and mark as verified
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        """Verify if the account number exists in the real Accounts_List.csv."""
+        try:
+            # Convert to integer
+            account_int = int(account_number)
             
-            # In a real implementation, you'd update the actual database here
-            # For now, we just update our in-memory DataFrame
-            idx = self.trading_accounts.with_row_count().filter(
-                pl.col("account_number") == account_number
-            )["row_nr"][0]
-            
-            self.trading_accounts = self.trading_accounts.with_columns([
-                pl.when(pl.col("account_number") == account_number)
-                .then(user_id)
-                .otherwise(pl.col("user_id"))
-                .alias("user_id"),
+            # Load the accounts CSV
+            try:
+                accounts_df = pl.read_csv("Accounts_List.csv")
                 
-                pl.when(pl.col("account_number") == account_number)
-                .then(True)
-                .otherwise(pl.col("verified"))
-                .alias("verified"),
+                # Check if account exists
+                account_match = accounts_df.filter(pl.col("Account") == account_int)
                 
-                pl.when(pl.col("account_number") == account_number)
-                .then(now)
-                .otherwise(pl.col("verification_date"))
-                .alias("verification_date")
-            ])
-            
-            # Add to verified users dictionary for quick lookup
-            self.verified_users[user_id] = {
-                "account_number": account_number,
-                "verified_at": now
-            }
-            
-            return True
-        return False
+                if account_match.height > 0:
+                    # Account exists in the list
+                    account_owner = account_match.select("Name")[0, 0]
+                    print(f"Account {account_number} verified: belongs to {account_owner}")
+                    
+                    # Record verification in our system
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # Update our tracking dataframe
+                    self.trading_accounts = self.trading_accounts.with_columns([
+                        pl.when(pl.col("account_number") == account_number)
+                        .then(user_id)
+                        .otherwise(pl.col("user_id"))
+                        .alias("user_id"),
+                        
+                        pl.when(pl.col("account_number") == account_number)
+                        .then(True)
+                        .otherwise(pl.col("verified"))
+                        .alias("verified"),
+                        
+                        pl.when(pl.col("account_number") == account_number)
+                        .then(now)
+                        .otherwise(pl.col("verification_date"))
+                        .alias("verification_date")
+                    ])
+                    
+                    # Add to verified users dictionary for quick lookup
+                    self.verified_users[user_id] = {
+                        "account_number": account_number,
+                        "verified_at": now,
+                        "account_owner": account_owner
+                    }
+                    
+                    return True
+                else:
+                    print(f"Account {account_number} not found in Accounts_List.csv")
+                    return False
+                    
+            except Exception as e:
+                print(f"Error loading or processing Accounts_List.csv: {e}")
+                # Fall back to original verification method if CSV loading fails
+                return super().verify_account(account_number, user_id)
+                
+        except ValueError:
+            print(f"Could not convert account number to integer for verification")
+            return False
     
     def is_user_verified(self, user_id):
         """Check if the user is already verified."""

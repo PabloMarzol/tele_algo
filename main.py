@@ -370,25 +370,24 @@ async def deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return DEPOSIT_AMOUNT
 
 async def trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Store trading account and complete the conversation."""
+    """Store trading account, validate against Accounts_List.csv, and complete the registration."""
     account_number = update.message.text.strip()
     user_id = update.effective_user.id
     
-    # SUPER AGGRESSIVE DEBUGGING
     print(f"===== TRADING ACCOUNT FUNCTION =====")
     print(f"Received: {account_number} from user {user_id}")
     print(f"Current context.user_data: {context.user_data}")
     
-    # Force a response to the user first, so they're not left hanging
+    # Initial response to user
     await update.message.reply_text("Processing your trading account...")
     
     try:
-        # Validate account format with explicit debug
+        # Validate account format 
         is_valid = auth.validate_account_format(account_number)
         print(f"Account format validation result: {is_valid}")
         
         if not is_valid:
-            await update.message.reply_text("Invalid account format. Please enter a 6-digit account number.")
+            await update.message.reply_text("Invalid account format. Please enter a valid account number.")
             return TRADING_ACCOUNT
         
         # Get stored user data or create if missing
@@ -396,25 +395,65 @@ async def trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             print("WARNING: user_info missing from context, creating empty dict")
             context.user_data["user_info"] = {}
         
+        # Verify against Accounts_List.csv
+        account_verified = False
+        account_owner = None
+        
+        try:
+            # Load accounts from CSV file
+            accounts_df = pl.read_csv("Accounts_List.csv")
+            
+            # Convert account_number to integer for comparison with the Account column
+            try:
+                account_int = int(account_number)
+                # Check if account exists in the dataframe
+                account_match = accounts_df.filter(pl.col("Account") == account_int)
+                
+                if account_match.height > 0:
+                    account_verified = True
+                    account_owner = account_match.select("Name")[0, 0]
+                    print(f"Account verified: {account_number} belongs to {account_owner}")
+                else:
+                    print(f"Account {account_number} not found in Accounts_List.csv")
+            except ValueError:
+                print(f"Could not convert account number to integer for verification")
+        except Exception as e:
+            print(f"Error verifying account against CSV: {e}")
+        
         # Store in user_data
         context.user_data["user_info"]["trading_account"] = account_number
+        context.user_data["user_info"]["account_verified"] = account_verified
+        context.user_data["user_info"]["account_owner"] = account_owner
+        
         print(f"Stored account in user_data: {context.user_data}")
         
         # Update in database
         db_result = db.add_user({
             "user_id": user_id,
-            "trading_account": account_number
+            "trading_account": account_number,
+            "is_verified": account_verified
         })
-        print(f"Database update result: {db_result}")
         
-        # Always respond to user with success message, even if verification fails
-        await update.message.reply_text(
-            "Thank you for providing your trading account! "
-            "Our team will review your information and add you to the appropriate VIP channels shortly."
-        )
+        # Set verification message based on result
+        if account_verified:
+            verification_message = (
+                f"✅ Account {account_number} verified successfully!\n\n"
+                f"Account owner: {account_owner}\n\n"
+                f"Thank you for completing your registration. Our team will now process your information "
+                f"and add you to the appropriate VIP channels based on your selected interests."
+            )
+        else:
+            verification_message = (
+                f"⚠️ Account {account_number} could not be verified automatically.\n\n"
+                f"Your details have been saved and our team will manually review your information. "
+                f"You'll receive access to your selected VIP channels after verification is complete."
+            )
+        
+        # Send appropriate response to user
+        await update.message.reply_text(verification_message)
         
         # Try to send admin notification independently
-        asyncio.create_task(send_account_notification(context, user_id, account_number))
+        asyncio.create_task(send_registration_notification(context, user_id, account_number, account_verified))
         
         # Clean up conversation data safely
         if "user_info" in context.user_data:
@@ -432,6 +471,78 @@ async def trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             "We encountered an issue processing your account. Please try again or contact support."
         )
         return ConversationHandler.END
+
+async def send_registration_notification(context, user_id, account_number, account_verified):
+    """Send detailed notification about new registration to admin team."""
+    try:
+        # Get user info from database
+        user_info = db.get_user(user_id)
+        print(f"Retrieved user info from DB for notification: {user_info}")
+        
+        if not user_info:
+            print(f"WARNING: User {user_id} not found in database for notification")
+            return
+        
+        # Get user's selected interests
+        trading_interest = user_info.get('trading_interest', 'Not specified')
+        
+        # Format interest for display
+        if trading_interest == 'all':
+            interest_display = "All VIP Services (Signals, Strategy, Prop Capital)"
+        elif trading_interest:
+            interest_display = f"VIP {trading_interest.capitalize()}"
+        else:
+            interest_display = "Not specified"
+        
+        # Set verification status emoji
+        verify_status = "✅ Verified" if account_verified else "⚠️ Not Verified"
+        
+        # Build detailed report
+        report = (
+            f"🔔 NEW USER REGISTRATION 🔔\n\n"
+            f"User: {user_info.get('first_name', 'Unknown')} {user_info.get('last_name', '')}\n"
+            f"Username: @{user_info.get('username', 'None')}\n"
+            f"User ID: {user_id}\n\n"
+            f"📊 PROFILE DETAILS 📊\n"
+            f"Risk Appetite: {user_info.get('risk_appetite', 'Not specified')}/10\n"
+            f"Deposit Amount: ${user_info.get('deposit_amount', 'Not specified')}\n"
+            f"Trading Interest: {interest_display}\n"
+            f"Trading Account: {account_number}\n"
+            f"Account Status: {verify_status}\n\n"
+            f"Registered: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        )
+        
+        # Add action buttons for admin
+        keyboard = []
+        
+        # Add VIP channel buttons based on interest
+        if trading_interest == 'signals' or trading_interest == 'all':
+            keyboard.append([InlineKeyboardButton("Add to VIP Signals", callback_data=f"add_vip_signals_{user_id}")])
+        
+        if trading_interest == 'strategy' or trading_interest == 'all':
+            keyboard.append([InlineKeyboardButton("Add to VIP Strategy", callback_data=f"add_vip_strategy_{user_id}")])
+        
+        if trading_interest == 'propcapital' or trading_interest == 'all':
+            keyboard.append([InlineKeyboardButton("Add to VIP Prop Capital", callback_data=f"add_vip_propcapital_{user_id}")])
+        
+        # Add button for forwarding to copier team
+        keyboard.append([InlineKeyboardButton("Forward to Copier Team", callback_data=f"forward_copier_{user_id}")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Send to all admins
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id, 
+                    text=report,
+                    reply_markup=reply_markup
+                )
+                print(f"Successfully sent registration notification to admin {admin_id}")
+            except Exception as e:
+                print(f"Failed to send notification to admin {admin_id}: {e}")
+    except Exception as e:
+        print(f"Error in send_registration_notification: {e}")
 
 async def send_account_notification(context, user_id, account_number):
     """Send notification about new account separately to avoid blocking the main flow."""
@@ -655,6 +766,269 @@ async def handle_referral(context, user, ref_code):
     except Exception as e:
         print(f"Error processing referral: {e}")
 
+async def add_to_vip_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle callback for adding user to VIP channels."""
+    query = update.callback_query
+    await query.answer()
+    
+    print(f"Received add to VIP callback: {query.data}")
+    callback_data = query.data
+    
+    # Parse callback data to extract channel type and user ID
+    # Format: add_vip_TYPE_USERID
+    parts = callback_data.split('_')
+    if len(parts) >= 4:
+        channel_type = parts[2]
+        user_id = parts[3]
+        
+        print(f"Adding user {user_id} to VIP {channel_type}")
+        
+        # Map channel types to IDs
+        channel_mapping = {
+            "signals": (SIGNALS_CHANNEL_ID, SIGNALS_GROUP_ID, "Signals"),
+            "strategy": (STRATEGY_CHANNEL_ID, STRATEGY_GROUP_ID, "Strategy"),
+            "propcapital": (PROP_CHANNEL_ID, PROP_GROUP_ID, "Prop Capital"),
+        }
+        
+        if channel_type in channel_mapping:
+            channel_id, group_id, channel_name = channel_mapping[channel_type]
+            
+            try:
+                # Create invite links
+                channel_invite = await context.bot.create_chat_invite_link(
+                    chat_id=channel_id,
+                    member_limit=1,
+                    name=f"Invite for user {user_id}"
+                )
+                
+                group_invite = await context.bot.create_chat_invite_link(
+                    chat_id=group_id,
+                    member_limit=1,
+                    name=f"Invite for user {user_id}"
+                )
+                
+                # Get user info
+                user_info = db.get_user(user_id)
+                user_name = user_info.get('first_name', 'User') if user_info else 'User'
+                
+                # Update database to track VIP channel assignment
+                current_vip = user_info.get('vip_channels', '') if user_info else ''
+                new_vip = f"{current_vip},{channel_type}".strip(',')
+                
+                db.add_user({
+                    "user_id": user_id,
+                    "vip_channels": new_vip,
+                    "vip_added_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+                
+                # Format response
+                response = (
+                    f"✅ VIP {channel_name} Access for {user_name} (ID: {user_id}):\n\n"
+                    f"Channel: {channel_invite.invite_link}\n"
+                    f"Group: {group_invite.invite_link}\n\n"
+                    f"These are one-time use links. Please send to the user."
+                )
+                
+                # Update the original message
+                await query.edit_message_text(
+                    text=response,
+                    reply_markup=None  # Remove buttons after action
+                )
+                
+                # Also try to notify the user
+                try:
+                    user_notification = (
+                        f"🎉 Congratulations! You've been added to our VIP {channel_name} channel!\n\n"
+                        f"Please use these exclusive invite links to join:\n\n"
+                        f"Channel: {channel_invite.invite_link}\n"
+                        f"Group: {group_invite.invite_link}\n\n"
+                        f"These links will expire after one use, so please click them as soon as possible."
+                    )
+                    
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text=user_notification
+                    )
+                    print(f"Successfully sent VIP channel notification to user {user_id}")
+                except Exception as e:
+                    print(f"Failed to send notification to user {user_id}: {e}")
+                    # Add a note to the admin message
+                    await context.bot.send_message(
+                        chat_id=update.effective_user.id,
+                        text=f"Note: Unable to message user directly. Please manually send them the invite links."
+                    )
+                
+            except Exception as e:
+                await query.edit_message_text(
+                    text=f"⚠️ Error adding user to VIP {channel_name}: {e}",
+                    reply_markup=None
+                )
+        else:
+            await query.edit_message_text(
+                text=f"⚠️ Invalid channel type: {channel_type}",
+                reply_markup=None
+            )
+    else:
+        await query.edit_message_text(
+            text="⚠️ Invalid callback data format",
+            reply_markup=None
+        )
+
+async def forward_to_copier_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle callback for forwarding user to copier team."""
+    query = update.callback_query
+    await query.answer()
+    
+    print(f"Received forward to copier callback: {query.data}")
+    callback_data = query.data
+    
+    # Parse callback data to extract user ID
+    # Format: forward_copier_USERID
+    parts = callback_data.split('_')
+    if len(parts) >= 3:
+        user_id = parts[2]
+        
+        print(f"Forwarding user {user_id} to copier team")
+        
+        try:
+            # Get user info
+            user_info = db.get_user(user_id)
+            
+            if not user_info:
+                await query.edit_message_text(
+                    text=f"⚠️ User {user_id} not found in database",
+                    reply_markup=None
+                )
+                return
+            
+            # Check if user has trading account
+            trading_account = user_info.get("trading_account")
+            if not trading_account:
+                await query.edit_message_text(
+                    text=f"⚠️ User {user_id} does not have a trading account registered",
+                    reply_markup=None
+                )
+                return
+            
+            # Get risk appetite and deposit amount
+            user_name = user_info.get('first_name', 'Unknown')
+            risk_appetite = user_info.get('risk_appetite', 'Not specified')
+            deposit_amount = user_info.get('deposit_amount', 'Not specified')
+            
+            # Format copier team message
+            copier_message = (
+                f"🔄 NEW ACCOUNT FOR COPIER SYSTEM 🔄\n\n"
+                f"User: {user_name} {user_info.get('last_name', '')}\n"
+                f"Trading Account: {trading_account}\n"
+                f"Risk Level: {risk_appetite}/10\n"
+                f"Deposit Amount: ${deposit_amount}\n"
+                f"VIP Channels: {user_info.get('vip_channels', 'None')}\n"
+                f"Date Added: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"👉 Please add this account to the copier system."
+            )
+            
+            # Update database to mark as forwarded to copier team
+            db.add_user({
+                "user_id": user_id,
+                "copier_forwarded": True,
+                "copier_forwarded_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+            # In production, this would be sent to a specific copier team chat
+            # For now, we'll just update the message
+            await query.edit_message_text(
+                text=f"✅ Account forwarded to copier team:\n\n{copier_message}\n\n"
+                f"(In production, this would be sent to your copier team's chat)",
+                reply_markup=None
+            )
+            
+            # Also notify the user
+            try:
+                user_notification = (
+                    f"📊 Your trading account has been forwarded to our trading team!\n\n"
+                    f"Account: {trading_account}\n"
+                    f"Risk Level: {risk_appetite}/10\n\n"
+                    f"Our team will set up your account with the optimal parameters based on your risk profile. "
+                    f"You'll receive confirmation once your account is connected to our trading system."
+                )
+                
+                await context.bot.send_message(
+                    chat_id=user_id,
+                    text=user_notification
+                )
+                print(f"Successfully sent copier team notification to user {user_id}")
+            except Exception as e:
+                print(f"Failed to send notification to user {user_id}: {e}")
+                
+        except Exception as e:
+            await query.edit_message_text(
+                text=f"⚠️ Error forwarding to copier team: {e}",
+                reply_markup=None
+            )
+    else:
+        await query.edit_message_text(
+            text="⚠️ Invalid callback data format",
+            reply_markup=None
+        )
+
+
+# -------------------------------------- Analytics Functions ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+async def send_daily_signup_report(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a daily report of new sign-ups to the admin team."""
+    try:
+        # Get today's date
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Get users who joined today
+        # This assumes the join_date column is in the format "YYYY-MM-DD HH:MM:SS"
+        today_users = db.users_df.filter(pl.col("join_date").str.contains(today))
+        
+        if today_users.height == 0:
+            # No new users today
+            report = f"📊 DAILY SIGNUP REPORT - {today} 📊\n\nNo new users registered today."
+        else:
+            # Format report
+            report = f"📊 DAILY SIGNUP REPORT - {today} 📊\n\n"
+            report += f"Total New Users: {today_users.height}\n\n"
+            
+            # Add details for each user
+            report += "NEW USER DETAILS:\n\n"
+            
+            for i in range(min(today_users.height, 10)):  # Limit to 10 users to avoid message length issues
+                user_id = today_users["user_id"][i]
+                first_name = today_users["first_name"][i] if today_users["first_name"][i] else "Unknown"
+                last_name = today_users["last_name"][i] if today_users["last_name"][i] else ""
+                risk = today_users["risk_appetite"][i]
+                deposit = today_users["deposit_amount"][i]
+                account = today_users["trading_account"][i] if today_users["trading_account"][i] else "Not provided"
+                verified = "✅" if today_users["is_verified"][i] else "❌"
+                
+                report += (
+                    f"{i+1}. {first_name} {last_name} (ID: {user_id})\n"
+                    f"   Risk: {risk}/10 | Deposit: ${deposit}\n"
+                    f"   Account: {account} | Verified: {verified}\n\n"
+                )
+            
+            if today_users.height > 10:
+                report += f"... and {today_users.height - 10} more users"
+        
+        # Send report to all admins
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=report
+                )
+                print(f"Successfully sent daily signup report to admin {admin_id}")
+            except Exception as e:
+                print(f"Failed to send report to admin {admin_id}: {e}")
+                
+    except Exception as e:
+        print(f"Error generating daily signup report: {e}")
+
+
+
 # -------------------------------------- COMMANDS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -695,7 +1069,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return RISK_APPETITE
     
     return ConversationHandler.END
-
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a help message with all available commands."""
@@ -1062,7 +1435,6 @@ async def risk_appetite_manual(update: Update, context: ContextTypes.DEFAULT_TYP
     except ValueError:
         await update.message.reply_text("Please enter a valid number between 1 and 10.")
         return RISK_APPETITE_MANUAL
-
 
 async def deposit_amount_manual(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle deposit amount input for manual entry."""
@@ -1840,7 +2212,7 @@ async def deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return DEPOSIT_AMOUNT
 
 async def trading_interest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle selection of trading interests."""
+    """Handle selection of trading interests and route to appropriate VIP channels."""
     query = update.callback_query
     await query.answer()
     
@@ -1853,7 +2225,7 @@ async def trading_interest_callback(update: Update, context: ContextTypes.DEFAUL
         context.user_data["user_info"] = {}
     context.user_data["user_info"]["trading_interest"] = interest
     
-    # Update in database - add a trading_interest field to your db schema
+    # Update in database
     db.add_user({
         "user_id": user_id,
         "trading_interest": interest
@@ -1861,20 +2233,31 @@ async def trading_interest_callback(update: Update, context: ContextTypes.DEFAUL
     
     # Map interests to appropriate VIP channels
     vip_channels = {
-        "signals": SIGNALS_CHANNEL_ID,
-        "strategy": STRATEGY_CHANNEL_ID,
-        "propcapital": PROP_CHANNEL_ID,
-        "all": [SIGNALS_CHANNEL_ID, STRATEGY_CHANNEL_ID, PROP_CHANNEL_ID]
+        "signals": {"name": "VIP Signals", "channel_id": SIGNALS_CHANNEL_ID, "group_id": SIGNALS_GROUP_ID},
+        "strategy": {"name": "VIP Strategy", "channel_id": STRATEGY_CHANNEL_ID, "group_id": STRATEGY_GROUP_ID},
+        "propcapital": {"name": "VIP Prop Capital", "channel_id": PROP_CHANNEL_ID, "group_id": PROP_GROUP_ID},
     }
     
     # Store assigned channels in user data for admin reference
-    if interest == "all":
-        context.user_data["user_info"]["assigned_channels"] = vip_channels["all"]
-    else:
-        context.user_data["user_info"]["assigned_channels"] = [vip_channels[interest]]
+    assigned_channels = []
     
+    if interest == "all":
+        for channel_info in vip_channels.values():
+            assigned_channels.append(channel_info)
+        # Update with list of all channel names
+        interest_display = "All VIP Services (Signals, Strategy, Prop Capital)"
+    else:
+        assigned_channels.append(vip_channels[interest])
+        # Get user-friendly name for display
+        interest_display = f"VIP {interest.capitalize()}"
+    
+    # Store in user data for later reference
+    context.user_data["user_info"]["assigned_channels"] = assigned_channels
+    
+    # Confirm selection to user with clear next steps
     await query.edit_message_text(
-        f"Thanks for selecting your interest! Now please enter your trading account number for verification."
+        f"Thanks for selecting {interest_display}! 🎯\n\n"
+        f"Now, please enter your Vortex FX MT5 account number for verification."
     )
     
     return TRADING_ACCOUNT
@@ -1911,6 +2294,10 @@ def main() -> None:
     # Create instance of custom filter for forwarded messages
     forwarded_filter = ForwardedMessageFilter()
 
+    
+    """------------------------------
+        ------ Message Handlers ----- 
+    ---------------------------------"""
     # Add handler for messages forwarded to the admin
     application.add_handler(MessageHandler(
         filters.User(user_id=ADMIN_USER_ID) & ~filters.COMMAND,
@@ -1923,6 +2310,21 @@ def main() -> None:
         filters.User(user_id=ADMIN_USER_ID) & filters.TEXT & ~forwarded_filter & ~filters.COMMAND,
         handle_admin_forward,
         block=True
+    ))
+    
+    """------------------------------
+        ------ Call Handlers ----- 
+    ---------------------------------"""
+
+    # Add callback handlers for VIP channel and copier team actions
+    application.add_handler(CallbackQueryHandler(
+        add_to_vip_callback,
+        pattern=r"^add_vip_"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        forward_to_copier_callback,
+        pattern=r"^forward_copier_"
     ))
     
     # Add callback handlers for all button types
@@ -2045,6 +2447,12 @@ def main() -> None:
     # # Add periodic job for sending messages (interval from settings)
     job_queue = application.job_queue
     
+    
+    # Schedule daily signup report
+    job_queue.run_daily(
+        send_daily_signup_report,
+        time=time(hour=0, minute=0)
+    )
     
     # Calculate the first run time for hourly job - at the start of the next hour
     now = datetime.now()
