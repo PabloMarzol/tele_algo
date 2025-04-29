@@ -1199,7 +1199,6 @@ async def send_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.error(f"Failed to update analytics: {e}")
 
-
 async def send_strategy_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send the next interval message to the strategy channel."""
     # Get the next interval message from the strategy scheduler
@@ -1270,7 +1269,7 @@ async def send_ed_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send the next interval message to the strategy channel."""
     # Get the next interval message from the strategy scheduler
     try:
-        message = signalsChannel_scheduler.get_next_interval_message()
+        message = educationChannel_scheduler.get_next_interval_message()
         
         print(f"Retrieved strategy interval message: {message[:50]}...")
         
@@ -1287,6 +1286,7 @@ async def send_ed_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.error(f"Failed to send strategy interval message: {e}")
         print(f"Error in send_strategy_interval_message: {e}")
+
 
 
 # Admin command to manage scheduled messages
