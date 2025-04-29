@@ -25,6 +25,11 @@ from vfx_Scheduler import VFXMessageScheduler
 # Global instance of the VFX message scheduler
 vfx_scheduler = VFXMessageScheduler()
 strategyChannel_scheduler = VFXMessageScheduler("./bot_data/strategy_messages.json")
+propChannel_scheduler = VFXMessageScheduler("./bot_data/prop_messages.json")
+signalsChannel_scheduler = VFXMessageScheduler("./bot_data/signals_messages.json")
+educationChannel_scheduler = VFXMessageScheduler("./bot_data/ed_messages.json")
+
+
 # Add this class definition before your handler functions
 class ForwardedMessageFilter(MessageFilter):
     """Custom filter for forwarded messages."""
@@ -61,6 +66,9 @@ SIGNALS_GROUP_ID = -1002685536346
 
 PROP_CHANNEL_ID = "-1002675985847"
 PROP_GROUP_ID = -1002673182167
+
+ED_CHANNEL_ID = "-1002529155778"
+ED_GROUP_ID: int = 0
 
 # Get message templates from database
 WELCOME_MSG = db.get_setting("welcome_message", "Welcome to our Trading Community! Please complete the authentication process.")
@@ -1214,6 +1222,73 @@ async def send_strategy_interval_message(context: ContextTypes.DEFAULT_TYPE) -> 
         logger.error(f"Failed to send strategy interval message: {e}")
         print(f"Error in send_strategy_interval_message: {e}")
 
+async def send_prop_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send the next interval message to the strategy channel."""
+    # Get the next interval message from the strategy scheduler
+    try:
+        message = propChannel_scheduler.get_next_interval_message()
+        
+        print(f"Retrieved strategy interval message: {message[:50]}...")
+        
+        # Send to strategy channel with HTML parsing enabled
+        await context.bot.send_message(
+            chat_id=PROP_CHANNEL_ID, 
+            text=message,
+            parse_mode='HTML'  # Enable HTML formatting
+        )
+        logger.info(f"Sent strategy interval message to channel {PROP_CHANNEL_ID} at {datetime.now()}")
+        
+        # Update analytics
+        db.update_analytics(messages_sent=1)
+    except Exception as e:
+        logger.error(f"Failed to send strategy interval message: {e}")
+        print(f"Error in send_strategy_interval_message: {e}")
+
+async def send_signals_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send the next interval message to the strategy channel."""
+    # Get the next interval message from the strategy scheduler
+    try:
+        message = signalsChannel_scheduler.get_next_interval_message()
+        
+        print(f"Retrieved strategy interval message: {message[:50]}...")
+        
+        # Send to strategy channel with HTML parsing enabled
+        await context.bot.send_message(
+            chat_id=SIGNALS_CHANNEL_ID, 
+            text=message,
+            parse_mode='HTML'  # Enable HTML formatting
+        )
+        logger.info(f"Sent strategy interval message to channel {SIGNALS_CHANNEL_ID} at {datetime.now()}")
+        
+        # Update analytics
+        db.update_analytics(messages_sent=1)
+    except Exception as e:
+        logger.error(f"Failed to send strategy interval message: {e}")
+        print(f"Error in send_strategy_interval_message: {e}")
+
+async def send_ed_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send the next interval message to the strategy channel."""
+    # Get the next interval message from the strategy scheduler
+    try:
+        message = signalsChannel_scheduler.get_next_interval_message()
+        
+        print(f"Retrieved strategy interval message: {message[:50]}...")
+        
+        # Send to strategy channel with HTML parsing enabled
+        await context.bot.send_message(
+            chat_id=ED_CHANNEL_ID, 
+            text=message,
+            parse_mode='HTML'  # Enable HTML formatting
+        )
+        logger.info(f"Sent strategy interval message to channel {ED_CHANNEL_ID} at {datetime.now()}")
+        
+        # Update analytics
+        db.update_analytics(messages_sent=1)
+    except Exception as e:
+        logger.error(f"Failed to send strategy interval message: {e}")
+        print(f"Error in send_strategy_interval_message: {e}")
+
+
 # Admin command to manage scheduled messages
 async def manage_messages_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Admin command to manage scheduled messages."""
@@ -1818,9 +1893,14 @@ def main() -> None:
     try:
         # Try to initialize schedulers
         from vfx_Scheduler import VFXMessageScheduler
-        global vfx_scheduler, strategy_scheduler
+        global vfx_scheduler, strategy_scheduler, prop_scheduler, signals_scheduler, education_scheduler
+        
         vfx_scheduler = VFXMessageScheduler()
         strategy_scheduler = VFXMessageScheduler(config_path="./bot_data/strategy_messages.json")
+        prop_scheduler = VFXMessageScheduler(config_path="./bot_data/prop_messages.json")
+        signals_scheduler = VFXMessageScheduler(config_path="./bot_data/signals_messages.json")
+        education_scheduler = VFXMessageScheduler(config_path="./bot_data/ed_messages.json")
+        
         print(f"Main scheduler initialized with {len(vfx_scheduler.get_all_messages())} messages")
         print(f"Strategy scheduler initialized with {len(strategy_scheduler.get_all_messages())} messages")
     except Exception as e:
@@ -2035,6 +2115,10 @@ def main() -> None:
         first=seconds_until_next_interval  # Time in seconds until first run
     )
     
+    
+    """---------------------------------
+         Strategy Channel Messages
+    ------------------------------------"""
      # Schedule strategy channel messages - every 45 minutes (different frequency)
     minutes_until_strategy = 30 - (minutes_now % 30)
     if minutes_until_strategy == 0:
@@ -2050,9 +2134,66 @@ def main() -> None:
         first=seconds_until_strategy
     )
     
+    """---------------------------------
+         Prop-Capital Channel Messages
+    ------------------------------------"""
+    minutes_until_propMessage = 1 - (minutes_now % 1)
+    if minutes_until_propMessage == 0:
+        minutes_until_propMessage = 1
+    
+    next_strategy = now + timedelta(minutes=minutes_until_propMessage)
+    next_strategy = next_strategy.replace(second=0, microsecond=0)
+    seconds_until_strategy = (next_strategy - now).total_seconds()
+    
+    job_queue.run_repeating(
+        send_prop_interval_message,
+        interval=timedelta(minutes=1),
+        first=seconds_until_strategy
+    )
+    
+    """---------------------------------
+         Signals Channel Messages
+    ------------------------------------"""
+    minutes_until_signals = 1 - (minutes_now % 1)
+    if minutes_until_signals == 0:
+        minutes_until_signals = 1
+    
+    next_strategy = now + timedelta(minutes=minutes_until_signals)
+    next_strategy = next_strategy.replace(second=0, microsecond=0)
+    seconds_until_strategy = (next_strategy - now).total_seconds()
+    
+    job_queue.run_repeating(
+        send_signals_interval_message,
+        interval=timedelta(minutes=1),
+        first=seconds_until_strategy
+    )
+    
+    """---------------------------------
+         Education Channel Messages
+    ------------------------------------"""
+    minutes_until_educationMessages = 1 - (minutes_now % 1)
+    if minutes_until_educationMessages == 0:
+        minutes_until_educationMessages = 1
+    
+    next_strategy = now + timedelta(minutes=minutes_until_educationMessages)
+    next_strategy = next_strategy.replace(second=0, microsecond=0)
+    seconds_until_strategy = (next_strategy - now).total_seconds()
+    
+    job_queue.run_repeating(
+        send_ed_interval_message,
+        interval=timedelta(minutes=1),
+        first=seconds_until_strategy
+    )
+    
+    
+    
     # Log scheduled jobs
     logger.info(f"Scheduled hourly welcome messages starting in {seconds_until_next_hour:.2f} seconds")
     logger.info(f"Scheduled interval messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
+    logger.info(f"Scheduled strategy messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
+    logger.info(f"Scheduled propCapital messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
+    logger.info(f"Scheduled signals messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
+    logger.info(f"Scheduled education messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
     logger.info(f"Tokyo session messages scheduled at 00:00 (in {seconds_until_tokyo/3600:.1f} hours)")
     logger.info(f"London session messages scheduled at 08:00 (in {seconds_until_london/3600:.1f} hours)")
     logger.info(f"NY session messages scheduled at 13:00 (in {seconds_until_ny/3600:.1f} hours)")

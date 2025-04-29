@@ -1,0 +1,64 @@
+{
+    "interval_messages": [
+        {
+            "name": "market_concept_vwap",
+            "message": "🔹 <b>VWAP (Volume Weighted Average Price)</b>\n\n<b>What It Is:</b>\nVWAP is the average price an asset has traded at during a given period, weighted by volume. It gives more importance to high-volume transactions. Formula-wise, it's:\nVWAP = (Σ Price × Volume) / (Σ Volume)\n\n<b>Why It Matters:</b>\nVWAP is the benchmark price used by institutional desks. If price is above VWAP, it signals buyers are in control and institutions might be accumulating. If it's below, it suggests distribution.\n\n📊 Use VWAP as a dynamic equilibrium point — entries near it often have tight stop opportunities and better reward/risk profiles.\n\n🚫 Avoid chasing breakouts far from VWAP; they often retrace."
+        },
+        {
+            "name": "market_concept_liquidity_zones",
+            "message": "🔹 <b>Liquidity Zones</b>\n\n<b>What They Are:</b>\nThese are price areas where large buy/sell orders are likely to exist — typically around round numbers, recent highs/lows, or prior consolidation areas.\n\n📌 Examples: 1.1000 in EURUSD, $2000 in Gold, or the prior day's high/low.\n\n<b>Why They Matter:</b>\nBig players need liquidity to fill large orders. So price often spikes into these zones to trigger retail stops and then reverses.\n\n🧠 Don't chase the move. Wait for confirmation that liquidity has been absorbed before entering.\n\n<b>Pro Tip:</b> Liquidity ≠ Support/Resistance. It's where the fight happens, not necessarily where price stops."
+        },
+        {
+            "name": "market_concept_order_flow",
+            "message": "🔹 <b>Order Flow</b>\n\n<b>What It Is:</b>\nOrder flow is the real-time sequence of buy and sell executions. It reflects intent and urgency — something candlesticks can't show directly.\n\nYou can view order flow via tools like a DOM (Depth of Market) or tick charts.\n\n<b>Why It Matters:</b>\nCandle patterns are the result of order flow — meaning order flow often gives earlier insights.\n\n📈 Sudden bursts of market buys into resistance = potential breakout.\n\n📉 Sell walls absorbing buys = likely rejection.\n\nEven without fancy tools, volume spikes + wick behavior = proxy for flow imbalance."
+        },
+        {
+            "name": "market_concept_session_opens",
+            "message": "🔹 <b>Session Opens (London & NY)</b>\n\n<b>What They Are:</b>\nLondon (8am UK) and New York (8am EST) opens mark the entrance of the largest institutional volumes of the day.\n\n<b>Why They Matter:</b>\n💥 70% of daily forex volume happens during London + NY.\n\nPrice often forms fake moves (stop hunts) right at these opens, followed by the true trend once liquidity clears.\n\nAdjust your risk sizing here. It's not just more volume — it's faster execution, tighter spreads, and often tighter stops.\n\n<b>Best approach:</b> Wait 15–30 minutes post-open, identify the \"initial push,\" and plan for a fade or continuation."
+        },
+        {
+            "name": "market_concept_risk_defined",
+            "message": "🔹 <b>Risk-Defined Trading</b>\n\n<b>What It Is:</b>\nYou must know your maximum potential loss before placing a trade. That loss should be a small % of your equity — typically 0.5%–1.5%.\n\nThis lets you survive losing streaks and compound gains safely.\n\n<b>Why It Matters:</b>\nQuant desks simulate every strategy with thousands of trades. They only deploy if it survives drawdowns within limits.\n\nSame applies to you.\n\n🛡️ Your edge means nothing without capital to trade it.\n\nA trade without a defined stop = gambling, not strategy."
+        },
+        {
+            "name": "market_concept_psychological_levels",
+            "message": "🔹 <b>Psychological Levels</b>\n\n<b>What They Are:</b>\nRound numbers like 1.3000 in FX, $2000 on Gold, or key historical highs/lows.\n\nHumans — and therefore traders — are biased toward clean numbers.\n\n<b>Why They Matter:</b>\nInstitutions often place limit orders at these levels, expecting reactive behavior.\n\nYou'll see price consolidate, fakeout, or sharply reverse here.\n\n📍 These are not always \"support\" or \"resistance\" — they are zones where you should heighten your attention.\n\nThey're also great for setting take-profits, stop losses, or scaling out. Just never use them blindly."
+        },
+        {
+            "name": "market_concept_liquidity_hunt",
+            "message": "🔹 <b>Liquidity Hunt (Stop Run)</b>\n\n<b>What It Is:</b>\nA stop run is when large players intentionally move price through known stop zones (e.g., above recent highs), triggering retail traders' stop losses.\n\nOnce triggered, price often reverses quickly.\n\n<b>Why It Matters:</b>\nThese hunts provide clean opportunities after the fakeout.\n\n🐍 Instead of buying a breakout, wait for the stop sweep, then look for re-entry with tighter risk.\n\nLearn to identify \"inefficient\" price moves — fast spikes into stop zones, low volume behind them = probable hunt."
+        },
+        {
+            "name": "market_concept_pivot_points",
+            "message": "🔹 <b>Pivot Points</b>\n\n<b>What They Are:</b>\nPivot Points are calculated using previous session data:\nPivot = (High + Low + Close) / 3\nS1, S2, R1, R2 are derived from that midpoint.\n\n<b>Why They Matter:</b>\nUsed by banks, prop desks, and algorithms.\n\nThey act as decision zones — reversals, breakouts, or consolidations often occur around these levels.\n\nSet alerts at these zones. Don't treat them as magic lines, but as confluence filters for entries or exits.\n\n<b>Bonus:</b> Pivot clusters from multiple timeframes are even stronger."
+        },
+        {
+            "name": "market_concept_partial_profits",
+            "message": "🔹 <b>Partial Profit Taking</b>\n\n<b>What It Is:</b>\nInstead of closing a trade all at once, scale out in parts (e.g., 50% at 1R, 25% at 2R).\n\nIt locks in gains while leaving room for extended moves.\n\n<b>Why It Matters:</b>\n🧠 It helps manage emotions — reduces fear of \"giving back profits.\"\n\n🛠️ It's standard in portfolio management to protect equity curve smoothness.\n\nWhen done well, partials optimize your expectancy and reduce volatility in performance.\n\nMake sure your exit plan is as precise as your entry."
+        },
+        {
+            "name": "market_concept_microstructure",
+            "message": "🔹 <b>Market Microstructure</b>\n\n<b>Definition:</b> How orders interact within the limit order book (LOB), including liquidity provision, queue positioning, and execution slippage.\n\n<b>Why It Matters:</b>\n\n• Helps optimize entries/exits by understanding how orders are filled\n\n• Lets you anticipate price movements caused by thin books or aggressive sweeps\n\n• Core to every high-frequency and execution-focused strategy\n\n<b>Example:</b> You're trading EUR/USD during London open. You notice resting liquidity on the offer side is constantly pulled and replaced higher — indicating spoofing or anticipatory flow. You delay your market buy to avoid being the last filled in a trap, or instead, look for confirmation via real absorption."
+        },
+        {
+            "name": "market_concept_price_discovery",
+            "message": "🔹 <b>Price Discovery vs. Price Delivery</b>\n\n<b>Definition:</b>\n\n• <i>Discovery:</i> Markets digest new information (e.g., Fed announcement).\n\n• <i>Delivery:</i> Markets mechanically move to fill orders without new info (e.g., during stop runs or liquidation).\n\n<b>Why It Matters:</b>\n\n• Avoid fading delivery moves that still have flow behind them\n\n• Helps classify whether a move is <i>reactive</i> or <i>predictive</i>\n\n<b>Example:</b> Gold rallies 1.2% with no macro catalyst, but you notice options gamma hedging from dealers kicking in. Instead of shorting the \"overextension\", you recognize it's <i>price delivery</i> from delta hedging and ride the wave — exiting once gamma exposure flattens."
+        },
+        {
+            "name": "market_concept_volatility_regimes",
+            "message": "🔹 <b>Volatility Regimes</b>\n\n<b>Definition:</b> Classification of market environments (low, medium, high vol) using statistical models like GARCH or ATR-based filters.\n\n<b>Why It Matters:</b>\n\n• Determines whether to size positions aggressively or defensively\n\n• Helps assess whether breakout or mean-reversion strategies are more suitable\n\n<b>Example:</b> You backtest your intraday GBP/JPY breakout strategy. It only performs well when ATR is above 80 pips. So, before each session, you check vol regime — if it's low, you switch to a fade-the-range model or sit out."
+        },
+        {
+            "name": "market_concept_liquidity_provision",
+            "message": "🔹 <b>Liquidity Provision vs. Liquidity Taking</b>\n\n<b>Definition:</b>\n\n• <i>Providers</i> post limit orders (waiting to be filled).\n\n• <i>Takers</i> use market orders (consume liquidity).\n\n<b>Why It Matters:</b>\n\n• Affects your slippage, fill quality, and market impact\n\n• Determines whether your strategy is viable under real-world trading conditions\n\n<b>Example:</b> You're trading crude oil CFDs with tight spreads but poor depth. You post limit buys at the bid during a liquidity vacuum and get filled before a data release. Price spikes upward afterward — you effectively \"got paid\" to provide liquidity without crossing the spread."
+        },
+        {
+            "name": "market_concept_order_anticipation",
+            "message": "🔹 <b>Order Anticipation Strategies</b>\n\n<b>Definition:</b> Predicting when large predictable orders (from rebalancing, options hedging, etc.) will hit the market.\n\n<b>Why It Matters:</b>\n\n• Lets you trade ahead of flow rather than chasing price\n\n• Many quant funds generate edge by modeling schedule-based or systematic flows\n\n<b>Example:</b> At month-end, you estimate the S&P 500 will need passive buying due to portfolio rebalancing. You accumulate long ES futures in quiet periods leading up to the rebalance window and exit into the volume spike, capturing a low-risk basis point gain — just like large systematic desks."
+        },
+        {
+            "name": "market_concept_expected_shortfall",
+            "message": "🔹 <b>Expected Shortfall (CVaR) vs. Stop Losses</b>\n\n<b>Definition:</b> Instead of using price-based stops, institutional traders model worst-case loss using <b>Expected Shortfall (CVaR)</b> — the average loss beyond a certain percentile.\n\n<b>Why It Matters:</b>\n\n• Helps protect against tail risk, not just volatility\n\n• Enables consistent sizing even in low-liquidity or high-gapping markets\n\n<b>Example:</b> You model your BTC long trade under a Monte Carlo simulation using realized volatility. Instead of setting a stop at 5%, you size the position so that even in the worst 5% of simulations, your loss remains under $1,000 — ensuring risk stays within bounds even during flash crashes."
+        }
+    ]
+}
