@@ -17701,3 +17701,417 @@ Traceback (most recent call last):
 telegram.error.Conflict: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
 2025-04-29 00:06:04,541 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 400 Bad Request"
 2025-04-29 00:06:04,541 - __main__ - ERROR - Failed to send error message to admin: Chat not found
+2025-04-30 01:21:08,181 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:21:08,191 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:21:08,202 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:21:08,211 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:21:08,218 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:22:55,118 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:22:55,118 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:22:55,119 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:22:55,119 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:22:55,119 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:22:55,150 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:22:55,150 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:22:55,150 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:22:55,151 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:22:55,151 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:22:55,243 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,243 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,244 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,244 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,244 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,244 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,244 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,244 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,245 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,245 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,245 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,245 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,245 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,245 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:22:55,245 - __main__ - INFO - Scheduled hourly welcome messages starting in 2224.76 seconds
+2025-04-30 01:22:55,245 - __main__ - INFO - Scheduled interval messages every 20 minutes starting in 1024.76 seconds
+2025-04-30 01:22:55,245 - __main__ - INFO - Scheduled strategy messages every 20 minutes starting in 1024.76 seconds
+2025-04-30 01:22:55,245 - __main__ - INFO - Scheduled propCapital messages every 20 minutes starting in 1024.76 seconds
+2025-04-30 01:22:55,245 - __main__ - INFO - Scheduled signals messages every 20 minutes starting in 1024.76 seconds
+2025-04-30 01:22:55,246 - __main__ - INFO - Scheduled education messages every 20 minutes starting in 1024.76 seconds
+2025-04-30 01:22:55,246 - __main__ - INFO - Tokyo session messages scheduled at 00:00 (in 22.6 hours)
+2025-04-30 01:22:55,246 - __main__ - INFO - London session messages scheduled at 08:00 (in 6.6 hours)
+2025-04-30 01:22:55,246 - __main__ - INFO - NY session messages scheduled at 13:00 (in 11.6 hours)
+2025-04-30 01:22:55,314 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-04-30 01:22:55,326 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/deleteWebhook "HTTP/1.1 200 OK"
+2025-04-30 01:22:55,327 - apscheduler.scheduler - INFO - Added job "send_daily_signup_report" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "log_all_chats" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_interval_message" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_strategy_interval_message" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_prop_interval_message" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_signals_interval_message" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Added job "send_ed_interval_message" to job store "default"
+2025-04-30 01:22:55,328 - apscheduler.scheduler - INFO - Scheduler started
+2025-04-30 01:22:55,328 - telegram.ext.Application - INFO - Application started
+2025-04-30 01:23:00,010 - apscheduler.executors.default - INFO - Running job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:24:00 UTC)" (scheduled at 2025-04-30 00:23:00.002001+00:00)
+2025-04-30 01:23:00,010 - apscheduler.executors.default - INFO - Running job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:24:00 UTC)" (scheduled at 2025-04-30 00:23:00.002001+00:00)
+2025-04-30 01:23:00,010 - apscheduler.executors.default - INFO - Running job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:24:00 UTC)" (scheduled at 2025-04-30 00:23:00.002001+00:00)
+2025-04-30 01:23:00,011 - VFXMessageScheduler - INFO - Sending interval message: market_concept_vwap
+2025-04-30 01:23:00,013 - VFXMessageScheduler - INFO - Sending interval message: prop_program_1
+2025-04-30 01:23:00,015 - VFXMessageScheduler - INFO - Sending interval message: trading_principle_advanced_1
+2025-04-30 01:23:00,073 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:23:00,073 - __main__ - INFO - Sent strategy interval message to channel -1002529155778 at 2025-04-30 01:23:00.073613
+2025-04-30 01:23:00,077 - apscheduler.executors.default - INFO - Job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:24:00 UTC)" executed successfully
+2025-04-30 01:23:00,102 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:23:00,103 - __main__ - INFO - Sent strategy interval message to channel -1002697690452 at 2025-04-30 01:23:00.103267
+2025-04-30 01:23:00,105 - apscheduler.executors.default - INFO - Job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:24:00 UTC)" executed successfully
+2025-04-30 01:23:00,106 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:23:00,106 - __main__ - INFO - Sent strategy interval message to channel -1002675985847 at 2025-04-30 01:23:00.106288
+2025-04-30 01:23:00,108 - apscheduler.executors.default - INFO - Job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:24:00 UTC)" executed successfully
+2025-04-30 01:23:00,256 - apscheduler.scheduler - INFO - Removed job 6818439d82d74340a76d45129ab1bc45
+2025-04-30 01:23:00,256 - apscheduler.executors.default - INFO - Running job "log_all_chats (trigger: date[2025-04-30 00:23:00 UTC], next run at: 2025-04-30 00:23:00 UTC)" (scheduled at 2025-04-30 00:23:00.243591+00:00)
+2025-04-30 01:23:00,270 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-04-30 01:23:00,329 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-04-30 01:23:00,364 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-04-30 01:23:00,365 - apscheduler.executors.default - INFO - Job "log_all_chats (trigger: date[2025-04-30 00:23:00 UTC], next run at: 2025-04-30 00:23:00 UTC)" executed successfully
+2025-04-30 01:23:04,585 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:23:04,586 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-04-30 01:23:04,586 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-04-30 01:23:04,586 - telegram.ext.Application - INFO - Application.stop() complete
+2025-04-30 01:23:37,718 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:23:37,718 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:23:37,719 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:23:37,719 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:23:37,720 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:23:37,748 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:23:37,749 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:23:37,749 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:23:37,750 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:23:37,750 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:23:37,821 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:23:37,823 - __main__ - INFO - Scheduled hourly welcome messages starting in 2182.18 seconds
+2025-04-30 01:23:37,823 - __main__ - INFO - Scheduled interval messages every 20 minutes starting in 982.18 seconds
+2025-04-30 01:23:37,823 - __main__ - INFO - Scheduled strategy messages every 20 minutes starting in 982.18 seconds
+2025-04-30 01:23:37,823 - __main__ - INFO - Scheduled propCapital messages every 20 minutes starting in 982.18 seconds
+2025-04-30 01:23:37,823 - __main__ - INFO - Scheduled signals messages every 20 minutes starting in 982.18 seconds
+2025-04-30 01:23:37,823 - __main__ - INFO - Scheduled education messages every 20 minutes starting in 982.18 seconds
+2025-04-30 01:23:37,824 - __main__ - INFO - Tokyo session messages scheduled at 00:00 (in 22.6 hours)
+2025-04-30 01:23:37,824 - __main__ - INFO - London session messages scheduled at 08:00 (in 6.6 hours)
+2025-04-30 01:23:37,824 - __main__ - INFO - NY session messages scheduled at 13:00 (in 11.6 hours)
+2025-04-30 01:23:37,889 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-04-30 01:23:37,903 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/deleteWebhook "HTTP/1.1 200 OK"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_daily_signup_report" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "log_all_chats" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_interval_message" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_strategy_interval_message" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_prop_interval_message" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_signals_interval_message" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Added job "send_ed_interval_message" to job store "default"
+2025-04-30 01:23:37,904 - apscheduler.scheduler - INFO - Scheduler started
+2025-04-30 01:23:37,905 - telegram.ext.Application - INFO - Application started
+2025-04-30 01:23:42,832 - apscheduler.scheduler - INFO - Removed job 54c629bcb27543f88ef2d6315dd24ded
+2025-04-30 01:23:42,832 - apscheduler.executors.default - INFO - Running job "log_all_chats (trigger: date[2025-04-30 00:23:42 UTC], next run at: 2025-04-30 00:23:42 UTC)" (scheduled at 2025-04-30 00:23:42.821628+00:00)
+2025-04-30 01:23:42,844 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-04-30 01:23:42,858 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-04-30 01:23:42,871 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-04-30 01:23:42,872 - apscheduler.executors.default - INFO - Job "log_all_chats (trigger: date[2025-04-30 00:23:42 UTC], next run at: 2025-04-30 00:23:42 UTC)" executed successfully
+2025-04-30 01:23:47,943 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:23:57,954 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:24:03,003 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:24:03,067 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:24:03,097 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:24:03,131 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:24:03,168 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:24:03,196 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:24:03,226 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:24:13,018 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:24:23,032 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:24:33,046 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:24:43,082 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:24:53,100 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:25:03,118 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:25:13,131 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:25:23,148 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:25:27,164 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:25:27,165 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-04-30 01:25:27,166 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-04-30 01:25:27,166 - telegram.ext.Application - INFO - Application.stop() complete
+2025-04-30 01:25:30,462 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:25:30,463 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:25:30,463 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:25:30,464 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:25:30,464 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:25:30,493 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:25:30,494 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:25:30,494 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:25:30,495 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:25:30,495 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:25:30,575 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,576 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,576 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,576 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,576 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:25:30,577 - __main__ - INFO - Scheduled hourly welcome messages starting in 2069.42 seconds
+2025-04-30 01:25:30,577 - __main__ - INFO - Scheduled interval messages every 20 minutes starting in 869.42 seconds
+2025-04-30 01:25:30,577 - __main__ - INFO - Scheduled strategy messages every 20 minutes starting in 869.42 seconds
+2025-04-30 01:25:30,577 - __main__ - INFO - Scheduled propCapital messages every 20 minutes starting in 869.42 seconds
+2025-04-30 01:25:30,577 - __main__ - INFO - Scheduled signals messages every 20 minutes starting in 869.42 seconds
+2025-04-30 01:25:30,577 - __main__ - INFO - Scheduled education messages every 20 minutes starting in 869.42 seconds
+2025-04-30 01:25:30,577 - __main__ - INFO - Tokyo session messages scheduled at 00:00 (in 22.6 hours)
+2025-04-30 01:25:30,577 - __main__ - INFO - London session messages scheduled at 08:00 (in 6.6 hours)
+2025-04-30 01:25:30,577 - __main__ - INFO - NY session messages scheduled at 13:00 (in 11.6 hours)
+2025-04-30 01:25:30,635 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-04-30 01:25:30,656 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/deleteWebhook "HTTP/1.1 200 OK"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_daily_signup_report" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "log_all_chats" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_interval_message" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_strategy_interval_message" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_prop_interval_message" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_signals_interval_message" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Added job "send_ed_interval_message" to job store "default"
+2025-04-30 01:25:30,657 - apscheduler.scheduler - INFO - Scheduler started
+2025-04-30 01:25:30,657 - telegram.ext.Application - INFO - Application started
+2025-04-30 01:25:35,585 - apscheduler.scheduler - INFO - Removed job 973d767c4b63482ba332d2367d99588b
+2025-04-30 01:25:35,585 - apscheduler.executors.default - INFO - Running job "log_all_chats (trigger: date[2025-04-30 00:25:35 UTC], next run at: 2025-04-30 00:25:35 UTC)" (scheduled at 2025-04-30 00:25:35.575465+00:00)
+2025-04-30 01:25:35,599 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-04-30 01:25:35,638 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-04-30 01:25:35,687 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-04-30 01:25:35,688 - apscheduler.executors.default - INFO - Job "log_all_chats (trigger: date[2025-04-30 00:25:35 UTC], next run at: 2025-04-30 00:25:35 UTC)" executed successfully
+2025-04-30 01:25:40,691 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:25:50,705 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:00,002 - apscheduler.executors.default - INFO - Running job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:27:00 UTC)" (scheduled at 2025-04-30 00:26:00.002239+00:00)
+2025-04-30 01:26:00,002 - apscheduler.executors.default - INFO - Running job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:27:00 UTC)" (scheduled at 2025-04-30 00:26:00.002239+00:00)
+2025-04-30 01:26:00,002 - apscheduler.executors.default - INFO - Running job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:27:00 UTC)" (scheduled at 2025-04-30 00:26:00.002239+00:00)
+2025-04-30 01:26:00,002 - VFXMessageScheduler - INFO - Sending interval message: prop_program_1
+2025-04-30 01:26:00,004 - VFXMessageScheduler - INFO - Sending interval message: market_concept_vwap
+2025-04-30 01:26:00,005 - VFXMessageScheduler - INFO - Sending interval message: trading_principle_advanced_1
+2025-04-30 01:26:00,090 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:00,090 - __main__ - INFO - Sent strategy interval message to channel -1002529155778 at 2025-04-30 01:26:00.090514
+2025-04-30 01:26:00,093 - apscheduler.executors.default - INFO - Job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:27:00 UTC)" executed successfully
+2025-04-30 01:26:00,096 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:00,096 - __main__ - INFO - Sent strategy interval message to channel -1002697690452 at 2025-04-30 01:26:00.096524
+2025-04-30 01:26:00,098 - apscheduler.executors.default - INFO - Job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:27:00 UTC)" executed successfully
+2025-04-30 01:26:00,098 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:00,100 - __main__ - INFO - Sent strategy interval message to channel -1002675985847 at 2025-04-30 01:26:00.100051
+2025-04-30 01:26:00,101 - apscheduler.executors.default - INFO - Job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:27:00 UTC)" executed successfully
+2025-04-30 01:26:00,718 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:10,734 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:20,746 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:30,760 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:33,812 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:34,072 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:34,194 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:34,273 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:34,324 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:43,828 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:45,930 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:48,266 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:48,336 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:48,364 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:51,603 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:51,725 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:55,326 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:55,358 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:26:57,512 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:26:57,530 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/answerCallbackQuery "HTTP/1.1 200 OK"
+2025-04-30 01:26:57,554 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/editMessageText "HTTP/1.1 200 OK"
+2025-04-30 01:27:00,015 - apscheduler.executors.default - INFO - Running job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:28:00 UTC)" (scheduled at 2025-04-30 00:27:00.002239+00:00)
+2025-04-30 01:27:00,015 - apscheduler.executors.default - INFO - Running job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:28:00 UTC)" (scheduled at 2025-04-30 00:27:00.002239+00:00)
+2025-04-30 01:27:00,015 - apscheduler.executors.default - INFO - Running job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:28:00 UTC)" (scheduled at 2025-04-30 00:27:00.002239+00:00)
+2025-04-30 01:27:00,015 - VFXMessageScheduler - INFO - Sending interval message: prop_program_2
+2025-04-30 01:27:00,017 - VFXMessageScheduler - INFO - Sending interval message: market_concept_liquidity_zones
+2025-04-30 01:27:00,018 - VFXMessageScheduler - INFO - Sending interval message: trading_principle_advanced_2
+2025-04-30 01:27:00,080 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:00,081 - __main__ - INFO - Sent strategy interval message to channel -1002675985847 at 2025-04-30 01:27:00.081975
+2025-04-30 01:27:00,083 - apscheduler.executors.default - INFO - Job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:28:00 UTC)" executed successfully
+2025-04-30 01:27:00,098 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:00,098 - __main__ - INFO - Sent strategy interval message to channel -1002529155778 at 2025-04-30 01:27:00.098500
+2025-04-30 01:27:00,101 - apscheduler.executors.default - INFO - Job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:28:00 UTC)" executed successfully
+2025-04-30 01:27:00,121 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:00,121 - __main__ - INFO - Sent strategy interval message to channel -1002697690452 at 2025-04-30 01:27:00.121075
+2025-04-30 01:27:00,123 - apscheduler.executors.default - INFO - Job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:28:00 UTC)" executed successfully
+2025-04-30 01:27:04,025 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:27:14,043 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:27:24,060 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:27:34,076 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:27:44,089 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:27:47,302 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:27:47,358 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:47,392 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:47,425 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:47,455 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:57,318 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:27:58,298 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:27:58,361 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:58,430 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:58,476 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:27:58,530 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:28:00,005 - apscheduler.executors.default - INFO - Running job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:29:00 UTC)" (scheduled at 2025-04-30 00:28:00.002239+00:00)
+2025-04-30 01:28:00,005 - apscheduler.executors.default - INFO - Running job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:29:00 UTC)" (scheduled at 2025-04-30 00:28:00.002239+00:00)
+2025-04-30 01:28:00,005 - apscheduler.executors.default - INFO - Running job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:29:00 UTC)" (scheduled at 2025-04-30 00:28:00.002239+00:00)
+2025-04-30 01:28:00,006 - VFXMessageScheduler - INFO - Sending interval message: prop_program_3
+2025-04-30 01:28:00,007 - VFXMessageScheduler - INFO - Sending interval message: market_concept_order_flow
+2025-04-30 01:28:00,010 - VFXMessageScheduler - INFO - Sending interval message: trading_principle_advanced_3
+2025-04-30 01:28:00,185 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:28:00,185 - __main__ - INFO - Sent strategy interval message to channel -1002675985847 at 2025-04-30 01:28:00.185787
+2025-04-30 01:28:00,187 - apscheduler.executors.default - INFO - Job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:29:00 UTC)" executed successfully
+2025-04-30 01:28:00,211 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:28:00,211 - __main__ - INFO - Sent strategy interval message to channel -1002529155778 at 2025-04-30 01:28:00.211054
+2025-04-30 01:28:00,213 - apscheduler.executors.default - INFO - Job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:29:00 UTC)" executed successfully
+2025-04-30 01:28:00,225 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:28:00,225 - __main__ - INFO - Sent strategy interval message to channel -1002697690452 at 2025-04-30 01:28:00.225230
+2025-04-30 01:28:00,227 - apscheduler.executors.default - INFO - Job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:29:00 UTC)" executed successfully
+2025-04-30 01:28:08,317 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:28:18,336 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:28:28,350 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:28:38,363 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:28:48,375 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:28:58,388 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:29:00,012 - apscheduler.executors.default - INFO - Running job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:30:00 UTC)" (scheduled at 2025-04-30 00:29:00.002239+00:00)
+2025-04-30 01:29:00,012 - apscheduler.executors.default - INFO - Running job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:30:00 UTC)" (scheduled at 2025-04-30 00:29:00.002239+00:00)
+2025-04-30 01:29:00,012 - apscheduler.executors.default - INFO - Running job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:30:00 UTC)" (scheduled at 2025-04-30 00:29:00.002239+00:00)
+2025-04-30 01:29:00,013 - VFXMessageScheduler - INFO - Sending interval message: prop_program_4
+2025-04-30 01:29:00,014 - VFXMessageScheduler - INFO - Sending interval message: market_concept_session_opens
+2025-04-30 01:29:00,015 - VFXMessageScheduler - INFO - Sending interval message: trading_principle_advanced_4
+2025-04-30 01:29:00,118 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:29:00,120 - __main__ - INFO - Sent strategy interval message to channel -1002529155778 at 2025-04-30 01:29:00.120137
+2025-04-30 01:29:00,122 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:29:00,123 - apscheduler.executors.default - INFO - Job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:30:00 UTC)" executed successfully
+2025-04-30 01:29:00,123 - __main__ - INFO - Sent strategy interval message to channel -1002675985847 at 2025-04-30 01:29:00.123142
+2025-04-30 01:29:00,126 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:29:00,127 - __main__ - INFO - Sent strategy interval message to channel -1002697690452 at 2025-04-30 01:29:00.127143
+2025-04-30 01:29:00,129 - apscheduler.executors.default - INFO - Job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:30:00 UTC)" executed successfully
+2025-04-30 01:29:00,130 - apscheduler.executors.default - INFO - Job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:30:00 UTC)" executed successfully
+2025-04-30 01:29:02,747 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:29:02,748 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-04-30 01:29:02,748 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-04-30 01:29:02,748 - telegram.ext.Application - INFO - Application.stop() complete
+2025-04-30 01:29:19,309 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:29:19,310 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:29:19,310 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:29:19,311 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:29:19,311 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:29:19,340 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-04-30 01:29:19,340 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-04-30 01:29:19,341 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-04-30 01:29:19,341 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-04-30 01:29:19,341 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-04-30 01:29:19,420 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,421 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,421 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,421 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,421 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,421 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,421 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,421 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,423 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,423 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,423 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,423 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,423 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,423 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-04-30 01:29:19,423 - __main__ - INFO - Scheduled hourly welcome messages starting in 1840.58 seconds
+2025-04-30 01:29:19,423 - __main__ - INFO - Scheduled interval messages every 20 minutes starting in 640.58 seconds
+2025-04-30 01:29:19,423 - __main__ - INFO - Scheduled strategy messages every 20 minutes starting in 640.58 seconds
+2025-04-30 01:29:19,423 - __main__ - INFO - Scheduled propCapital messages every 20 minutes starting in 640.58 seconds
+2025-04-30 01:29:19,423 - __main__ - INFO - Scheduled signals messages every 20 minutes starting in 640.58 seconds
+2025-04-30 01:29:19,423 - __main__ - INFO - Scheduled education messages every 20 minutes starting in 640.58 seconds
+2025-04-30 01:29:19,423 - __main__ - INFO - Tokyo session messages scheduled at 00:00 (in 22.5 hours)
+2025-04-30 01:29:19,423 - __main__ - INFO - London session messages scheduled at 08:00 (in 6.5 hours)
+2025-04-30 01:29:19,423 - __main__ - INFO - NY session messages scheduled at 13:00 (in 11.5 hours)
+2025-04-30 01:29:19,482 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-04-30 01:29:19,494 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/deleteWebhook "HTTP/1.1 200 OK"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_daily_signup_report" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "log_all_chats" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_interval_message" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_strategy_interval_message" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_prop_interval_message" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_signals_interval_message" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Added job "send_ed_interval_message" to job store "default"
+2025-04-30 01:29:19,495 - apscheduler.scheduler - INFO - Scheduler started
+2025-04-30 01:29:19,495 - telegram.ext.Application - INFO - Application started
+2025-04-30 01:29:24,432 - apscheduler.scheduler - INFO - Removed job 8074dd1eccc74ac0a4e62fce95b25e51
+2025-04-30 01:29:24,432 - apscheduler.executors.default - INFO - Running job "log_all_chats (trigger: date[2025-04-30 00:29:24 UTC], next run at: 2025-04-30 00:29:24 UTC)" (scheduled at 2025-04-30 00:29:24.420982+00:00)
+2025-04-30 01:29:24,444 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-04-30 01:29:24,482 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-04-30 01:29:24,518 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-04-30 01:29:24,518 - apscheduler.executors.default - INFO - Job "log_all_chats (trigger: date[2025-04-30 00:29:24 UTC], next run at: 2025-04-30 00:29:24 UTC)" executed successfully
+2025-04-30 01:29:29,532 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:29:39,544 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:29:48,545 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:29:48,663 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:29:48,703 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:29:48,741 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:29:48,771 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:29:58,564 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:30:00,011 - apscheduler.executors.default - INFO - Running job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:31:00 UTC)" (scheduled at 2025-04-30 00:30:00.002023+00:00)
+2025-04-30 01:30:00,011 - apscheduler.executors.default - INFO - Running job "send_strategy_interval_message (trigger: interval[0:30:00], next run at: 2025-04-30 01:00:00 UTC)" (scheduled at 2025-04-30 00:30:00.002023+00:00)
+2025-04-30 01:30:00,011 - apscheduler.executors.default - INFO - Running job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:31:00 UTC)" (scheduled at 2025-04-30 00:30:00.002023+00:00)
+2025-04-30 01:30:00,012 - apscheduler.executors.default - INFO - Running job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:31:00 UTC)" (scheduled at 2025-04-30 00:30:00.002023+00:00)
+2025-04-30 01:30:00,012 - VFXMessageScheduler - INFO - Sending interval message: prop_program_1
+2025-04-30 01:30:00,014 - VFXMessageScheduler - INFO - Sending interval message: vip_strategy_welcome
+2025-04-30 01:30:00,015 - VFXMessageScheduler - INFO - Sending interval message: trading_principle_advanced_1
+2025-04-30 01:30:00,016 - VFXMessageScheduler - INFO - Sending interval message: market_concept_vwap
+2025-04-30 01:30:00,102 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:30:00,103 - __main__ - INFO - Sent strategy interval message to channel -1002675985847 at 2025-04-30 01:30:00.103353
+2025-04-30 01:30:00,107 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:30:00,108 - apscheduler.executors.default - INFO - Job "send_prop_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:31:00 UTC)" executed successfully
+2025-04-30 01:30:00,108 - __main__ - INFO - Sent strategy interval message to channel -1002697690452 at 2025-04-30 01:30:00.108358
+2025-04-30 01:30:00,111 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:30:00,112 - __main__ - INFO - Sent strategy interval message to channel -1002529155778 at 2025-04-30 01:30:00.112622
+2025-04-30 01:30:00,114 - apscheduler.executors.default - INFO - Job "send_signals_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:31:00 UTC)" executed successfully
+2025-04-30 01:30:00,114 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-04-30 01:30:00,114 - apscheduler.executors.default - INFO - Job "send_ed_interval_message (trigger: interval[0:01:00], next run at: 2025-04-30 00:31:00 UTC)" executed successfully
+2025-04-30 01:30:00,115 - __main__ - INFO - Sent strategy interval message to channel -1002575685046 at 2025-04-30 01:30:00.115628
+2025-04-30 01:30:00,118 - apscheduler.executors.default - INFO - Job "send_strategy_interval_message (trigger: interval[0:30:00], next run at: 2025-04-30 01:00:00 UTC)" executed successfully
+2025-04-30 01:30:06,958 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-04-30 01:30:06,958 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-04-30 01:30:06,960 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-04-30 01:30:06,960 - telegram.ext.Application - INFO - Application.stop() complete

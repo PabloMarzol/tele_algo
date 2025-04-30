@@ -1,3 +1,4 @@
+import os
 import re
 import polars as pl
 import hashlib
@@ -14,43 +15,25 @@ class TradingAccountAuth:
         self.db_path = db_path
         
         # If a database is provided, load verified accounts
-        if db_path:
+        if db_path and os.path.exists(db_path):
             try:
                 self.trading_accounts = pl.read_csv(db_path)
-            except:
-                # Create an empty DataFrame if file doesn't exist
-                self.trading_accounts = pl.DataFrame({
-                    "account_number": [],
-                    "user_id": [],
-                    "verified": [],
-                    "verification_date": []
-                })
+            except Exception as e:
+                print(f"Error loading trading accounts database: {e}")
+                self.create_empty_trading_accounts()
         else:
-            # For testing, create a sample dataframe with some mock accounts
-            self.trading_accounts = pl.DataFrame({
-                "account_number": ["TR" + ''.join(random.choices(string.digits, k=8)) for _ in range(5)],
-                "user_id": [None] * 5,
-                "verified": [False] * 5,
-                "verification_date": [None] * 5
-            })
+            # Create an empty DataFrame with the correct schema
+            self.create_empty_trading_accounts()
     
-    def validate_account_format(self, account_number):
-        """Check if the account number matches the expected format."""
-        try:
-            # First try to convert to integer to see if it's numeric
-            account_int = int(account_number)
-            
-            # Now check if it's a valid account number format
-            # For Vortex FX, accounts appear to be 6-digit numbers based on Accounts_List.csv
-            if 100000 <= account_int <= 999999:
-                print(f"Account {account_number} validation: SUCCESS")
-                return True
-            else:
-                print(f"Account {account_number} validation: FAILED - not a valid account number")
-                return False
-        except ValueError:
-            print(f"Account {account_number} validation: FAILED - not numeric")
-            return False
+    
+    def create_empty_trading_accounts(self):
+        """Create an empty trading accounts DataFrame with the correct schema."""
+        self.trading_accounts = pl.DataFrame({
+            "account_number": [],
+            "user_id": [],
+            "verified": [],
+            "verification_date": []
+        })
     
     def validate_account_format(self, account_number):
         """Check if the account number matches the expected format."""
@@ -78,7 +61,7 @@ class TradingAccountAuth:
             
             # Load the accounts CSV
             try:
-                accounts_df = pl.read_csv("Accounts_List.csv")
+                accounts_df = pl.read_csv("./bot_data/Accounts_List.csv")
                 
                 # Check if account exists
                 account_match = accounts_df.filter(pl.col("Account") == account_int)
@@ -91,23 +74,45 @@ class TradingAccountAuth:
                     # Record verification in our system
                     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     
-                    # Update our tracking dataframe
-                    self.trading_accounts = self.trading_accounts.with_columns([
-                        pl.when(pl.col("account_number") == account_number)
-                        .then(user_id)
-                        .otherwise(pl.col("user_id"))
-                        .alias("user_id"),
+                    # Initialize the trading_accounts DataFrame if it doesn't exist
+                    if not hasattr(self, 'trading_accounts') or self.trading_accounts is None:
+                        self.trading_accounts = pl.DataFrame({
+                            "account_number": [account_number],
+                            "user_id": [user_id],
+                            "verified": [True],
+                            "verification_date": [now]
+                        })
+                    else:
+                        # Check if account already exists in our tracking dataframe
+                        account_exists = self.trading_accounts.filter(pl.col("account_number") == account_number)
                         
-                        pl.when(pl.col("account_number") == account_number)
-                        .then(True)
-                        .otherwise(pl.col("verified"))
-                        .alias("verified"),
-                        
-                        pl.when(pl.col("account_number") == account_number)
-                        .then(now)
-                        .otherwise(pl.col("verification_date"))
-                        .alias("verification_date")
-                    ])
+                        if account_exists.height > 0:
+                            # Update existing record
+                            self.trading_accounts = self.trading_accounts.with_columns([
+                                pl.when(pl.col("account_number") == account_number)
+                                .then(pl.lit(user_id))
+                                .otherwise(pl.col("user_id"))
+                                .alias("user_id"),
+                                
+                                pl.when(pl.col("account_number") == account_number)
+                                .then(pl.lit(True))
+                                .otherwise(pl.col("verified"))
+                                .alias("verified"),
+                                
+                                pl.when(pl.col("account_number") == account_number)
+                                .then(pl.lit(now))
+                                .otherwise(pl.col("verification_date"))
+                                .alias("verification_date")
+                            ])
+                        else:
+                            # Add new record
+                            new_record = pl.DataFrame({
+                                "account_number": [account_number],
+                                "user_id": [user_id],
+                                "verified": [True],
+                                "verification_date": [now]
+                            })
+                            self.trading_accounts = pl.concat([self.trading_accounts, new_record])
                     
                     # Add to verified users dictionary for quick lookup
                     self.verified_users[user_id] = {
@@ -123,8 +128,17 @@ class TradingAccountAuth:
                     
             except Exception as e:
                 print(f"Error loading or processing Accounts_List.csv: {e}")
-                # Fall back to original verification method if CSV loading fails
-                return super().verify_account(account_number, user_id)
+                # Fall back to a more basic verification method
+                print("Falling back to basic verification method")
+                
+                # Just record the attempt for now
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.verified_users[user_id] = {
+                    "account_number": account_number,
+                    "verified_at": now,
+                    "verified": False
+                }
+                return False
                 
         except ValueError:
             print(f"Could not convert account number to integer for verification")

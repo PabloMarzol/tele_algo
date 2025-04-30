@@ -401,7 +401,7 @@ async def trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         try:
             # Load accounts from CSV file
-            accounts_df = pl.read_csv("Accounts_List.csv")
+            accounts_df = pl.read_csv("./bot_data/Accounts_List.csv")
             
             # Convert account_number to integer for comparison with the Account column
             try:
