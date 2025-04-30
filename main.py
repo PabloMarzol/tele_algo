@@ -19,7 +19,8 @@ from auth_system import TradingAccountAuth
 from db_manager import TradingBotDatabase
 from telegram.ext.filters import MessageFilter
 from vfx_Scheduler import VFXMessageScheduler
-
+from mt5_signal_generator import MT5SignalGenerator
+from signal_dispatcher import SignalDispatcher
 
 
 # Global instance of the VFX message scheduler
@@ -1530,7 +1531,8 @@ async def send_hourly_welcome(context: ContextTypes.DEFAULT_TYPE) -> None:
         session_name = "London"
     elif current_hour == 13:
         message = vfx_scheduler.get_welcome_message(13)  # NY session
-        session_name = "New York"
+        session_name = "New York"    
+
     
     # Send to channel
     try:
@@ -1542,6 +1544,51 @@ async def send_hourly_welcome(context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.info(f"Sent {session_name} session message at {datetime.now()} (Weekday: {current_weekday})")
     except Exception as e:
         logger.error(f"Failed to send {session_name} session message: {e}")
+    
+    # Update analytics
+    try:
+        db.update_analytics(messages_sent=1)
+    except Exception as e:
+        logger.error(f"Failed to update analytics: {e}")
+
+async def send_giveaway_message(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send giveaway messages at specific hours."""
+    # Get the current hour to determine which message to send
+    current_hour = datetime.now().hour
+    current_weekday = datetime.now().weekday()
+    
+    # Skip weekends if needed
+    if current_weekday > 4:  # Skip weekends (5=Saturday, 6=Sunday)
+        logger.info(f"Skipping giveaway message on weekend (Weekday: {current_weekday})")
+        return
+    
+    # Determine which message to send based on the hour
+    if current_hour == 17:
+        message = vfx_scheduler.get_welcome_message(17)
+        message_type = "Daily Giveaway Announcement"
+    elif current_hour == 18:
+        message = vfx_scheduler.get_welcome_message(18)
+        message_type = "Giveaway Countdown"
+    elif current_hour == 23:
+        message = vfx_scheduler.get_welcome_message(19)
+        message_type = "Giveaway Winner Announcement"
+    else:
+        logger.error(f"Unexpected hour for giveaway message: {current_hour}")
+        return
+    
+    # Log before sending
+    logger.info(f"Preparing to send {message_type} at {datetime.now()}")
+    
+    # Send to channel
+    try:
+        await context.bot.send_message(
+            chat_id=MAIN_CHANNEL_ID, 
+            text=message,
+            parse_mode='HTML'
+        )
+        logger.info(f"Successfully sent {message_type} at {datetime.now()}")
+    except Exception as e:
+        logger.error(f"Failed to send {message_type}: {e}")
     
     # Update analytics
     try:
@@ -2076,7 +2123,108 @@ async def copy_template_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
 
 
+# -------------------------------------- SIGNALS HANDLERS ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+signal_dispatcher = None
 
+async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
+    """Initialize the signal system after bot startup"""
+    global signal_dispatcher
+    
+    # Initialize signal dispatcher with the bot instance
+    signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
+    
+    # Log successful initialization
+    logger.info("Signal system initialized successfully")
+    
+    # Schedule the first signal check
+    await signal_dispatcher.check_and_send_signal()
+
+# Define the scheduled function
+async def check_and_send_signals(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check for and send trading signals based on market conditions"""
+    global signal_dispatcher
+    if signal_dispatcher:
+        await signal_dispatcher.check_and_send_signal()
+        
+async def report_signal_system_status(context: ContextTypes.DEFAULT_TYPE):
+    """Log periodic status information about the signal system"""
+    global signal_dispatcher
+    
+    if not signal_dispatcher:
+        logger.warning("⚠️ Signal system not initialized yet")
+        return
+    
+    try:
+        # Get MT5 connection status
+        mt5_connected = signal_dispatcher.signal_generator.connected
+        
+        # Get time since last signal
+        hours_since = (datetime.now() - signal_dispatcher.last_signal_time).total_seconds() / 3600
+        
+        logger.info("📊 SIGNAL SYSTEM STATUS 📊")
+        logger.info(f"MT5 Connection: {'✅ Connected' if mt5_connected else '❌ Disconnected'}")
+        logger.info(f"Hours since last signal: {hours_since:.1f}")
+        logger.info(f"Signals sent today: {sum(1 for k,v in signal_dispatcher.signal_generator.signal_history.items() if v['timestamp'].date() == datetime.now().date())}")
+        logger.info(f"Next check eligible: {'Yes' if hours_since >= signal_dispatcher.min_signal_interval_hours else 'No'}")
+    except Exception as e:
+        logger.error(f"Error generating status report: {e}")
+
+
+async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Command to check signal system status for admins"""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    global signal_dispatcher
+    
+    if not signal_dispatcher:
+        await update.message.reply_text("⚠️ Signal system not initialized yet.")
+        return
+    
+    try:
+        # Get MT5 connection status
+        mt5_connected = signal_dispatcher.signal_generator.connected
+        
+        # Get time since last signal
+        hours_since = (datetime.now() - signal_dispatcher.last_signal_time).total_seconds() / 3600
+        
+        # Count signals sent today
+        today_signals = sum(1 for k,v in signal_dispatcher.signal_generator.signal_history.items() 
+                         if v['timestamp'].date() == datetime.now().date())
+        
+        # Format a detailed status message
+        status_msg = (
+            f"📊 SIGNAL SYSTEM STATUS 📊\n\n"
+            f"MT5 Connection: {'✅ Connected' if mt5_connected else '❌ Disconnected'}\n"
+            f"Hours since last signal: {hours_since:.1f}\n"
+            f"Signals sent today: {today_signals}\n"
+            f"Next check eligible: {'✅ Yes' if hours_since >= signal_dispatcher.min_signal_interval_hours else '❌ No'}\n\n"
+        )
+        
+        # Add signal history
+        if signal_dispatcher.signal_generator.signal_history:
+            status_msg += "📝 RECENT SIGNALS:\n\n"
+            
+            # Sort by timestamp (most recent first)
+            sorted_history = sorted(
+                signal_dispatcher.signal_generator.signal_history.items(),
+                key=lambda x: x[1]['timestamp'],
+                reverse=True
+            )
+            
+            # Show last 5 signals
+            for i, (key, data) in enumerate(sorted_history[:5]):
+                signal_time = data['timestamp'].strftime("%Y-%m-%d %H:%M")
+                status_msg += f"{i+1}. {data['symbol']} {data['direction']} at {signal_time}\n"
+        
+        await update.message.reply_text(status_msg)
+        
+    except Exception as e:
+        error_msg = f"Error retrieving signal status: {e}"
+        logger.error(error_msg)
+        await update.message.reply_text(f"⚠️ {error_msg}")
 
 # -------------------------------------- MAIN ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -2396,6 +2544,8 @@ def main() -> None:
     application.add_handler(CommandHandler("addtovip", add_to_vip_command))
     application.add_handler(CommandHandler("forwardmt5", forward_mt5_command))
     application.add_handler(CommandHandler("testaccount", test_account_command))
+    application.add_handler(CommandHandler("signalstatus", signal_status_command))
+
 
     application.add_handler(MessageHandler(filters.ALL, silent_update_logger), group=999)
 
@@ -2464,6 +2614,9 @@ def main() -> None:
     # Market session messages (on weekdays only)
     # Calculate first run time for each market session
     # Tokyo session (00:00)
+    """------------------------------
+    --- Send Messages at Market Open ----- 
+    ---------------------------------"""
     tokyo_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if tokyo_time <= now:
         tokyo_time += timedelta(days=1)
@@ -2481,6 +2634,8 @@ def main() -> None:
         ny_time += timedelta(days=1)
     seconds_until_ny = (ny_time - now).total_seconds()
     
+    # --------------------------------------------------------------------- #
+    
     job_queue.run_once(send_hourly_welcome, seconds_until_tokyo)
     job_queue.run_daily(send_hourly_welcome, time=time(hour=0, minute=0))
     
@@ -2490,18 +2645,28 @@ def main() -> None:
     job_queue.run_once(send_hourly_welcome, seconds_until_ny)
     job_queue.run_daily(send_hourly_welcome, time=time(hour=13, minute=0))
     
-    
-    
+
     """------------------------------
-    Send message at specified hours
+        ------ Give aways Messages ----- 
     ---------------------------------"""
-     # Schedule hourly welcome messages - runs at the start of every hour
-    job_queue.run_repeating(
-        send_hourly_welcome, 
-        interval=timedelta(hours=1),
-        first=seconds_until_next_hour  # Time in seconds until first run
+     # 17:00 - Daily giveaway announcement
+    job_queue.run_daily(
+        send_giveaway_message,
+        time=time(hour=17, minute=0)
     )
     
+    # 18:00 - Countdown to giveaway
+    job_queue.run_daily(
+        send_giveaway_message,
+        time=time(hour=18, minute=0)
+    )
+    
+    # 19:00 - Giveaway winner announcement
+    job_queue.run_daily(
+        send_giveaway_message,
+        time=time(hour=19, minute=0)
+    )
+     
     
     """---------------------------------
     Send Messages at specified intervals
@@ -2509,9 +2674,9 @@ def main() -> None:
     # Schedule interval messages - runs every 20 minutes
     # Calculate time until next 20-minute mark
     minutes_now = now.minute
-    minutes_until_next_interval = 20 - (minutes_now % 20)
+    minutes_until_next_interval = 5 - (minutes_now % 5)
     if minutes_until_next_interval == 0:
-        minutes_until_next_interval = 20
+        minutes_until_next_interval = 5
     
     next_interval = now + timedelta(minutes=minutes_until_next_interval)
     next_interval = next_interval.replace(second=0, microsecond=0)
@@ -2519,7 +2684,7 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_interval_message,
-        interval=timedelta(minutes=20),
+        interval=timedelta(minutes=5),
         first=seconds_until_next_interval  # Time in seconds until first run
     )
     
@@ -2528,9 +2693,9 @@ def main() -> None:
          Strategy Channel Messages
     ------------------------------------"""
      # Schedule strategy channel messages - every 45 minutes (different frequency)
-    minutes_until_strategy = 30 - (minutes_now % 30)
+    minutes_until_strategy = 5 - (minutes_now % 5)
     if minutes_until_strategy == 0:
-        minutes_until_strategy = 30
+        minutes_until_strategy = 5
     
     next_strategy = now + timedelta(minutes=minutes_until_strategy)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2538,16 +2703,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_strategy_interval_message,
-        interval=timedelta(minutes=30),
+        interval=timedelta(minutes=5),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Prop-Capital Channel Messages
     ------------------------------------"""
-    minutes_until_propMessage = 1 - (minutes_now % 1)
+    minutes_until_propMessage = 5 - (minutes_now % 5)
     if minutes_until_propMessage == 0:
-        minutes_until_propMessage = 1
+        minutes_until_propMessage = 5
     
     next_strategy = now + timedelta(minutes=minutes_until_propMessage)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2555,16 +2720,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_prop_interval_message,
-        interval=timedelta(minutes=1),
+        interval=timedelta(minutes=5),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Signals Channel Messages
     ------------------------------------"""
-    minutes_until_signals = 1 - (minutes_now % 1)
+    minutes_until_signals = 5 - (minutes_now % 5)
     if minutes_until_signals == 0:
-        minutes_until_signals = 1
+        minutes_until_signals = 5
     
     next_strategy = now + timedelta(minutes=minutes_until_signals)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2572,16 +2737,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_signals_interval_message,
-        interval=timedelta(minutes=1),
+        interval=timedelta(minutes=5),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Education Channel Messages
     ------------------------------------"""
-    minutes_until_educationMessages = 1 - (minutes_now % 1)
+    minutes_until_educationMessages = 5 - (minutes_now % 5)
     if minutes_until_educationMessages == 0:
-        minutes_until_educationMessages = 1
+        minutes_until_educationMessages = 5
     
     next_strategy = now + timedelta(minutes=minutes_until_educationMessages)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2589,8 +2754,27 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_ed_interval_message,
-        interval=timedelta(minutes=1),
+        interval=timedelta(minutes=5),
         first=seconds_until_strategy
+    )
+    
+    """---------------------------------
+         Signal Jobs
+    ------------------------------------"""
+    
+    job_queue.run_once(init_signal_system, 60)
+    
+    # Schedule regular signal checks - run every hour
+    job_queue.run_repeating(
+        check_and_send_signals,
+        interval=3600,  # Every hour
+        first=120  # First check 2 minutes after bot start
+    )
+    
+    job_queue.run_repeating(
+        report_signal_system_status,
+        interval=21600,  # Every 6 hours
+        first=600  # First report 10 minutes after startup
     )
     
     
@@ -2605,6 +2789,8 @@ def main() -> None:
     logger.info(f"Tokyo session messages scheduled at 00:00 (in {seconds_until_tokyo/3600:.1f} hours)")
     logger.info(f"London session messages scheduled at 08:00 (in {seconds_until_london/3600:.1f} hours)")
     logger.info(f"NY session messages scheduled at 13:00 (in {seconds_until_ny/3600:.1f} hours)")
+    logger.info(f"Scheduled giveaway messages at 17:00, 18:00, and 19:00")
+    
     
     # Run the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)

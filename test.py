@@ -1,31 +1,33 @@
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-from telegram import Update
-
-async def get_chat_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat = update.effective_chat
-    chat_type = chat.type
-    chat_id = chat.id
-    chat_title = chat.title
-    chat_username = chat.username
-    
-    print(f"Chat Type: {chat_type}")
-    print(f"Chat ID: {chat_id}")
-    print(f"Chat Title: {chat_title}")
-    
-    if chat_username:
-        print(f"Chat Username: @{chat_username}")
-    else:
-        print("Chat Username: None")
-    
-    print("-" * 30)
-
-if __name__ == '__main__':
-    # Replace with your bot token
-    TOKEN = "7532055530:AAHC8xeMZBddUDNmhvlmmzgyGD8x59ft7wE"
-
-    app = ApplicationBuilder().token(TOKEN).build()
-
-    app.add_handler(MessageHandler(filters.ALL, get_chat_info))
-
-    print("✅ Bot is running... Send a message in the group/channel where the bot is added.")
-    app.run_polling()
+import MetaTrader5 as mt5
+import time
+# display data on the MetaTrader 5 package
+print("MetaTrader5 package author: ",mt5.__author__)
+print("MetaTrader5 package version: ",mt5.__version__)
+print("")
+ 
+# establish connection to the MetaTrader 5 terminal
+if not mt5.initialize():
+    print("initialize() failed, error code =",mt5.last_error())
+   # shut down connection to the MetaTrader 5 terminal
+    mt5.shutdown()
+    quit()
+ 
+# subscribe to market depth updates for EURUSD (Depth of Market)
+if mt5.market_book_add('EURUSD'):
+  # get the market depth data 10 times in a loop
+   for i in range(5):
+        # get the market depth content (Depth of Market)
+        items = mt5.market_book_get('EURUSD')
+        # display the entire market depth 'as is' in a single string
+        print(items)
+        # now display each order separately for more clarity
+        if items:
+            for it in items:
+                # order content
+                print(it._asdict())
+        # pause for 5 seconds before the next request of the market depth data
+        time.sleep(5)
+  # cancel the subscription to the market depth updates (Depth of Market)
+   mt5.market_book_release('EURUSD')
+else:
+    print("mt5.market_book_add('EURUSD') failed, error code =",mt5.last_error())
