@@ -251,13 +251,13 @@ class MT5SignalGenerator:
                               5 if symbol in ["EURUSD", "GBPUSD"] else 2)
             
             # Calculate stop loss (0.6% below entry)
-            sl_low = round(entry_low * 0.994, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            sl_high = round(entry_high * 0.994, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            sl_low = round(entry_low * 0.995, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            sl_high = round(entry_high * 0.996, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
             
             # Calculate take profits
-            tp1 = round(entry_high * 1.003, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            tp2 = round(entry_high * 1.006, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            tp3 = round(entry_high * 1.01, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            tp1 = round(entry_high * 1.002, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            tp2 = round(entry_high * 1.003, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            tp3 = round(entry_high * 1.005, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
             
         else:  # SELL
             direction_emoji = "🔻"
@@ -271,8 +271,8 @@ class MT5SignalGenerator:
             sl_high = round(entry_high * 1.006, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
             
             # Calculate take profits
-            tp1 = round(entry_low * 0.997, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            tp2 = round(entry_low * 0.994, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            tp1 = round(entry_low * 0.994, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            tp2 = round(entry_low * 0.992, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
             tp3 = round(entry_low * 0.99, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
         
         # Format the signal according to template
