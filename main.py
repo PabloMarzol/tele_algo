@@ -2767,7 +2767,7 @@ def main() -> None:
     # Schedule regular signal checks - run every hour
     job_queue.run_repeating(
         check_and_send_signals,
-        interval=3600,  # Every hour
+        interval=600,  # 10 Min
         first=120  # First check 2 minutes after bot start
     )
     

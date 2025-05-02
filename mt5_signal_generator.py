@@ -22,27 +22,63 @@ class MT5SignalGenerator:
         self.connected = False
         self.initialize_mt5(mt5_username, mt5_password, mt5_server)
         
-        # Define strategy parameters
+        # Define strategy parameters with expanded asset list and lower timeframes
         self.strategies = {
             'ma_crossover': {
-                'symbols': ['XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100'],
-                'timeframes': [mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M15],
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M5,
+                    mt5.TIMEFRAME_M15,   
+                    mt5.TIMEFRAME_M30  
+                ],
                 'params': {'fast_length': 9, 'slow_length': 21}
             },
             'rsi_reversal': {
-                'symbols': ['XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100'],
-                'timeframes': [mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M15],
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M5,   
+                    mt5.TIMEFRAME_M15,   
+                    mt5.TIMEFRAME_M30   
+                ],
                 'params': {'rsi_length': 14, 'overbought': 70, 'oversold': 30}
             },
+            'short_term_rsi': {
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M5    # Only on 5-minute timeframe
+                ],
+                'params': {'rsi_length': 7, 'overbought': 75, 'oversold': 25}  # Faster RSI with more extreme thresholds
+            },
             'support_resistance': {
-                'symbols': ['XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100'],
-                'timeframes': [mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M15],
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M5,  
+                    mt5.TIMEFRAME_M15,  
+                    mt5.TIMEFRAME_M30
+                ],
                 'params': {'lookback': 20, 'threshold': 0.001}
             }
         }
         
         # Track generated signals to avoid duplicates
         self.signal_history = {}
+        
+        # Signal frequency control parameters
+        self.max_signals_per_hour = 2   
+        self.max_signals_per_day = 10    
+        self.min_minutes_between_signals = 15
     
     def initialize_mt5(self, username=None, password=None, server=None):
         """Connect to MetaTrader5 terminal with detailed logging"""
@@ -230,65 +266,127 @@ class MT5SignalGenerator:
         return None
     
     def format_signal(self, symbol, direction, price_data):
-        """Format the signal according to our template"""
-        # Get current price info - efficient way in Polars
+        """Format the signal according to our template with enhanced styling"""
+        # Get current price info
         current_price = price_data.tail(1)["close"][0]
         
-        # Format symbol for display
-        if symbol == "XAUUSD":
-            display_symbol = "🟡 GOLD (XAU/USD)"
-        elif symbol == "US100":
-            display_symbol = "💻 NASDAQ (NAS100)"
-        else:
-            display_symbol = f"💱 {symbol[:3]}/{symbol[3:]}"
+        # Define volatility-based parameters for each instrument
+        # Format: [entry_range_pct, sl_pct, tp1_pct, tp2_pct, tp3_pct]
+        parameters = {
+            # Original assets
+            "XAUUSD": [0.15, 0.4, 0.2, 0.35, 0.5],    # Gold
+            "US100": [0.12, 0.3, 0.15, 0.25, 0.4],    # Nasdaq
+            "EURUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # EUR/USD
+            "GBPUSD": [0.06, 0.12, 0.08, 0.15, 0.25], # GBP/USD
+            
+            # New assets
+            "AUDUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # AUD/USD
+            "USDCAD": [0.05, 0.1, 0.07, 0.12, 0.2],   # USD/CAD
+            "FRA40": [0.1, 0.25, 0.12, 0.2, 0.35],    # CAC 40
+            "UK100": [0.1, 0.25, 0.12, 0.2, 0.35],    # FTSE 100
+            "US30": [0.1, 0.25, 0.12, 0.2, 0.35],     # Dow Jones
+            "US500": [0.1, 0.25, 0.12, 0.2, 0.35]     # S&P 500
+        }
         
-        # Calculate entry zone (0.2% range for limit orders)
+        # Use default if symbol not in our parameters list
+        default_params = [0.1, 0.25, 0.15, 0.3, 0.5]
+        params = parameters.get(symbol, default_params)
+        
+        # Unpack parameters
+        entry_range_pct, sl_pct, tp1_pct, tp2_pct, tp3_pct = params
+        
+        # Convert to multipliers
+        entry_range = entry_range_pct / 100
+        sl_range = sl_pct / 100
+        tp1_range = tp1_pct / 100
+        tp2_range = tp2_pct / 100
+        tp3_range = tp3_pct / 100
+        
+        # Format symbol for display with emojis and proper names
+        symbol_display = {
+            "XAUUSD": "🟡 GOLD (XAU/USD)",
+            "US100": "💻 NASDAQ (NAS100)",
+            "EURUSD": "💱 EUR/USD",
+            "GBPUSD": "💱 GBP/USD",
+            "AUDUSD": "💱 AUD/USD",
+            "USDCAD": "💱 USD/CAD",
+            "FRA40": "🇫🇷 CAC 40 (FRA40)",
+            "UK100": "🇬🇧 FTSE 100 (UK100)",
+            "US30": "🇺🇸 DOW JONES (US30)",
+            "US500": "🇺🇸 S&P 500 (US500)"
+        }
+        
+        display_symbol = symbol_display.get(symbol, f"💱 {symbol[:3]}/{symbol[3:]}")
+        
+        # Decimal places to round to
+        if symbol in ["EURUSD", "GBPUSD", "AUDUSD", "USDCAD"]:
+            decimals = 5  # Forex pairs
+        elif symbol == "XAUUSD":
+            decimals = 2  # Gold
+        elif symbol in ["US100", "FRA40", "UK100", "US30", "US500"]:
+            decimals = 0  # Indices (whole numbers)
+        else:
+            decimals = 2  # Default
+        
+        # Calculate entry zone and levels based on direction
         if direction == "BUY":
             direction_emoji = "🔼"
             entry_type = "BUY LIMIT ORDERS"
-            entry_low = current_price
-            entry_high = round(current_price * 1.002, 
-                              5 if symbol in ["EURUSD", "GBPUSD"] else 2)
             
-            # Calculate stop loss (0.6% below entry)
-            sl_low = round(entry_low * 0.995, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            sl_high = round(entry_high * 0.996, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            # Buy limit zone is slightly below current price
+            entry_high = current_price
+            entry_low = round(current_price * (1 - entry_range), decimals)
             
-            # Calculate take profits
-            tp1 = round(entry_high * 1.002, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            tp2 = round(entry_high * 1.003, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            tp3 = round(entry_high * 1.005, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            # Stop loss is below entry
+            sl_low = round(entry_low * (1 - sl_range), decimals)
+            sl_high = round(entry_high * (1 - sl_range), decimals)
+            
+            # Take profits above entry
+            tp1 = round(entry_high * (1 + tp1_range), decimals)
+            tp2 = round(entry_high * (1 + tp2_range), decimals)
+            tp3 = round(entry_high * (1 + tp3_range), decimals)
             
         else:  # SELL
             direction_emoji = "🔻"
             entry_type = "SELL LIMIT ORDERS"
-            entry_high = current_price
-            entry_low = round(current_price * 0.998, 
-                             5 if symbol in ["EURUSD", "GBPUSD"] else 2)
             
-            # Calculate stop loss (0.6% above entry)
-            sl_low = round(entry_low * 1.006, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            sl_high = round(entry_high * 1.006, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            # Sell limit zone is slightly above current price
+            entry_low = current_price
+            entry_high = round(current_price * (1 + entry_range), decimals)
             
-            # Calculate take profits
-            tp1 = round(entry_low * 0.994, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            tp2 = round(entry_low * 0.992, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
-            tp3 = round(entry_low * 0.99, 5 if symbol in ["EURUSD", "GBPUSD"] else 2)
+            # Stop loss is above entry
+            sl_low = round(entry_low * (1 + sl_range), decimals)
+            sl_high = round(entry_high * (1 + sl_range), decimals)
+            
+            # Take profits below entry
+            tp1 = round(entry_low * (1 - tp1_range), decimals)
+            tp2 = round(entry_low * (1 - tp2_range), decimals)
+            tp3 = round(entry_low * (1 - tp3_range), decimals)
         
-        # Format the signal according to template
-        signal = f"""🔔 VFX TRADE SIGNAL 🔔
-\n\nAsset: {display_symbol}
-Direction: {direction_emoji}{entry_type}
-\n\n📍 Entry Zone:  ➡️ {entry_low} — {entry_high} ⬅️
-🛑 Stop Loss Range based on Avg Price Fill: ➡️ {sl_low} — {sl_high} ⬅️
-\n\n🎯 Take Profit Levels:
-TP1: {tp1}
-TP2: {tp2}
-TP3: {tp3}
-\n\n📊 Risk management is key.
-🚫 This is not financial advice. Trade at your own risk.
-🧠 We're scaling in — stacking limit orders across the range to optimize entry and reduce slippage. This approach uses time & volume smartly, just like the pros.
-Patience is key. Let price come to us. ✅"""
+        # Format the signal with enhanced styling (bold text, better spacing)
+        signal = f"""
+    🔔 <b>VFX TRADE SIGNAL</b> 🔔
+
+    <b>Asset:</b> {display_symbol}
+    <b>Direction:</b> {direction_emoji} <b>{entry_type}</b>
+
+    📍 <b>Entry Zone:</b>  ➡️ {entry_low} — {entry_high} ⬅️
+
+    🛑 <b>Stop Loss Range:</b> ➡️ {sl_low} — {sl_high} ⬅️
+
+    🎯 <b>Take Profit Levels:</b>
+    • TP1: {tp1}
+    • TP2: {tp2}
+    • TP3: {tp3}
+
+    📊 <b>Risk management is key.</b>
+
+    🧠 We're scaling in — stacking limit orders across the range to optimize entry and reduce slippage. This approach uses time & volume smartly, just like the pros.
+
+    ⏳ Patience is key. Let price come to us. ✅
+
+    🚫 <i>This is not financial advice. Trade at your own risk.</i>
+    """
 
         # Create a key for this signal to track in history
         signal_key = f"{symbol}_{direction}_{datetime.now().strftime('%Y%m%d')}"

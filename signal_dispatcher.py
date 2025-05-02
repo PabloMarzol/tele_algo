@@ -23,20 +23,42 @@ class SignalDispatcher:
         
         # Track last signal time to control frequency
         self.last_signal_time = datetime.now() - timedelta(hours=12)  # Start ready to send
-        self.min_signal_interval_hours = 4  # Minimum hours between signals
+        self.min_signal_interval_hours = 1  # Minimum hours between signals
+        self.signals_sent_today = 0
+        self.signals_sent_this_hour = 0
+        self.last_daily_reset = datetime.now().date()
+        self.last_hourly_reset = datetime.now().hour
+    
     
     async def check_and_send_signal(self):
         """Check if it's time to send a signal and do so if appropriate"""
         now = datetime.now()
-        hours_since_last = (now - self.last_signal_time).total_seconds() / 3600
         
-        # Check if enough time has passed since last signal
-        if hours_since_last < self.min_signal_interval_hours:
-            self.logger.info(f"Skipping signal check - only {hours_since_last:.2f} hours since last signal")
+        # Reset daily counter if needed
+        if now.date() != self.last_daily_reset:
+            self.signals_sent_today = 0
+            self.last_daily_reset = now.date()
+        
+        # Reset hourly counter if needed
+        if now.hour != self.last_hourly_reset:
+            self.signals_sent_this_hour = 0
+            self.last_hourly_reset = now.hour
+        
+        # Check frequency controls
+        minutes_since_last = (now - self.last_signal_time).total_seconds() / 60
+        if minutes_since_last < self.signal_generator.min_minutes_between_signals:
+            self.logger.info(f"Signal spacing control: Only {minutes_since_last:.1f} minutes since last signal (min: {self.signal_generator.min_minutes_between_signals})")
+            return
+            
+        if self.signals_sent_today >= self.signal_generator.max_signals_per_day:
+            self.logger.info(f"Daily limit reached: {self.signals_sent_today} signals sent today (max: {self.signal_generator.max_signals_per_day})")
+            return
+            
+        if self.signals_sent_this_hour >= self.signal_generator.max_signals_per_hour:
+            self.logger.info(f"Hourly limit reached: {self.signals_sent_this_hour} signals sent this hour (max: {self.signal_generator.max_signals_per_hour})")
             return
             
         # Market hours check (optional)
-        # Avoid sending signals during major market closures
         current_hour = now.hour
         current_weekday = now.weekday()
         
@@ -57,11 +79,12 @@ class SignalDispatcher:
                     parse_mode='HTML'
                 )
                 
+                # Update tracking values
                 self.last_signal_time = now
-                self.logger.info(f"Sent trading signal at {now}")
+                self.signals_sent_today += 1
+                self.signals_sent_this_hour += 1
                 
-                # Optional: Notify admin about sent signal
-                # [code to notify admin]
+                self.logger.info(f"Sent trading signal at {now} - Daily: {self.signals_sent_today}/{self.signal_generator.max_signals_per_day}, Hourly: {self.signals_sent_this_hour}/{self.signal_generator.max_signals_per_hour}")
                 
             except Exception as e:
                 self.logger.error(f"Error sending trading signal: {e}")
