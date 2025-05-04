@@ -54,9 +54,9 @@ class MT5SignalGenerator:
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M5    # Only on 5-minute timeframe
+                    mt5.TIMEFRAME_M5    
                 ],
-                'params': {'rsi_length': 7, 'overbought': 75, 'oversold': 25}  # Faster RSI with more extreme thresholds
+                'params': {'rsi_length': 7, 'overbought': 75, 'oversold': 25}  
             },
             'support_resistance': {
                 'symbols': [
@@ -206,6 +206,22 @@ class MT5SignalGenerator:
             return self.format_signal(symbol, "SELL", df)
             
         return None
+    
+    
+    # def kernel_regresion(self, _src: float, _size, height: float) -> float:
+    #     """ 
+    #     Calculates the kernel regresssion using
+    #     the Nadaraya-Watson estimator
+    #     """
+    #     yhat: float = 0.0
+        
+    #     _currentWeight: float = 0.0
+    #     _cumulativeWeight: float = 0.0
+    #     _src = (pl.col("close"))
+        
+    #     return yhat
+        
+    
     
     def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=14, overbought=70, oversold=30):
         """Calculate RSI reversal signal with Polars"""
