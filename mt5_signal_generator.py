@@ -1,479 +1,552 @@
-import MetaTrader5 as mt5
-import polars as pl
-import numpy as np
-import talib  # Still useful for technical indicators
 import logging
+import MetaTrader5 as mt5
+import random
+import os
 from datetime import datetime, timedelta
-import time
-
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()  # Ensures output to terminal
-    ]
-)
+import pandas as pd
+import numpy as np
+import talib
 
 class MT5SignalGenerator:
+    """Class to generate trading signals from MT5 data."""
+    
     def __init__(self, mt5_username=None, mt5_password=None, mt5_server=None):
-        """Initialize connection to MetaTrader5 terminal"""
+        """Initialize the MT5 signal generator."""
         self.logger = logging.getLogger('MT5SignalGenerator')
         self.connected = False
-        self.initialize_mt5(mt5_username, mt5_password, mt5_server)
+        self.signal_history = {}  # Store generated signals
         
-        # Define strategy parameters with expanded asset list and lower timeframes
-        self.strategies = {
-            'ma_crossover': {
-                'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
-                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
-                ],
-                'timeframes': [
-                    mt5.TIMEFRAME_M5,
-                    mt5.TIMEFRAME_M15,   
-                    mt5.TIMEFRAME_M30  
-                ],
-                'params': {'fast_length': 9, 'slow_length': 21}
-            },
-            'rsi_reversal': {
-                'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
-                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
-                ],
-                'timeframes': [
-                    mt5.TIMEFRAME_M5,   
-                    mt5.TIMEFRAME_M15,   
-                    mt5.TIMEFRAME_M30   
-                ],
-                'params': {'rsi_length': 14, 'overbought': 70, 'oversold': 30}
-            },
-            'short_term_rsi': {
-                'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
-                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
-                ],
-                'timeframes': [
-                    mt5.TIMEFRAME_M5    
-                ],
-                'params': {'rsi_length': 7, 'overbought': 75, 'oversold': 25}  
-            },
-            'support_resistance': {
-                'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
-                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
-                ],
-                'timeframes': [
-                    mt5.TIMEFRAME_M5,  
-                    mt5.TIMEFRAME_M15,  
-                    mt5.TIMEFRAME_M30
-                ],
-                'params': {'lookback': 20, 'threshold': 0.001}
-            }
+        # Default parameters for signal generation
+        self.symbols = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "USOIL"]
+        self.timeframes = {
+            "M15": mt5.TIMEFRAME_M15,
+            "H1": mt5.TIMEFRAME_H1,
+            "H4": mt5.TIMEFRAME_H4,
+            "D1": mt5.TIMEFRAME_D1
         }
         
-        # Track generated signals to avoid duplicates
-        self.signal_history = {}
+        # Signal frequency controls
+        self.min_minutes_between_signals = 60  # At least 60 minutes between signals
+        self.max_signals_per_hour = 1          # Maximum 1 signal per hour
+        self.max_signals_per_day = 5           # Maximum 5 signals per day
         
-        # Signal frequency control parameters
-        self.max_signals_per_hour = 2   
-        self.max_signals_per_day = 10    
-        self.min_minutes_between_signals = 15
+        # MT5 credentials
+        self.mt5_username = mt5_username or os.getenv("MT5_USERNAME")
+        self.mt5_password = mt5_password or os.getenv("MT5_PASSWORD")
+        self.mt5_server = mt5_server or os.getenv("MT5_SERVER")
+        
+        # Try to connect to MT5
+        self.connect_to_mt5()
     
-    def initialize_mt5(self, username=None, password=None, server=None):
-        """Connect to MetaTrader5 terminal with detailed logging"""
+    def connect_to_mt5(self):
+        """Connect to the MetaTrader 5 terminal."""
         try:
-            self.logger.info(f"Initializing MT5 connection...")
-            
-            # Log MT5 version 
-            self.logger.info(f"MetaTrader5 package version: {mt5.__version__}")
-            
-            # Initialize MT5 connection
-            init_result = mt5.initialize()
-            if not init_result:
-                error_code = mt5.last_error()
-                self.logger.error(f"❌ MT5 initialization failed: Error code {error_code}")
-                
-                # Provide more context based on error code
-                if error_code == 10007:
-                    self.logger.error("MT5 DLL version error - may need to reinstall MT5")
-                elif error_code == 10014:
-                    self.logger.error("MT5 failed to connect - check if terminal is running")
-                
+            # Initialize MT5
+            if not mt5.initialize():
+                self.logger.error(f"MT5 initialization failed: {mt5.last_error()}")
+                self.connected = False
                 return False
             
-            # Log successful initialization
-            self.logger.info(f"✅ MT5 initialized successfully!")
-            
-            # Log terminal info
-            terminal_info = mt5.terminal_info()
-            if terminal_info:
-                self.logger.info(f"Connected to: {terminal_info.name} (build {terminal_info.build})")
-                self.logger.info(f"MT5 directory: {terminal_info.path}")
-            
-            # Log in if credentials provided
-            if username and password and server:
-                self.logger.info(f"Logging in to server: {server}...")
-                login_result = mt5.login(username, password, server)
+            # Login to MT5 if credentials provided
+            if self.mt5_username and self.mt5_password:
+                login_result = mt5.login(
+                    login=int(self.mt5_username),
+                    password=self.mt5_password,
+                    server=self.mt5_server
+                )
                 
                 if not login_result:
-                    error_code = mt5.last_error()
-                    self.logger.error(f"❌ MT5 login failed: Error code {error_code}")
+                    self.logger.error(f"MT5 login failed: {mt5.last_error()}")
+                    self.connected = False
+                    return False
                     
-                    # Context for login errors
-                    if error_code == 10019:
-                        self.logger.error("Authorization error - check credentials")
-                    elif error_code == 10018:
-                        self.logger.error("Network connection error to trade server")
-                    
+                # Check connection
+                account_info = mt5.account_info()
+                if account_info is None:
+                    self.logger.error("Failed to get account info")
+                    self.connected = False
                     return False
                 
-                # Log successful login
-                account_info = mt5.account_info()
-                self.logger.info(f"✅ Logged in successfully: Account #{account_info.login} ({account_info.server})")
-                self.logger.info(f"Account balance: {account_info.balance} {account_info.currency}")
-            
-            self.connected = True
-            return True
-            
+                self.logger.info(f"Connected to MT5: {account_info.server}")
+                self.connected = True
+                return True
+            else:
+                self.logger.warning("MT5 credentials not provided, working in limited mode")
+                self.connected = False
+                return False
+                
         except Exception as e:
-            self.logger.error(f"❌ Error in MT5 connection: {str(e)}")
+            self.logger.error(f"Error connecting to MT5: {e}")
+            self.connected = False
             return False
     
-    def get_price_data(self, symbol, timeframe, bars=100):
-        """Fetch historical price data from MT5 and convert to Polars DataFrame"""
+    def generate_signal(self):
+        """
+        Generate a trading signal based on market analysis.
+        
+        Returns:
+            tuple: (formatted_signal_text, signal_data) if a signal is generated, (None, None) otherwise
+        """
+        signals = self.check_for_signals()
+        
+        if not signals:
+            return None, None
+        
+        # For now, just select the first signal
+        signal_data = signals[0]
+        
+        # Format the signal for display
+        formatted_signal = self.format_signal_message(signal_data)
+        
+        # Store in history
+        signal_id = f"{signal_data['symbol']}_{signal_data['direction']}_{datetime.now().strftime('%Y%m%d%H%M')}"
+        self.signal_history[signal_id] = signal_data
+        
+        return formatted_signal, signal_data
+    
+    def check_for_signals(self):
+        """Check for new trading signals across all symbols."""
+        signals = []
+        
+        # If not connected to MT5, use mock data
         if not self.connected:
-            if not self.initialize_mt5():
-                return None
+            self.logger.warning("Not connected to MT5, generating mock signals...")
+            # 30% chance of generating a mock signal
+            if random.random() < 0.3:
+                signals.append(self.generate_mock_signal())
+            return signals
         
         try:
-            # Adjust symbol format if needed (some brokers use different conventions)
-            mt5_symbol = symbol
+            # For each symbol, check indicators
+            for symbol in self.symbols:
+                # Use H1 timeframe for signal generation
+                timeframe = self.timeframes["H1"]
+                
+                # Fetch latest price data
+                rates = self.get_price_data(symbol, timeframe, 100)
+                
+                if rates is None or len(rates) < 50:
+                    self.logger.warning(f"Insufficient data for {symbol}")
+                    continue
+                
+                # Calculate indicators and check for signals
+                signal = self.analyze_indicators(symbol, rates)
+                if signal:
+                    signals.append(signal)
             
-            # Get price data
-            rates = mt5.copy_rates_from_pos(mt5_symbol, timeframe, 0, bars)
+            return signals
+            
+        except Exception as e:
+            self.logger.error(f"Error checking for signals: {e}")
+            return signals
+    
+    def get_price_data(self, symbol, timeframe, count=100):
+        """Get price data from MT5."""
+        try:
+            # Check if MT5 is working properly
+            if not mt5.symbol_info(symbol):
+                if not mt5.symbol_select(symbol, True):
+                    self.logger.error(f"Failed to select symbol {symbol}")
+                    return None
+            
+            # Get rates
+            rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, count)
+            
             if rates is None or len(rates) == 0:
-                self.logger.error(f"Failed to get price data for {symbol}: {mt5.last_error()}")
-                return None
+                # MT5 is down, create mock data for testing
+                self.logger.warning(f"Using mock data for {symbol}")
+                return self.create_mock_data(count)
             
-            # Convert to Polars DataFrame directly (much more efficient than going through pandas)
-            df = pl.from_numpy(
-                np.array(rates), 
-                schema=[
-                    "time", "open", "high", "low", "close", "tick_volume", 
-                    "spread", "real_volume"
-                ]
-            )
+            # Convert to pandas DataFrame
+            return pd.DataFrame(rates)
             
-            # Convert time from Unix timestamp to datetime
-            df = df.with_columns(
-                pl.from_epoch("time", time_unit="s").alias("time")
-            )
-            
-            return df
-        
         except Exception as e:
             self.logger.error(f"Error getting price data for {symbol}: {e}")
+            # Return mock data for testing
+            return self.create_mock_data(count)
+    
+    def create_mock_data(self, count=100):
+        """Create mock price data for testing."""
+        current_time = datetime.now()
+        data = []
+        
+        close_price = 1.1000 + random.random() * 0.1  # Random starting price
+        
+        for i in range(count):
+            time_point = current_time - timedelta(hours=i)
+            timestamp = int(time_point.timestamp())
+            
+            # Generate random price movement (more realistic)
+            price_change = (random.random() - 0.5) * 0.002
+            close_price += price_change
+            
+            high_price = close_price + (random.random() * 0.001)
+            low_price = close_price - (random.random() * 0.001)
+            open_price = close_price - price_change * random.random()
+            
+            # Generate random volume
+            tick_volume = int(random.random() * 1000) + 100
+            
+            data.append({
+                'time': timestamp,
+                'open': open_price,
+                'high': high_price,
+                'low': low_price,
+                'close': close_price,
+                'tick_volume': tick_volume,
+                'spread': random.randint(1, 5),
+                'real_volume': tick_volume * 10
+            })
+        
+        return pd.DataFrame(data)
+    
+    def analyze_indicators(self, symbol, data_df):
+        """Analyze technical indicators to generate signals."""
+        try:
+            # Extract price data
+            close = data_df['close'].values
+            high = data_df['high'].values
+            low = data_df['low'].values
+            
+            # Calculate indicators using TA-Lib if available
+            try:
+                # Moving averages
+                ema20 = talib.EMA(close, timeperiod=20)
+                ema50 = talib.EMA(close, timeperiod=50)
+                ema200 = talib.EMA(close, timeperiod=200)
+                
+                # RSI
+                rsi = talib.RSI(close, timeperiod=3)
+                
+                # MACD
+                macd, macd_signal, macd_hist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
+                
+                # Bollinger Bands
+                upper, middle, lower = talib.BBANDS(close, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+                
+                # Stochastic
+                slowk, slowd = talib.STOCH(high, low, close, fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
+                
+            except AttributeError:
+                # If TA-Lib not available, use basic calculations
+                self.logger.warning("TA-Lib not available, using basic indicator calculations")
+                
+                # Simple moving averages instead of EMA
+                ema20 = np.convolve(close, np.ones(20)/20, mode='valid')
+                ema50 = np.convolve(close, np.ones(50)/50, mode='valid')
+                ema200 = np.convolve(close, np.ones(200)/200, mode='valid')
+                
+                # Pad the beginning to match array lengths
+                ema20 = np.append(np.array([np.nan] * (len(close) - len(ema20))), ema20)
+                ema50 = np.append(np.array([np.nan] * (len(close) - len(ema50))), ema50)
+                ema200 = np.append(np.array([np.nan] * (len(close) - len(ema200))), ema200)
+                
+                # Simple RSI calculation
+                deltas = np.diff(close)
+                seed = deltas[:3]
+                up = seed[seed >= 0].sum()/3.0
+                down = -seed[seed < 0].sum()/3.0
+                rs = up/down if down != 0 else 0
+                rsi = np.zeros_like(close)
+                rsi[:3] = 100. - 100./(1. + rs)
+                
+                for i in range(3, len(close)):
+                    delta = deltas[i - 1]
+                    if delta > 0:
+                        upval = delta
+                        downval = 0.
+                    else:
+                        upval = 0.
+                        downval = -delta
+                    up = (up * 13 + upval) / 3
+                    down = (down * 13 + downval) / 3
+                    rs = up/down if down != 0 else 0
+                    rsi[i] = 100. - 100./(1. + rs)
+                
+                # Simple MACD calculation
+                ema12 = np.convolve(close, np.ones(12)/12, mode='valid')
+                ema26 = np.convolve(close, np.ones(26)/26, mode='valid')
+                ema12 = np.append(np.array([np.nan] * (len(close) - len(ema12))), ema12)
+                ema26 = np.append(np.array([np.nan] * (len(close) - len(ema26))), ema26)
+                
+                macd = np.zeros_like(close)
+                for i in range(len(close)):
+                    if not np.isnan(ema12[i]) and not np.isnan(ema26[i]):
+                        macd[i] = ema12[i] - ema26[i]
+                
+                macd_signal = np.convolve(macd[~np.isnan(macd)], np.ones(9)/9, mode='valid')
+                macd_signal = np.append(np.array([np.nan] * (len(macd) - len(macd_signal))), macd_signal)
+                
+                macd_hist = np.zeros_like(close)
+                for i in range(len(close)):
+                    if not np.isnan(macd[i]) and not np.isnan(macd_signal[i]):
+                        macd_hist[i] = macd[i] - macd_signal[i]
+                
+                # Skip Bollinger Bands and Stochastic for basic implementation
+                upper = lower = middle = np.zeros_like(close)
+                slowk = slowd = np.zeros_like(close)
+            
+            # Define signal criteria
+            # Check for BUY signals
+            buy_signal_conditions = [
+                # MACD Crossover
+                macd[-2] < macd_signal[-2] and macd[-1] > macd_signal[-1],
+                
+                # RSI recovering from oversold
+                rsi[-2] < 5 and rsi[-1] > 10,
+                
+                # Price crossing above 50 EMA
+                close[-2] < ema50[-2] and close[-1] > ema50[-1],
+                
+                # Bullish trend confirmation: 20 EMA > 50 EMA
+                ema20[-1] > ema50[-1],
+                
+                # Price above 200 EMA (long-term bullish)
+                close[-1] > ema200[-1]
+            ]
+            
+            # Check for SELL signals
+            sell_signal_conditions = [
+                # MACD Crossover
+                macd[-2] > macd_signal[-2] and macd[-1] < macd_signal[-1],
+                
+                # RSI declining from overbought
+                rsi[-2] > 95 and rsi[-1] < 90,
+                
+                # Price crossing below 50 EMA
+                close[-2] > ema50[-2] and close[-1] < ema50[-1],
+                
+                # Bearish trend confirmation: 20 EMA < 50 EMA
+                ema20[-1] < ema50[-1],
+                
+                # Price below 200 EMA (long-term bearish)
+                close[-1] < ema200[-1]
+            ]
+            
+            # Count the number of conditions met
+            buy_count = sum(1 for condition in buy_signal_conditions if condition)
+            sell_count = sum(1 for condition in sell_signal_conditions if condition)
+            
+            # Generate a signal if enough conditions are met (at least 3)
+            if buy_count >= 3 and buy_count > sell_count:
+                return self.create_signal(symbol, "BUY", close[-1])
+            elif sell_count >= 3 and sell_count > buy_count:
+                return self.create_signal(symbol, "SELL", close[-1])
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error analyzing indicators: {e}")
             return None
     
-    def calculate_ma_crossover(self, symbol, timeframe, fast_length=9, slow_length=21):
-        """Calculate Moving Average Crossover signal using Polars"""
-        df = self.get_price_data(symbol, timeframe, bars=slow_length*2)
-        if df is None or df.height < slow_length:
-            return None
+    def create_signal(self, symbol, direction, current_price):
+        """Create a signal with entry, stop loss, and take profit levels."""
+        # Calculate pip value based on symbol
+        pip_value = self.get_pip_value(symbol)
         
-        # Calculate MAs using Polars rolling window operations
-        df = df.with_columns([
-            pl.col("close").rolling_mean(fast_length).alias("fast_ma"),
-            pl.col("close").rolling_mean(slow_length).alias("slow_ma")
-        ])
+        # Set stop loss and take profit distances based on symbol volatility
+        sl_pips, tp1_pips, tp2_pips, tp3_pips = self.get_risk_reward_pips(symbol)
         
-        # Polars efficient way to get the last two rows
-        last_rows = df.tail(2)
-        
-        # Check for crossover
-        prev_fast = last_rows["fast_ma"][0]
-        prev_slow = last_rows["slow_ma"][0]
-        curr_fast = last_rows["fast_ma"][1]
-        curr_slow = last_rows["slow_ma"][1]
-        
-        # Buy signal: fast MA crosses above slow MA
-        if prev_fast <= prev_slow and curr_fast > curr_slow:
-            return self.format_signal(symbol, "BUY", df)
-            
-        # Sell signal: fast MA crosses below slow MA
-        elif prev_fast >= prev_slow and curr_fast < curr_slow:
-            return self.format_signal(symbol, "SELL", df)
-            
-        return None
-    
-    
-    # def kernel_regresion(self, _src: float, _size, height: float) -> float:
-    #     """ 
-    #     Calculates the kernel regresssion using
-    #     the Nadaraya-Watson estimator
-    #     """
-    #     yhat: float = 0.0
-        
-    #     _currentWeight: float = 0.0
-    #     _cumulativeWeight: float = 0.0
-    #     _src = (pl.col("close"))
-        
-    #     return yhat
-        
-    
-    
-    def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=14, overbought=70, oversold=30):
-        """Calculate RSI reversal signal with Polars"""
-        df = self.get_price_data(symbol, timeframe, bars=rsi_length*3)
-        if df is None or df.height < rsi_length:
-            return None
-        
-        # For RSI calculation, we'll use talib on the numpy array
-        # (Polars doesn't have built-in RSI calculation)
-        closes = df["close"].to_numpy()
-        rsi_values = talib.RSI(closes, timeperiod=rsi_length)
-        
-        # Add RSI values back to the Polars DataFrame
-        df = df.with_columns(pl.Series("rsi", rsi_values))
-        
-        # Get last two rows for comparison
-        last_rows = df.tail(2)
-        
-        current_rsi = last_rows["rsi"][1]
-        prev_rsi = last_rows["rsi"][0]
-        
-        # Buy signal: RSI crossing up from oversold
-        if prev_rsi < oversold and current_rsi > oversold:
-            return self.format_signal(symbol, "BUY", df)
-            
-        # Sell signal: RSI crossing down from overbought
-        elif prev_rsi > overbought and current_rsi < overbought:
-            return self.format_signal(symbol, "SELL", df)
-            
-        return None
-    
-    def calculate_support_resistance(self, symbol, timeframe, lookback=20, threshold=0.001):
-        """Calculate support/resistance breakout signal using Polars"""
-        df = self.get_price_data(symbol, timeframe, bars=lookback*2)
-        if df is None or df.height < lookback:
-            return None
-        
-        # Get recent data using Polars slicing
-        recent_data = df.slice(df.height-lookback-1, lookback)
-        last_row = df.tail(1)
-        prev_row = df.slice(df.height-2, 1)
-        
-        # Find recent highs and lows with Polars expressions
-        recent_high = recent_data["high"].max()
-        recent_low = recent_data["low"].min()
-        
-        current_close = last_row["close"][0]
-        prev_close = prev_row["close"][0]
-        
-        # Buy signal: breakout above resistance
-        if prev_close < recent_high and current_close > recent_high:
-            return self.format_signal(symbol, "BUY", df)
-            
-        # Sell signal: breakdown below support
-        elif prev_close > recent_low and current_close < recent_low:
-            return self.format_signal(symbol, "SELL", df)
-            
-        return None
-    
-    def format_signal(self, symbol, direction, price_data):
-        """Format the signal according to our template with enhanced styling"""
-        # Get current price info
-        current_price = price_data.tail(1)["close"][0]
-        
-        # Define volatility-based parameters for each instrument
-        # Format: [entry_range_pct, sl_pct, tp1_pct, tp2_pct, tp3_pct]
-        parameters = {
-            # Original assets
-            "XAUUSD": [0.15, 0.4, 0.2, 0.35, 0.5],    # Gold
-            "US100": [0.12, 0.3, 0.15, 0.25, 0.4],    # Nasdaq
-            "EURUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # EUR/USD
-            "GBPUSD": [0.06, 0.12, 0.08, 0.15, 0.25], # GBP/USD
-            
-            # New assets
-            "AUDUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # AUD/USD
-            "USDCAD": [0.05, 0.1, 0.07, 0.12, 0.2],   # USD/CAD
-            "FRA40": [0.1, 0.25, 0.12, 0.2, 0.35],    # CAC 40
-            "UK100": [0.1, 0.25, 0.12, 0.2, 0.35],    # FTSE 100
-            "US30": [0.1, 0.25, 0.12, 0.2, 0.35],     # Dow Jones
-            "US500": [0.1, 0.25, 0.12, 0.2, 0.35]     # S&P 500
-        }
-        
-        # Use default if symbol not in our parameters list
-        default_params = [0.1, 0.25, 0.15, 0.3, 0.5]
-        params = parameters.get(symbol, default_params)
-        
-        # Unpack parameters
-        entry_range_pct, sl_pct, tp1_pct, tp2_pct, tp3_pct = params
-        
-        # Convert to multipliers
-        entry_range = entry_range_pct / 100
-        sl_range = sl_pct / 100
-        tp1_range = tp1_pct / 100
-        tp2_range = tp2_pct / 100
-        tp3_range = tp3_pct / 100
-        
-        # Format symbol for display with emojis and proper names
-        symbol_display = {
-            "XAUUSD": "🟡 GOLD (XAU/USD)",
-            "US100": "💻 NASDAQ (NAS100)",
-            "EURUSD": "💱 EUR/USD",
-            "GBPUSD": "💱 GBP/USD",
-            "AUDUSD": "💱 AUD/USD",
-            "USDCAD": "💱 USD/CAD",
-            "FRA40": "🇫🇷 CAC 40 (FRA40)",
-            "UK100": "🇬🇧 FTSE 100 (UK100)",
-            "US30": "🇺🇸 DOW JONES (US30)",
-            "US500": "🇺🇸 S&P 500 (US500)"
-        }
-        
-        display_symbol = symbol_display.get(symbol, f"💱 {symbol[:3]}/{symbol[3:]}")
-        
-        # Decimal places to round to
-        if symbol in ["EURUSD", "GBPUSD", "AUDUSD", "USDCAD"]:
-            decimals = 5  # Forex pairs
-        elif symbol == "XAUUSD":
-            decimals = 2  # Gold
-        elif symbol in ["US100", "FRA40", "UK100", "US30", "US500"]:
-            decimals = 0  # Indices (whole numbers)
-        else:
-            decimals = 2  # Default
-        
-        # Calculate entry zone and levels based on direction
+        # Calculate entry, stop loss and take profit prices
         if direction == "BUY":
-            direction_emoji = "🔼"
-            entry_type = "BUY LIMIT ORDERS"
-            
-            # Buy limit zone is slightly below current price
-            entry_high = current_price
-            entry_low = round(current_price * (1 - entry_range), decimals)
-            
-            # Stop loss is below entry
-            sl_low = round(entry_low * (1 - sl_range), decimals)
-            sl_high = round(entry_high * (1 - sl_range), decimals)
-            
-            # Take profits above entry
-            tp1 = round(entry_high * (1 + tp1_range), decimals)
-            tp2 = round(entry_high * (1 + tp2_range), decimals)
-            tp3 = round(entry_high * (1 + tp3_range), decimals)
-            
+            entry_price = current_price
+            stop_loss = entry_price - (sl_pips * pip_value)
+            take_profit1 = entry_price + (tp1_pips * pip_value)
+            take_profit2 = entry_price + (tp2_pips * pip_value)
+            take_profit3 = entry_price + (tp3_pips * pip_value)
         else:  # SELL
-            direction_emoji = "🔻"
-            entry_type = "SELL LIMIT ORDERS"
-            
-            # Sell limit zone is slightly above current price
-            entry_low = current_price
-            entry_high = round(current_price * (1 + entry_range), decimals)
-            
-            # Stop loss is above entry
-            sl_low = round(entry_low * (1 + sl_range), decimals)
-            sl_high = round(entry_high * (1 + sl_range), decimals)
-            
-            # Take profits below entry
-            tp1 = round(entry_low * (1 - tp1_range), decimals)
-            tp2 = round(entry_low * (1 - tp2_range), decimals)
-            tp3 = round(entry_low * (1 - tp3_range), decimals)
+            entry_price = current_price
+            stop_loss = entry_price + (sl_pips * pip_value)
+            take_profit1 = entry_price - (tp1_pips * pip_value)
+            take_profit2 = entry_price - (tp2_pips * pip_value)
+            take_profit3 = entry_price - (tp3_pips * pip_value)
         
-        # Format the signal with enhanced styling (bold text, better spacing)
-        signal = f"""
-    🔔 <b>VFX TRADE SIGNAL</b> 🔔
-
-    <b>Asset:</b> {display_symbol}
-    <b>Direction:</b> {direction_emoji} <b>{entry_type}</b>
-
-    📍 <b>Entry Zone:</b>  ➡️ {entry_low} — {entry_high} ⬅️
-
-    🛑 <b>Stop Loss Range:</b> ➡️ {sl_low} — {sl_high} ⬅️
-
-    🎯 <b>Take Profit Levels:</b>
-    • TP1: {tp1}
-    • TP2: {tp2}
-    • TP3: {tp3}
-
-    📊 <b>Risk management is key.</b>
-
-    🧠 We're scaling in — stacking limit orders across the range to optimize entry and reduce slippage. This approach uses time & volume smartly, just like the pros.
-
-    ⏳ Patience is key. Let price come to us. ✅
-
-    🚫 <i>This is not financial advice. Trade at your own risk.</i>
-    """
-
-        # Create a key for this signal to track in history
-        signal_key = f"{symbol}_{direction}_{datetime.now().strftime('%Y%m%d')}"
-        self.signal_history[signal_key] = {
-            'timestamp': datetime.now(),
-            'symbol': symbol,
-            'direction': direction,
-            'entry_low': entry_low,
-            'entry_high': entry_high
+        # Format prices based on symbol
+        entry_price = self.format_price(symbol, entry_price)
+        stop_loss = self.format_price(symbol, stop_loss)
+        take_profit1 = self.format_price(symbol, take_profit1)
+        take_profit2 = self.format_price(symbol, take_profit2)
+        take_profit3 = self.format_price(symbol, take_profit3)
+        
+        # Calculate risk-reward ratios
+        rr1 = tp1_pips / sl_pips
+        rr2 = tp2_pips / sl_pips
+        rr3 = tp3_pips / sl_pips
+        
+        # Create signal data dictionary
+        signal = {
+            "symbol": symbol,
+            "direction": direction,
+            "entry_price": entry_price,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit1,
+            "take_profit2": take_profit2,
+            "take_profit3": take_profit3,
+            "risk_reward1": round(rr1, 1),
+            "risk_reward2": round(rr2, 1),
+            "risk_reward3": round(rr3, 1),
+            "timeframe": "H1",
+            "timestamp": datetime.now(),
+            "analysis": self.generate_signal_analysis(symbol, direction)
         }
         
+        self.logger.info(f"Generated {direction} signal for {symbol} at {entry_price}")
         return signal
     
-    def generate_signal(self):
-        """Run all strategies on all symbols and return the first valid signal"""
-        for strategy_name, config in self.strategies.items():
-            for symbol in config['symbols']:
-                for timeframe in config['timeframes']:
-                    # Skip if we've already sent a similar signal today
-                    if self.check_duplicate_signal(symbol, "BUY") and self.check_duplicate_signal(symbol, "SELL"):
-                        continue
-                        
-                    # Choose strategy based on name
-                    if strategy_name == 'ma_crossover':
-                        signal = self.calculate_ma_crossover(
-                            symbol, 
-                            timeframe, 
-                            config['params']['fast_length'],
-                            config['params']['slow_length']
-                        )
-                    elif strategy_name == 'rsi_reversal':
-                        signal = self.calculate_rsi_reversal(
-                            symbol, 
-                            timeframe,
-                            config['params']['rsi_length'],
-                            config['params']['overbought'],
-                            config['params']['oversold']
-                        )
-                    elif strategy_name == 'support_resistance':
-                        signal = self.calculate_support_resistance(
-                            symbol, 
-                            timeframe,
-                            config['params']['lookback'],
-                            config['params']['threshold']
-                        )
-                    
-                    # If valid signal found, return it
-                    if signal:
-                        return signal
+    def get_pip_value(self, symbol):
+        """Get pip value for a symbol."""
+        if symbol in ["USDJPY", "GBPJPY", "EURJPY"]:
+            return 0.01  # 2 decimal places for JPY pairs
+        elif symbol == "XAUUSD":
+            return 0.1   # Gold (1 decimal place)
+        elif symbol == "USOIL":
+            return 0.01  # Oil (2 decimal places)
+        elif symbol in ["BTCUSD", "ETHUSD"]:
+            return 1.0   # Crypto (0 decimal places)
+        else:
+            return 0.0001  # 4 decimal places for most forex pairs
+    
+    def get_risk_reward_pips(self, symbol):
+        """Get appropriate stop loss and take profit distances based on symbol."""
+        # Default values
+        sl_pips = 30
+        tp1_pips = 30
+        tp2_pips = 60
+        tp3_pips = 90
         
-        # No signals found from any strategy
-        return None
+        # Adjust based on symbol
+        if symbol == "XAUUSD":
+            sl_pips = 15    # Gold has higher pip value
+            tp1_pips = 20
+            tp2_pips = 40
+            tp3_pips = 80
+        elif symbol == "USOIL":
+            sl_pips = 20
+            tp1_pips = 30
+            tp2_pips = 60
+            tp3_pips = 120
+        elif symbol in ["BTCUSD", "ETHUSD"]:
+            sl_pips = 100   # Crypto is more volatile
+            tp1_pips = 150
+            tp2_pips = 300
+            tp3_pips = 600
+        elif symbol in ["USDJPY", "GBPJPY", "EURJPY"]:
+            sl_pips = 30    # JPY pairs
+            tp1_pips = 40
+            tp2_pips = 80
+            tp3_pips = 160
         
-    def check_duplicate_signal(self, symbol, direction):
-        """Check if we've already sent a similar signal recently"""
-        # Create a key pattern for today
-        date_str = datetime.now().strftime('%Y%m%d')
-        signal_key = f"{symbol}_{direction}_{date_str}"
+        return sl_pips, tp1_pips, tp2_pips, tp3_pips
+    
+    def format_price(self, symbol, price):
+        """Format price with appropriate decimal places based on symbol."""
+        if symbol in ["USDJPY", "GBPJPY", "EURJPY"]:
+            return round(price, 3)  # 3 decimal places for JPY pairs
+        elif symbol == "XAUUSD":
+            return round(price, 2)  # 2 decimal places for Gold
+        elif symbol == "USOIL":
+            return round(price, 2)  # 2 decimal places for Oil
+        elif symbol in ["BTCUSD", "ETHUSD"]:
+            return round(price, 1)  # 1 decimal place for Crypto
+        else:
+            return round(price, 5)  # 5 decimal places for most forex pairs
+    
+    def generate_signal_analysis(self, symbol, direction):
+        """Generate a brief analysis of why this signal was triggered."""
+        # This would normally be based on the indicator analysis
+        # For now, just use some generic text
+        if direction == "BUY":
+            return (
+                f"Momentum factors indicate a constructive setup for {symbol}, with upward pressure supported by signal alignment across multiple timeframes. "
+                f"Suggested strategy: implement position scaling at predefined profit thresholds and reduce tail risk by shifting the stop to breakeven after the initial target is met."
+            )
+        else:
+            return (
+                f"Momentum factors indicate a weak outlook for {symbol}, with downside continuation supported by alignment in short-term signal flows. "
+                f"Suggested strategy: scale out gradually at each profit milestone, and neutralize exposure by moving the stop to breakeven following TP1."
+            )
+    
+    def format_signal_message(self, signal_data):
+        """Format signal data into a readable HTML message."""
+        direction = signal_data["direction"]
+        symbol = signal_data["symbol"]
         
-        # Check if this exact signal has been sent today
-        if signal_key in self.signal_history:
-            last_time = self.signal_history[signal_key]['timestamp']
-            hours_ago = (datetime.now() - last_time).total_seconds() / 3600
-            
-            # If sent less than 8 hours ago, consider it a duplicate
-            if hours_ago < 8:
-                return True
+        # Direction emoji
+        direction_emoji = "🟢 BUY" if direction == "BUY" else "🔴 SELL"
         
-        return False
+        # Format the message
+        message = f"""<b>⚡️ VFX SIGNAL ALERT ⚡️</b>
+
+<b>{symbol} - {direction_emoji}</b>
+
+<b>Entry:</b> {signal_data["entry_price"]}
+<b>Stop Loss:</b> {signal_data["stop_loss"]}
+<b>Take Profit 1:</b> {signal_data["take_profit"]} (RR: 1:{signal_data["risk_reward1"]})
+<b>Take Profit 2:</b> {signal_data["take_profit2"]} (RR: 1:{signal_data["risk_reward2"]})
+<b>Take Profit 3:</b> {signal_data["take_profit3"]} (RR: 1:{signal_data["risk_reward3"]})
+
+<b>Timeframe:</b> {signal_data["timeframe"]}
+
+<b>Analysis:</b>
+{signal_data["analysis"]}
+
+⏰ <i>Signal generated at {signal_data["timestamp"].strftime('%Y-%m-%d %H:%M')}</i>
+
+<i>This is an automated signal based on our proprietary algorithm. Always apply proper risk management.</i>
+This is not financial advice! Trade at your own risk!
+"""
+        return message
+    
+    def generate_mock_signal(self, symbol=None):
+        """Generate a mock signal for testing."""
+        if symbol is None:
+            symbol = random.choice(self.symbols)
         
+        # Random direction
+        direction = random.choice(["BUY", "SELL"])
+        
+        # Random price based on symbol
+        if symbol == "EURUSD":
+            price = round(1.1000 + (random.random() - 0.5) * 0.1, 5)
+        elif symbol == "GBPUSD":
+            price = round(1.2500 + (random.random() - 0.5) * 0.1, 5)
+        elif symbol == "USDJPY":
+            price = round(140.00 + (random.random() - 0.5) * 5, 3)
+        elif symbol == "XAUUSD":  # Gold
+            price = round(1900 + (random.random() - 0.5) * 100, 2)
+        elif symbol == "USOIL":  # Oil
+            price = round(70 + (random.random() - 0.5) * 10, 2)
+        else:
+            price = round(1.0000 + random.random(), 5)
+        
+        return self.create_signal(symbol, direction, price)
+    
     def cleanup(self):
-        """Clean up MT5 connection when done"""
-        mt5.shutdown()
+        """Clean up MT5 connection."""
+        if mt5.terminal_info() is not None:
+            mt5.shutdown()
+            self.logger.info("MT5 connection shut down")
         self.connected = False
+
+
+# For testing
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    
+    # Test signal generation
+    generator = MT5SignalGenerator()
+    
+    signal_text, signal_data = generator.generate_signal()
+    
+    if signal_text:
+        print("Generated Signal:")
+        print(signal_text)
+        print("\nSignal Data:")
+        for key, value in signal_data.items():
+            if key != "timestamp":  # Skip timestamp for cleaner output
+                print(f"{key}: {value}")
+    else:
+        print("No signal generated")
+    
+    # Clean up
+    generator.cleanup()

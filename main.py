@@ -1,8 +1,9 @@
 import logging
 import polars as pl
-from datetime import datetime, time, timedelta
 import asyncio
 import os
+
+from datetime import datetime, time, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -19,8 +20,12 @@ from auth_system import TradingAccountAuth
 from db_manager import TradingBotDatabase
 from telegram.ext.filters import MessageFilter
 from vfx_Scheduler import VFXMessageScheduler
-from mt5_signal_generator import MT5SignalGenerator
 from signal_dispatcher import SignalDispatcher
+
+from dotenv import load_dotenv
+from news_fetcher import FinancialNewsFetcher
+from groq_client import GroqClient
+from signal_tracker import SignalTracker
 
 
 # Global instance of the VFX message scheduler
@@ -1374,6 +1379,77 @@ async def test_account_command(update: Update, context: ContextTypes.DEFAULT_TYP
     
     await update.message.reply_text("Test completed.")
 
+async def check_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to manually check and send news."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    global signal_dispatcher
+    
+    if not signal_dispatcher:
+        await update.message.reply_text("⚠️ Signal system not initialized yet.")
+        return
+    
+    await update.message.reply_text("Checking for latest financial news...")
+    success = await signal_dispatcher.fetch_and_send_news()
+    
+    if success:
+        await update.message.reply_text("✅ News sent successfully!")
+    else:
+        await update.message.reply_text("❌ Failed to fetch or send news.")
+
+async def check_signals_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to manually check for signal updates."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    global signal_dispatcher
+    
+    if not signal_dispatcher:
+        await update.message.reply_text("⚠️ Signal system not initialized yet.")
+        return
+    
+    await update.message.reply_text("Checking for signal updates...")
+    success = await signal_dispatcher.check_and_send_signal_updates()
+    
+    if success:
+        await update.message.reply_text("✅ Signal updates sent successfully!")
+    else:
+        await update.message.reply_text("ℹ️ No signal updates needed at this time.")
+
+async def add_test_signal_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to add a test signal for tracking."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    global signal_dispatcher
+    
+    if not signal_dispatcher:
+        await update.message.reply_text("⚠️ Signal system not initialized yet.")
+        return
+    
+    # Create a test signal
+    test_signal = {
+        "symbol": "EURUSD",
+        "direction": "BUY",
+        "entry_price": 1.0750,
+        "stop_loss": 1.0720,
+        "take_profit": 1.0820,
+        "take_profit2": 1.0850,
+        "take_profit3": 1.0900,
+        "timestamp": datetime.now()
+    }
+    
+    success = await signal_dispatcher.process_new_signal(test_signal)
+    
+    if success:
+        await update.message.reply_text("✅ Test signal added successfully!")
+    else:
+        await update.message.reply_text("❌ Failed to add test signal.")
+
 # -------------------------------------- MANUAL FUNCTIONS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 
@@ -1569,7 +1645,7 @@ async def send_giveaway_message(context: ContextTypes.DEFAULT_TYPE) -> None:
     elif current_hour == 18:
         message = vfx_scheduler.get_welcome_message(18)
         message_type = "Giveaway Countdown"
-    elif current_hour == 23:
+    elif current_hour == 19:
         message = vfx_scheduler.get_welcome_message(19)
         message_type = "Giveaway Winner Announcement"
     else:
@@ -2137,8 +2213,8 @@ async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
     # Log successful initialization
     logger.info("Signal system initialized successfully")
     
-    # Schedule the first signal check
-    await signal_dispatcher.check_and_send_signal()
+    # Start the background scheduler for periodic checks
+    asyncio.create_task(signal_dispatcher.run_scheduler())
 
 # Define the scheduled function
 async def check_and_send_signals(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2545,6 +2621,9 @@ def main() -> None:
     application.add_handler(CommandHandler("forwardmt5", forward_mt5_command))
     application.add_handler(CommandHandler("testaccount", test_account_command))
     application.add_handler(CommandHandler("signalstatus", signal_status_command))
+    application.add_handler(CommandHandler("checknews", check_news_command))
+    application.add_handler(CommandHandler("checksignals", check_signals_command))
+    application.add_handler(CommandHandler("testsignals", add_test_signal_command))
 
 
     application.add_handler(MessageHandler(filters.ALL, silent_update_logger), group=999)
