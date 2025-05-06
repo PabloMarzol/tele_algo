@@ -17,7 +17,7 @@ class FinancialNewsFetcher:
             api_url (str): API URL
         """
         self.api_key = api_key or os.getenv("NEWS_API_KEY")
-        self.api_url = api_url or os.getenv("NEWS_API_URL", "https://financialmodelingprep.com/api/v3/stock_news")
+        self.api_url = api_url or os.getenv("NEWS_API_URL", "https://financialmodelingprep.com/api/v3")
         self.logger = logging.getLogger('FinancialNewsFetcher')
         
         if not self.api_key:

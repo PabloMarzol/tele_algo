@@ -1,4 +1,5 @@
 import logging
+import traceback
 import polars as pl
 import asyncio
 import os
@@ -2207,14 +2208,58 @@ async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
     """Initialize the signal system after bot startup"""
     global signal_dispatcher
     
-    # Initialize signal dispatcher with the bot instance
-    signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
+    try:
+        logger.info("Starting signal system initialization...")
+        
+        # Initialize signal dispatcher with the bot instance
+        signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
+        
+        # Check if initialization was successful
+        if signal_dispatcher.initialized:
+            logger.info("Signal system initialized successfully")
+            
+            # Start the background scheduler for periodic checks
+            asyncio.create_task(signal_dispatcher.run_scheduler())
+            
+            # Send confirmation to admin
+            for admin_id in ADMIN_USER_ID:
+                try:
+                    await context.bot.send_message(
+                        chat_id=admin_id,
+                        text="✅ Signal system initialized successfully!"
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send confirmation to admin {admin_id}: {e}")
+        else:
+            error_msg = signal_dispatcher.initialization_error or "Unknown error"
+            logger.error(f"Signal system initialization failed: {error_msg}")
+            
+            # Send error to admin
+            for admin_id in ADMIN_USER_ID:
+                try:
+                    await context.bot.send_message(
+                        chat_id=admin_id,
+                        text=f"⚠️ Signal system initialization failed: {error_msg}\n\nCheck server logs for details."
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send error to admin {admin_id}: {e}")
     
-    # Log successful initialization
-    logger.info("Signal system initialized successfully")
-    
-    # Start the background scheduler for periodic checks
-    asyncio.create_task(signal_dispatcher.run_scheduler())
+    except Exception as e:
+        logger.error(f"Error in init_signal_system: {e}")
+        logger.error(traceback.format_exc())
+        
+        # Set signal_dispatcher to a special state that indicates failure
+        signal_dispatcher = {"initialized": False, "error": str(e)}
+        
+        # Notify admin
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=f"⚠️ Critical error initializing signal system: {e}\n\nCheck server logs for details."
+                )
+            except Exception as e2:
+                logger.error(f"Failed to send critical error to admin {admin_id}: {e2}")
 
 # Define the scheduled function
 async def check_and_send_signals(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2246,7 +2291,6 @@ async def report_signal_system_status(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Error generating status report: {e}")
 
-
 async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Command to check signal system status for admins"""
     if not await is_user_admin(update, context):
@@ -2256,7 +2300,19 @@ async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TY
     global signal_dispatcher
     
     if not signal_dispatcher:
-        await update.message.reply_text("⚠️ Signal system not initialized yet.")
+        await update.message.reply_text("⚠️ Signal system not initialized yet. Please wait or check logs.")
+        return
+    
+    # Handle the case where signal_dispatcher is a dict with error info
+    if isinstance(signal_dispatcher, dict) and not signal_dispatcher.get("initialized", False):
+        error = signal_dispatcher.get("error", "Unknown error")
+        await update.message.reply_text(f"⚠️ Signal system failed to initialize: {error}")
+        return
+    
+    # Handle the case where it's properly initialized but failed
+    if not getattr(signal_dispatcher, "initialized", False):
+        error = getattr(signal_dispatcher, "initialization_error", "Unknown error")
+        await update.message.reply_text(f"⚠️ Signal system initialization failed: {error}")
         return
     
     try:
@@ -2266,21 +2322,20 @@ async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TY
         # Get time since last signal
         hours_since = (datetime.now() - signal_dispatcher.last_signal_time).total_seconds() / 3600
         
-        # Count signals sent today
-        today_signals = sum(1 for k,v in signal_dispatcher.signal_generator.signal_history.items() 
-                         if v['timestamp'].date() == datetime.now().date())
-        
-        # Format a detailed status message
+        # Format status message
         status_msg = (
             f"📊 SIGNAL SYSTEM STATUS 📊\n\n"
             f"MT5 Connection: {'✅ Connected' if mt5_connected else '❌ Disconnected'}\n"
             f"Hours since last signal: {hours_since:.1f}\n"
-            f"Signals sent today: {today_signals}\n"
             f"Next check eligible: {'✅ Yes' if hours_since >= signal_dispatcher.min_signal_interval_hours else '❌ No'}\n\n"
         )
         
-        # Add signal history
-        if signal_dispatcher.signal_generator.signal_history:
+        # If MT5 is not connected, add connection error details
+        if not mt5_connected and signal_dispatcher.signal_generator.connection_error:
+            status_msg += f"Connection Error: {signal_dispatcher.signal_generator.connection_error}\n\n"
+        
+        # Add signal history if available
+        if hasattr(signal_dispatcher.signal_generator, 'signal_history') and signal_dispatcher.signal_generator.signal_history:
             status_msg += "📝 RECENT SIGNALS:\n\n"
             
             # Sort by timestamp (most recent first)
@@ -2753,9 +2808,9 @@ def main() -> None:
     # Schedule interval messages - runs every 20 minutes
     # Calculate time until next 20-minute mark
     minutes_now = now.minute
-    minutes_until_next_interval = 5 - (minutes_now % 5)
+    minutes_until_next_interval = 21 - (minutes_now % 21)
     if minutes_until_next_interval == 0:
-        minutes_until_next_interval = 5
+        minutes_until_next_interval = 21
     
     next_interval = now + timedelta(minutes=minutes_until_next_interval)
     next_interval = next_interval.replace(second=0, microsecond=0)
@@ -2763,7 +2818,7 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=21),
         first=seconds_until_next_interval  # Time in seconds until first run
     )
     
@@ -2772,9 +2827,9 @@ def main() -> None:
          Strategy Channel Messages
     ------------------------------------"""
      # Schedule strategy channel messages - every 45 minutes (different frequency)
-    minutes_until_strategy = 5 - (minutes_now % 5)
+    minutes_until_strategy = 30 - (minutes_now % 30)
     if minutes_until_strategy == 0:
-        minutes_until_strategy = 5
+        minutes_until_strategy = 30
     
     next_strategy = now + timedelta(minutes=minutes_until_strategy)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2782,16 +2837,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_strategy_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=30),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Prop-Capital Channel Messages
     ------------------------------------"""
-    minutes_until_propMessage = 5 - (minutes_now % 5)
+    minutes_until_propMessage = 35 - (minutes_now % 35)
     if minutes_until_propMessage == 0:
-        minutes_until_propMessage = 5
+        minutes_until_propMessage = 35
     
     next_strategy = now + timedelta(minutes=minutes_until_propMessage)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2799,16 +2854,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_prop_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=35),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Signals Channel Messages
     ------------------------------------"""
-    minutes_until_signals = 5 - (minutes_now % 5)
+    minutes_until_signals = 36 - (minutes_now % 36)
     if minutes_until_signals == 0:
-        minutes_until_signals = 5
+        minutes_until_signals = 36
     
     next_strategy = now + timedelta(minutes=minutes_until_signals)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2816,16 +2871,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_signals_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=36),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Education Channel Messages
     ------------------------------------"""
-    minutes_until_educationMessages = 5 - (minutes_now % 5)
+    minutes_until_educationMessages = 37 - (minutes_now % 37)
     if minutes_until_educationMessages == 0:
-        minutes_until_educationMessages = 5
+        minutes_until_educationMessages = 37
     
     next_strategy = now + timedelta(minutes=minutes_until_educationMessages)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2833,7 +2888,7 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_ed_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=37),
         first=seconds_until_strategy
     )
     
@@ -2847,7 +2902,7 @@ def main() -> None:
     job_queue.run_repeating(
         check_and_send_signals,
         interval=600,  # 10 Min
-        first=120  # First check 2 minutes after bot start
+        first=60  # First check 2 minutes after bot start
     )
     
     job_queue.run_repeating(

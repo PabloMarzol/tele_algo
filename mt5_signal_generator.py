@@ -1,392 +1,463 @@
 import MetaTrader5 as mt5
-import pandas as pd
+import polars as pl
 import numpy as np
+import talib  # Still useful for technical indicators
+import logging
 from datetime import datetime, timedelta
 import time
-import logging
-import random
-import os
 
-# Configure logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='mt5_signal_generator.log'
+    handlers=[
+        logging.StreamHandler()  # Ensures output to terminal
+    ]
 )
-logger = logging.getLogger('MT5SignalGenerator')
 
 class MT5SignalGenerator:
-    """
-    Signal generator for trading systems using MetaTrader 5
-    With enhanced features:
-    - Multiple timeframes (15M, 30M)
-    - Entry and stop loss ranges
-    - Multiple indicator combinations
-    """
-    
-    def __init__(self, username=None, password=None, server=None):
-        """Initialize MT5 connection and signal parameters"""
+    def __init__(self, mt5_username=None, mt5_password=None, mt5_server=None):
+        """Initialize connection to MetaTrader5 terminal"""
+        self.logger = logging.getLogger('MT5SignalGenerator')
         self.connected = False
-        self.last_check_time = datetime.now() - timedelta(hours=12)  # Start ready to check
-        self.signal_history = {}  # Store generated signals
+        self.initialize_mt5(mt5_username, mt5_password, mt5_server)
         
-        # Symbol settings
-        self.symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD"]
-        self.timeframes = {
-            "M5": mt5.TIMEFRAME_M5,
-            "M15": mt5.TIMEFRAME_M15,
+        # Define strategy parameters with expanded asset list and lower timeframes
+        self.strategies = {
+            'ma_crossover': {
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M5,
+                    mt5.TIMEFRAME_M15,   
+                    mt5.TIMEFRAME_M30  
+                ],
+                'params': {'fast_length': 9, 'slow_length': 21}
+            },
+            'rsi_reversal': {
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M5,   
+                    mt5.TIMEFRAME_M15,   
+                    mt5.TIMEFRAME_M30   
+                ],
+                'params': {'rsi_length': 14, 'overbought': 70, 'oversold': 30}
+            },
+            'short_term_rsi': {
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M5    # Only on 5-minute timeframe
+                ],
+                'params': {'rsi_length': 7, 'overbought': 75, 'oversold': 25}  # Faster RSI with more extreme thresholds
+            },
+            'support_resistance': {
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M5,  
+                    mt5.TIMEFRAME_M15,  
+                    mt5.TIMEFRAME_M30
+                ],
+                'params': {'lookback': 20, 'threshold': 0.001}
+            }
         }
-        self.default_timeframe = "M15"  # Changed from 1H to 15 min
         
-        # Connect to MT5
-        self.connect_to_mt5(username, password, server)
+        # Track generated signals to avoid duplicates
+        self.signal_history = {}
         
-        # Signal settings
-        self.signal_cooldown_hours = 1  # Min hours between signals for same symbol
-        self.max_signals_per_day = 4  # Max signals per symbol per day
-        self.enable_range_entries = True  # Use price ranges instead of exact prices
-        
-    def connect_to_mt5(self, username=None, password=None, server=None):
-        """Connect to MetaTrader 5 terminal"""
+        # Signal frequency control parameters
+        self.max_signals_per_hour = 2   
+        self.max_signals_per_day = 10    
+        self.min_minutes_between_signals = 15
+    
+    def initialize_mt5(self, username=None, password=None, server=None):
+        """Connect to MetaTrader5 terminal with detailed logging"""
         try:
-            # Load from environment variables if not provided
-            if not username:
-                username = os.environ.get("MT5_USERNAME", "")
-            if not password:
-                password = os.environ.get("MT5_PASSWORD", "")
-            if not server:
-                server = os.environ.get("MT5_SERVER", "")
+            self.logger.info(f"Initializing MT5 connection...")
+            
+            # Log MT5 version 
+            self.logger.info(f"MetaTrader5 package version: {mt5.__version__}")
             
             # Initialize MT5 connection
-            if not mt5.initialize():
-                logger.error(f"MT5 initialization failed with error code {mt5.last_error()}")
+            init_result = mt5.initialize()
+            if not init_result:
+                error_code = mt5.last_error()
+                self.logger.error(f"❌ MT5 initialization failed: Error code {error_code}")
+                
+                # Provide more context based on error code
+                if error_code == 10007:
+                    self.logger.error("MT5 DLL version error - may need to reinstall MT5")
+                elif error_code == 10014:
+                    self.logger.error("MT5 failed to connect - check if terminal is running")
+                
                 return False
             
-            # Log in to MT5 account if credentials provided
+            # Log successful initialization
+            self.logger.info(f"✅ MT5 initialized successfully!")
+            
+            # Log terminal info
+            terminal_info = mt5.terminal_info()
+            if terminal_info:
+                self.logger.info(f"Connected to: {terminal_info.name} (build {terminal_info.build})")
+                self.logger.info(f"MT5 directory: {terminal_info.path}")
+            
+            # Log in if credentials provided
             if username and password and server:
+                self.logger.info(f"Logging in to server: {server}...")
                 login_result = mt5.login(username, password, server)
+                
                 if not login_result:
-                    logger.error(f"MT5 login failed with error code {mt5.last_error()}")
+                    error_code = mt5.last_error()
+                    self.logger.error(f"❌ MT5 login failed: Error code {error_code}")
+                    
+                    # Context for login errors
+                    if error_code == 10019:
+                        self.logger.error("Authorization error - check credentials")
+                    elif error_code == 10018:
+                        self.logger.error("Network connection error to trade server")
+                    
                     return False
-                logger.info(f"Connected to MT5 as {username} on {server}")
-            else:
-                logger.warning("No MT5 credentials provided, using existing terminal connection")
+                
+                # Log successful login
+                account_info = mt5.account_info()
+                self.logger.info(f"✅ Logged in successfully: Account #{account_info.login} ({account_info.server})")
+                self.logger.info(f"Account balance: {account_info.balance} {account_info.currency}")
             
             self.connected = True
             return True
             
         except Exception as e:
-            logger.error(f"Error connecting to MT5: {e}")
-            self.connected = False
+            self.logger.error(f"❌ Error in MT5 connection: {str(e)}")
             return False
     
-    def disconnect_from_mt5(self):
-        """Disconnect from MetaTrader 5 terminal"""
-        if self.connected:
-            mt5.shutdown()
-            self.connected = False
-            logger.info("Disconnected from MT5")
-    
-    def fetch_data(self, symbol, timeframe_str=None, bars=200):
-        """Fetch historical data for a symbol and timeframe"""
+    def get_price_data(self, symbol, timeframe, bars=100):
+        """Fetch historical price data from MT5 and convert to Polars DataFrame"""
         if not self.connected:
-            if not self.connect_to_mt5():
+            if not self.initialize_mt5():
                 return None
         
-        if not timeframe_str:
-            timeframe_str = self.default_timeframe
-        
-        timeframe = self.timeframes.get(timeframe_str, mt5.TIMEFRAME_M15)
-        
         try:
-            # Fetch the data from MT5
-            rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, bars)
+            # Adjust symbol format if needed (some brokers use different conventions)
+            mt5_symbol = symbol
             
+            # Get price data
+            rates = mt5.copy_rates_from_pos(mt5_symbol, timeframe, 0, bars)
             if rates is None or len(rates) == 0:
-                logger.error(f"Failed to fetch data for {symbol} on {timeframe_str}")
+                self.logger.error(f"Failed to get price data for {symbol}: {mt5.last_error()}")
                 return None
             
-            # Convert to pandas DataFrame
-            df = pd.DataFrame(rates)
-            df['time'] = pd.to_datetime(df['time'], unit='s')
+            # Convert to Polars DataFrame directly (much more efficient than going through pandas)
+            df = pl.from_numpy(
+                np.array(rates), 
+                schema=[
+                    "time", "open", "high", "low", "close", "tick_volume", 
+                    "spread", "real_volume"
+                ]
+            )
+            
+            # Convert time from Unix timestamp to datetime
+            df = df.with_columns(
+                pl.from_epoch("time", time_unit="s").alias("time")
+            )
             
             return df
         
         except Exception as e:
-            logger.error(f"Error fetching data for {symbol} on {timeframe_str}: {e}")
+            self.logger.error(f"Error getting price data for {symbol}: {e}")
             return None
     
-    def add_indicators(self, df):
-        """Add multiple technical indicators to DataFrame"""
-        if df is None or len(df) == 0:
+    def calculate_ma_crossover(self, symbol, timeframe, fast_length=9, slow_length=21):
+        """Calculate Moving Average Crossover signal using Polars"""
+        df = self.get_price_data(symbol, timeframe, bars=slow_length*2)
+        if df is None or df.height < slow_length:
             return None
         
-        try:
-            # RSI indicator
-            delta = df['close'].diff()
-            gain = delta.where(delta > 0, 0)
-            loss = -delta.where(delta < 0, 0)
-            
-            avg_gain = gain.rolling(window=3).mean()
-            avg_loss = loss.rolling(window=3).mean()
-            
-            rs = avg_gain / avg_loss
-            df['rsi'] = 100 - (100 / (1 + rs))
-            
-            # Multiple EMAs
-            df['ema_fast'] = df['close'].ewm(span=9, adjust=False).mean()
-            df['ema_medium'] = df['close'].ewm(span=21, adjust=False).mean()
-            df['ema_slow'] = df['close'].ewm(span=50, adjust=False).mean()
-            
-            # Bollinger Bands
-            df['sma_20'] = df['close'].rolling(window=20).mean()
-            df['std_20'] = df['close'].rolling(window=20).std()
-            df['bb_upper'] = df['sma_20'] + (df['std_20'] * 2)
-            df['bb_lower'] = df['sma_20'] - (df['std_20'] * 2)
-            df['bb_width'] = (df['bb_upper'] - df['bb_lower']) / df['sma_20']
-            
-            # Stochastic Oscillator
-            n = 14  # Default %K period
-            m = 3   # Default %K smoothing
-            t = 3   # Default %D period
-            
-            # Calculate %K
-            low_min = df['low'].rolling(window=n).min()
-            high_max = df['high'].rolling(window=n).max()
-            df['stoch_k'] = 100 * ((df['close'] - low_min) / (high_max - low_min))
-            
-            # Calculate %D
-            df['stoch_d'] = df['stoch_k'].rolling(window=t).mean()
-            
-            return df
+        # Calculate MAs using Polars rolling window operations
+        df = df.with_columns([
+            pl.col("close").rolling_mean(fast_length).alias("fast_ma"),
+            pl.col("close").rolling_mean(slow_length).alias("slow_ma")
+        ])
         
-        except Exception as e:
-            logger.error(f"Error adding indicators: {e}")
-            return df
+        # Polars efficient way to get the last two rows
+        last_rows = df.tail(2)
+        
+        # Check for crossover
+        prev_fast = last_rows["fast_ma"][0]
+        prev_slow = last_rows["slow_ma"][0]
+        curr_fast = last_rows["fast_ma"][1]
+        curr_slow = last_rows["slow_ma"][1]
+        
+        # Buy signal: fast MA crosses above slow MA
+        if prev_fast <= prev_slow and curr_fast > curr_slow:
+            return self.format_signal(symbol, "BUY", df)
+            
+        # Sell signal: fast MA crosses below slow MA
+        elif prev_fast >= prev_slow and curr_fast < curr_slow:
+            return self.format_signal(symbol, "SELL", df)
+            
+        return None
     
-    def check_rsi_ema_signal(self, df, symbol):
-        """Check for trading signals based on RSI and EMA strategy"""
-        if df is None or len(df) < 50:
+    def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=14, overbought=70, oversold=30):
+        """Calculate RSI reversal signal with Polars"""
+        df = self.get_price_data(symbol, timeframe, bars=rsi_length*3)
+        if df is None or df.height < rsi_length:
             return None
         
-        # Get the most recent data
-        current = df.iloc[-1]
-        previous = df.iloc[-2]
+        # For RSI calculation, we'll use talib on the numpy array
+        # (Polars doesn't have built-in RSI calculation)
+        closes = df["close"].to_numpy()
+        rsi_values = talib.RSI(closes, timeperiod=rsi_length)
         
-        # Strategy 1: RSI crosses with EMA trend confirmation
-        # BUY signal: RSI crosses above 10 (from oversold) and price is above EMA
-        # SELL signal: RSI crosses below 95 (from overbought) and price is below EMA
+        # Add RSI values back to the Polars DataFrame
+        df = df.with_columns(pl.Series("rsi", rsi_values))
         
-        signal = None
+        # Get last two rows for comparison
+        last_rows = df.tail(2)
         
-        # BUY signal conditions
-        if (previous['rsi'] < 10 and current['rsi'] > 10 and 
-            current['close'] > current['ema_medium'] and
-            current['ema_fast'] > current['ema_medium']):
-            signal = {
-                'symbol': symbol,
-                'direction': 'BUY',
-                'strategy': 'RSI_EMA',
-                'timestamp': datetime.now()
-            }
+        current_rsi = last_rows["rsi"][1]
+        prev_rsi = last_rows["rsi"][0]
+        
+        # Buy signal: RSI crossing up from oversold
+        if prev_rsi < oversold and current_rsi > oversold:
+            return self.format_signal(symbol, "BUY", df)
             
-        # SELL signal conditions
-        elif (previous['rsi'] > 95 and current['rsi'] < 95 and 
-              current['close'] < current['ema_medium'] and
-              current['ema_fast'] < current['ema_medium']):
-            signal = {
-                'symbol': symbol,
-                'direction': 'SELL',
-                'strategy': 'RSI_EMA',
-                'timestamp': datetime.now()
-            }
+        # Sell signal: RSI crossing down from overbought
+        elif prev_rsi > overbought and current_rsi < overbought:
+            return self.format_signal(symbol, "SELL", df)
+            
+        return None
+    
+    def calculate_support_resistance(self, symbol, timeframe, lookback=20, threshold=0.001):
+        """Calculate support/resistance breakout signal using Polars"""
+        df = self.get_price_data(symbol, timeframe, bars=lookback*2)
+        if df is None or df.height < lookback:
+            return None
         
-        if signal:
-            # Generate entry and exit levels
-            self.add_signal_levels(signal, df)
+        # Get recent data using Polars slicing
+        recent_data = df.slice(df.height-lookback-1, lookback)
+        last_row = df.tail(1)
+        prev_row = df.slice(df.height-2, 1)
+        
+        # Find recent highs and lows with Polars expressions
+        recent_high = recent_data["high"].max()
+        recent_low = recent_data["low"].min()
+        
+        current_close = last_row["close"][0]
+        prev_close = prev_row["close"][0]
+        
+        # Buy signal: breakout above resistance
+        if prev_close < recent_high and current_close > recent_high:
+            return self.format_signal(symbol, "BUY", df)
+            
+        # Sell signal: breakdown below support
+        elif prev_close > recent_low and current_close < recent_low:
+            return self.format_signal(symbol, "SELL", df)
+            
+        return None
+    
+    def format_signal(self, symbol, direction, price_data):
+        """Format the signal according to our template with enhanced styling"""
+        # Get current price info
+        current_price = price_data.tail(1)["close"][0]
+        
+        # Define volatility-based parameters for each instrument
+        # Format: [entry_range_pct, sl_pct, tp1_pct, tp2_pct, tp3_pct]
+        parameters = {
+            # Original assets
+            "XAUUSD": [0.15, 0.4, 0.2, 0.35, 0.5],    # Gold
+            "US100": [0.12, 0.3, 0.15, 0.25, 0.4],    # Nasdaq
+            "EURUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # EUR/USD
+            "GBPUSD": [0.06, 0.12, 0.08, 0.15, 0.25], # GBP/USD
+            
+            # New assets
+            "AUDUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # AUD/USD
+            "USDCAD": [0.05, 0.1, 0.07, 0.12, 0.2],   # USD/CAD
+            "FRA40": [0.1, 0.25, 0.12, 0.2, 0.35],    # CAC 40
+            "UK100": [0.1, 0.25, 0.12, 0.2, 0.35],    # FTSE 100
+            "US30": [0.1, 0.25, 0.12, 0.2, 0.35],     # Dow Jones
+            "US500": [0.1, 0.25, 0.12, 0.2, 0.35]     # S&P 500
+        }
+        
+        # Use default if symbol not in our parameters list
+        default_params = [0.1, 0.25, 0.15, 0.3, 0.5]
+        params = parameters.get(symbol, default_params)
+        
+        # Unpack parameters
+        entry_range_pct, sl_pct, tp1_pct, tp2_pct, tp3_pct = params
+        
+        # Convert to multipliers
+        entry_range = entry_range_pct / 100
+        sl_range = sl_pct / 100
+        tp1_range = tp1_pct / 100
+        tp2_range = tp2_pct / 100
+        tp3_range = tp3_pct / 100
+        
+        # Format symbol for display with emojis and proper names
+        symbol_display = {
+            "XAUUSD": "🟡 GOLD (XAU/USD)",
+            "US100": "💻 NASDAQ (NAS100)",
+            "EURUSD": "💱 EUR/USD",
+            "GBPUSD": "💱 GBP/USD",
+            "AUDUSD": "💱 AUD/USD",
+            "USDCAD": "💱 USD/CAD",
+            "FRA40": "🇫🇷 CAC 40 (FRA40)",
+            "UK100": "🇬🇧 FTSE 100 (UK100)",
+            "US30": "🇺🇸 DOW JONES (US30)",
+            "US500": "🇺🇸 S&P 500 (US500)"
+        }
+        
+        display_symbol = symbol_display.get(symbol, f"💱 {symbol[:3]}/{symbol[3:]}")
+        
+        # Decimal places to round to
+        if symbol in ["EURUSD", "GBPUSD", "AUDUSD", "USDCAD"]:
+            decimals = 5  # Forex pairs
+        elif symbol == "XAUUSD":
+            decimals = 2  # Gold
+        elif symbol in ["US100", "FRA40", "UK100", "US30", "US500"]:
+            decimals = 0  # Indices (whole numbers)
+        else:
+            decimals = 2  # Default
+        
+        # Calculate entry zone and levels based on direction
+        if direction == "BUY":
+            direction_emoji = "🔼"
+            entry_type = "BUY LIMIT ORDERS"
+            
+            # Buy limit zone is slightly below current price
+            entry_high = current_price
+            entry_low = round(current_price * (1 - entry_range), decimals)
+            
+            # Stop loss is below entry
+            sl_low = round(entry_low * (1 - sl_range), decimals)
+            sl_high = round(entry_high * (1 - sl_range), decimals)
+            
+            # Take profits above entry
+            tp1 = round(entry_high * (1 + tp1_range), decimals)
+            tp2 = round(entry_high * (1 + tp2_range), decimals)
+            tp3 = round(entry_high * (1 + tp3_range), decimals)
+            
+        else:  # SELL
+            direction_emoji = "🔻"
+            entry_type = "SELL LIMIT ORDERS"
+            
+            # Sell limit zone is slightly above current price
+            entry_low = current_price
+            entry_high = round(current_price * (1 + entry_range), decimals)
+            
+            # Stop loss is above entry
+            sl_low = round(entry_low * (1 + sl_range), decimals)
+            sl_high = round(entry_high * (1 + sl_range), decimals)
+            
+            # Take profits below entry
+            tp1 = round(entry_low * (1 - tp1_range), decimals)
+            tp2 = round(entry_low * (1 - tp2_range), decimals)
+            tp3 = round(entry_low * (1 - tp3_range), decimals)
+        
+        # Format the signal with enhanced styling (bold text, better spacing)
+        signal = f"""
+    🔔 <b>VFX TRADE SIGNAL</b> 🔔
+
+    <b>Asset:</b> {display_symbol}
+    <b>Direction:</b> {direction_emoji} <b>{entry_type}</b>
+
+    📍 <b>Entry Zone:</b>  ➡️ {entry_low} — {entry_high} ⬅️
+
+    🛑 <b>Stop Loss Range:</b> ➡️ {sl_low} — {sl_high} ⬅️
+
+    🎯 <b>Take Profit Levels:</b>
+    • TP1: {tp1}
+    • TP2: {tp2}
+    • TP3: {tp3}
+
+    📊 <b>Risk management is key.</b>
+
+    🧠 We're scaling in — stacking limit orders across the range to optimize entry and reduce slippage. This approach uses time & volume smartly, just like the pros.
+
+    ⏳ Patience is key. Let price come to us. ✅
+
+    🚫 <i>This is not financial advice. Trade at your own risk.</i>
+    """
+
+        # Create a key for this signal to track in history
+        signal_key = f"{symbol}_{direction}_{datetime.now().strftime('%Y%m%d')}"
+        self.signal_history[signal_key] = {
+            'timestamp': datetime.now(),
+            'symbol': symbol,
+            'direction': direction,
+            'entry_low': entry_low,
+            'entry_high': entry_high
+        }
         
         return signal
     
-    def check_bb_stoch_signal(self, df, symbol):
-        """Check for trading signals based on Bollinger Bands and Stochastic strategy"""
-        if df is None or len(df) < 50:
-            return None
-        
-        # Get the most recent data
-        current = df.iloc[-1]
-        previous = df.iloc[-2]
-        
-        # Strategy 2: Bollinger Band Breakout with Stochastic confirmation
-        # BUY signal: Price closes above upper BB and Stochastic K crosses above D in oversold territory
-        # SELL signal: Price closes below lower BB and Stochastic K crosses below D in overbought territory
-        
-        signal = None
-        
-        # BUY signal conditions
-        if (current['close'] > current['bb_upper'] and
-            previous['stoch_k'] < previous['stoch_d'] and
-            current['stoch_k'] > current['stoch_d'] and
-            previous['stoch_k'] < 30):
-            signal = {
-                'symbol': symbol,
-                'direction': 'BUY',
-                'strategy': 'BB_STOCH',
-                'timestamp': datetime.now()
-            }
-            
-        # SELL signal conditions
-        elif (current['close'] < current['bb_lower'] and
-              previous['stoch_k'] > previous['stoch_d'] and
-              current['stoch_k'] < current['stoch_d'] and
-              previous['stoch_k'] > 70):
-            signal = {
-                'symbol': symbol,
-                'direction': 'SELL',
-                'strategy': 'BB_STOCH',
-                'timestamp': datetime.now()
-            }
-        
-        if signal:
-            # Generate entry and exit levels
-            self.add_signal_levels(signal, df)
-        
-        return signal
-    
-    def add_signal_levels(self, signal, df):
-        """Add entry/exit levels to signal with price ranges instead of exact points"""
-        try:
-            current = df.iloc[-1]
-            atr = self.calculate_atr(df, 14)  # 14-period ATR
-            
-            # Convert atr to price range percentage (roughly 0.5-1% of price for most forex)
-            range_pct = min(max(atr / current['close'], 0.0015), 0.0050)
-            
-            if signal['direction'] == 'BUY':
-                # For BUY signals
-                signal['entry_price'] = current['close']
-                
-                # Entry range (slightly below to slightly above current price)
-                signal['entry_range_low'] = round(current['close'] * (1 - range_pct), 5)
-                signal['entry_range_high'] = round(current['close'] * (1 + range_pct * 0.5), 5)
-                
-                # Stop loss range (below recent low)
-                recent_low = min(df['low'].iloc[-5:])
-                sl_level = min(recent_low, current['close'] * (1 - range_pct * 3))
-                signal['stop_loss'] = round(sl_level, 5)
-                signal['stop_range_low'] = round(sl_level * (1 - range_pct * 0.5), 5)
-                signal['stop_range_high'] = round(sl_level * (1 + range_pct * 0.5), 5)
-                
-                # Take profit levels (multiple targets)
-                risk = current['close'] - sl_level
-                signal['take_profit'] = round(current['close'] + risk * 1.5, 5)
-                signal['take_profit2'] = round(current['close'] + risk * 2.5, 5)
-                signal['take_profit3'] = round(current['close'] + risk * 4.0, 5)
-                
-            else:
-                # For SELL signals
-                signal['entry_price'] = current['close']
-                
-                # Entry range (slightly above to slightly below current price)
-                signal['entry_range_low'] = round(current['close'] * (1 - range_pct * 0.5), 5)
-                signal['entry_range_high'] = round(current['close'] * (1 + range_pct), 5)
-                
-                # Stop loss range (above recent high)
-                recent_high = max(df['high'].iloc[-5:])
-                sl_level = max(recent_high, current['close'] * (1 + range_pct * 3))
-                signal['stop_loss'] = round(sl_level, 5)
-                signal['stop_range_low'] = round(sl_level * (1 - range_pct * 0.5), 5)
-                signal['stop_range_high'] = round(sl_level * (1 + range_pct * 0.5), 5)
-                
-                # Take profit levels (multiple targets)
-                risk = sl_level - current['close']
-                signal['take_profit'] = round(current['close'] - risk * 1.5, 5)
-                signal['take_profit2'] = round(current['close'] - risk * 2.5, 5)
-                signal['take_profit3'] = round(current['close'] - risk * 4.0, 5)
-            
-        except Exception as e:
-            logger.error(f"Error adding signal levels: {e}")
-            # Fallback to basic levels if calculation fails
-            signal['entry_price'] = current['close']
-            signal['stop_loss'] = current['close'] * (0.98 if signal['direction'] == 'BUY' else 1.02)
-            signal['take_profit'] = current['close'] * (1.02 if signal['direction'] == 'BUY' else 0.98)
-    
-    def calculate_atr(self, df, period=14):
-        """Calculate Average True Range (ATR)"""
-        high_low = df['high'] - df['low']
-        high_close = np.abs(df['high'] - df['close'].shift())
-        low_close = np.abs(df['low'] - df['close'].shift())
-        
-        tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-        atr = tr.rolling(period).mean().iloc[-1]
-        
-        return atr
-    
-    def check_signal_cooldown(self, symbol):
-        """Check if symbol is on cooldown after recent signal"""
-        if symbol in self.signal_history:
-            last_signal_time = self.signal_history[symbol]['timestamp']
-            hours_since = (datetime.now() - last_signal_time).total_seconds() / 3600
-            
-            if hours_since < self.signal_cooldown_hours:
-                return False
-        
-        return True
-    
-    def check_signals(self):
-        """Check for signals across all symbols and strategies"""
-        if not self.connected and not self.connect_to_mt5():
-            return None
-        
-        # Don't check too frequently
-        time_since_check = (datetime.now() - self.last_check_time).total_seconds() / 60
-        if time_since_check < 5:  # Check at most every 5 minutes
-            return None
-        
-        self.last_check_time = datetime.now()
-        
-        # Randomize symbol order to avoid always prioritizing the same symbols
-        symbols = self.symbols.copy()
-        random.shuffle(symbols)
-        
-        # Randomize timeframes to increase signal diversity
-        timeframes = list(self.timeframes.keys())
-        random.shuffle(timeframes)
-        
-        for symbol in symbols:
-            # Check cooldown period
-            if not self.check_signal_cooldown(symbol):
-                continue
-            
-            for timeframe in timeframes:
-                # Get historical data
-                df = self.fetch_data(symbol, timeframe, 200)
-                if df is None:
-                    continue
-                
-                # Add technical indicators
-                df = self.add_indicators(df)
-                if df is None:
-                    continue
-                
-                # Randomly select which strategy to check first for more variety
-                strategies = ["rsi_ema", "bb_stoch"]
-                random.shuffle(strategies)
-                
-                signal = None
-                for strategy in strategies:
-                    if strategy == "rsi_ema":
-                        signal = self.check_rsi_ema_signal(df, symbol)
-                    elif strategy == "bb_stoch":
-                        signal = self.check_bb_stoch_signal(df, symbol)
+    def generate_signal(self):
+        """Run all strategies on all symbols and return the first valid signal"""
+        for strategy_name, config in self.strategies.items():
+            for symbol in config['symbols']:
+                for timeframe in config['timeframes']:
+                    # Skip if we've already sent a similar signal today
+                    if self.check_duplicate_signal(symbol, "BUY") and self.check_duplicate_signal(symbol, "SELL"):
+                        continue
+                        
+                    # Choose strategy based on name
+                    if strategy_name == 'ma_crossover':
+                        signal = self.calculate_ma_crossover(
+                            symbol, 
+                            timeframe, 
+                            config['params']['fast_length'],
+                            config['params']['slow_length']
+                        )
+                    elif strategy_name == 'rsi_reversal':
+                        signal = self.calculate_rsi_reversal(
+                            symbol, 
+                            timeframe,
+                            config['params']['rsi_length'],
+                            config['params']['overbought'],
+                            config['params']['oversold']
+                        )
+                    elif strategy_name == 'support_resistance':
+                        signal = self.calculate_support_resistance(
+                            symbol, 
+                            timeframe,
+                            config['params']['lookback'],
+                            config['params']['threshold']
+                        )
                     
+                    # If valid signal found, return it
                     if signal:
-                        # Add metadata to the signal
-                        signal['timeframe'] = timeframe
-                        
-                        # Store in history
-                        self.signal_history[symbol] = signal
-                        
-                        logger.info(f"New signal: {symbol} {signal['direction']} on {timeframe} - Strategy: {signal['strategy']}")
                         return signal
         
+        # No signals found from any strategy
         return None
+        
+    def check_duplicate_signal(self, symbol, direction):
+        """Check if we've already sent a similar signal recently"""
+        # Create a key pattern for today
+        date_str = datetime.now().strftime('%Y%m%d')
+        signal_key = f"{symbol}_{direction}_{date_str}"
+        
+        # Check if this exact signal has been sent today
+        if signal_key in self.signal_history:
+            last_time = self.signal_history[signal_key]['timestamp']
+            hours_ago = (datetime.now() - last_time).total_seconds() / 3600
+            
+            # If sent less than 8 hours ago, consider it a duplicate
+            if hours_ago < 8:
+                return True
+        
+        return False
+        
+    def cleanup(self):
+        """Clean up MT5 connection when done"""
+        mt5.shutdown()
+        self.connected = False

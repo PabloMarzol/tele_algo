@@ -280,6 +280,51 @@ class GroqClient:
             self.logger.error(f"Error in GROQ API request: {e}")
             return "Error generating text. Please try again later."
 
+    async def generate_signal_followup(self, signal):
+        """Generate a follow-up message for a trading signal using Groq AI"""
+        try:
+            # Format the signal data for the prompt
+            symbol = signal['symbol']
+            direction = signal['direction']
+            entry = signal.get('entry_price', 'N/A')
+            strategy = signal.get('strategy', 'Technical')
+            
+            # Create a prompt for the LLM that will generate a natural-sounding follow-up
+            prompt = f"""You are a professional forex and trading analyst. 
+            A trading signal was just sent with the following details:
+            
+            Symbol: {symbol}
+            Direction: {direction}
+            Entry: {entry}
+            Strategy: {strategy}
+            
+            Please generate a brief, insightful follow-up message (100-150 words) that:
+            1. Explains the rationale behind this signal in professional trading language
+            2. Mentions relevant market conditions or technical patterns
+            3. Provides additional context that might help traders understand the setup
+            4. Uses a confident but not overly promotional tone
+            
+            The message should sound natural and like it was written by a human expert trader.
+            """
+            
+            # Call the Groq API
+            completion = await self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "system", "content": "You are an expert trading analyst who provides insightful follow-up explanations to trading signals."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=300,
+                temperature=0.7
+            )
+            
+            # Extract and return the generated follow-up
+            return completion.choices[0].message.content
+        
+        except Exception as e:
+            self.logger.error(f"Error generating signal follow-up: {e}")
+            return None
+    
 
 # For testing
 if __name__ == "__main__":
