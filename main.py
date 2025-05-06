@@ -1,10 +1,8 @@
 import logging
-import traceback
 import polars as pl
+from datetime import datetime, time, timedelta
 import asyncio
 import os
-
-from datetime import datetime, time, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -21,12 +19,8 @@ from auth_system import TradingAccountAuth
 from db_manager import TradingBotDatabase
 from telegram.ext.filters import MessageFilter
 from vfx_Scheduler import VFXMessageScheduler
+from mt5_signal_generator import MT5SignalGenerator
 from signal_dispatcher import SignalDispatcher
-
-from dotenv import load_dotenv
-from news_fetcher import FinancialNewsFetcher
-from groq_client import GroqClient
-from signal_tracker import SignalTracker
 
 
 # Global instance of the VFX message scheduler
@@ -1380,77 +1374,6 @@ async def test_account_command(update: Update, context: ContextTypes.DEFAULT_TYP
     
     await update.message.reply_text("Test completed.")
 
-async def check_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Admin command to manually check and send news."""
-    if not await is_user_admin(update, context):
-        await update.message.reply_text("This command is only available to admins.")
-        return
-    
-    global signal_dispatcher
-    
-    if not signal_dispatcher:
-        await update.message.reply_text("⚠️ Signal system not initialized yet.")
-        return
-    
-    await update.message.reply_text("Checking for latest financial news...")
-    success = await signal_dispatcher.fetch_and_send_news()
-    
-    if success:
-        await update.message.reply_text("✅ News sent successfully!")
-    else:
-        await update.message.reply_text("❌ Failed to fetch or send news.")
-
-async def check_signals_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Admin command to manually check for signal updates."""
-    if not await is_user_admin(update, context):
-        await update.message.reply_text("This command is only available to admins.")
-        return
-    
-    global signal_dispatcher
-    
-    if not signal_dispatcher:
-        await update.message.reply_text("⚠️ Signal system not initialized yet.")
-        return
-    
-    await update.message.reply_text("Checking for signal updates...")
-    success = await signal_dispatcher.check_and_send_signal_updates()
-    
-    if success:
-        await update.message.reply_text("✅ Signal updates sent successfully!")
-    else:
-        await update.message.reply_text("ℹ️ No signal updates needed at this time.")
-
-async def add_test_signal_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Admin command to add a test signal for tracking."""
-    if not await is_user_admin(update, context):
-        await update.message.reply_text("This command is only available to admins.")
-        return
-    
-    global signal_dispatcher
-    
-    if not signal_dispatcher:
-        await update.message.reply_text("⚠️ Signal system not initialized yet.")
-        return
-    
-    # Create a test signal
-    test_signal = {
-        "symbol": "EURUSD",
-        "direction": "BUY",
-        "entry_price": 1.0750,
-        "stop_loss": 1.0720,
-        "take_profit": 1.0820,
-        "take_profit2": 1.0850,
-        "take_profit3": 1.0900,
-        "timestamp": datetime.now()
-    }
-    
-    success = await signal_dispatcher.process_new_signal(test_signal)
-    
-    if success:
-        await update.message.reply_text("✅ Test signal added successfully!")
-    else:
-        await update.message.reply_text("❌ Failed to add test signal.")
-
 # -------------------------------------- MANUAL FUNCTIONS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 
@@ -2208,58 +2131,14 @@ async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
     """Initialize the signal system after bot startup"""
     global signal_dispatcher
     
-    try:
-        logger.info("Starting signal system initialization...")
-        
-        # Initialize signal dispatcher with the bot instance
-        signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
-        
-        # Check if initialization was successful
-        if signal_dispatcher.initialized:
-            logger.info("Signal system initialized successfully")
-            
-            # Start the background scheduler for periodic checks
-            asyncio.create_task(signal_dispatcher.run_scheduler())
-            
-            # Send confirmation to admin
-            for admin_id in ADMIN_USER_ID:
-                try:
-                    await context.bot.send_message(
-                        chat_id=admin_id,
-                        text="✅ Signal system initialized successfully!"
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send confirmation to admin {admin_id}: {e}")
-        else:
-            error_msg = signal_dispatcher.initialization_error or "Unknown error"
-            logger.error(f"Signal system initialization failed: {error_msg}")
-            
-            # Send error to admin
-            for admin_id in ADMIN_USER_ID:
-                try:
-                    await context.bot.send_message(
-                        chat_id=admin_id,
-                        text=f"⚠️ Signal system initialization failed: {error_msg}\n\nCheck server logs for details."
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send error to admin {admin_id}: {e}")
+    # Initialize signal dispatcher with the bot instance
+    signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
     
-    except Exception as e:
-        logger.error(f"Error in init_signal_system: {e}")
-        logger.error(traceback.format_exc())
-        
-        # Set signal_dispatcher to a special state that indicates failure
-        signal_dispatcher = {"initialized": False, "error": str(e)}
-        
-        # Notify admin
-        for admin_id in ADMIN_USER_ID:
-            try:
-                await context.bot.send_message(
-                    chat_id=admin_id,
-                    text=f"⚠️ Critical error initializing signal system: {e}\n\nCheck server logs for details."
-                )
-            except Exception as e2:
-                logger.error(f"Failed to send critical error to admin {admin_id}: {e2}")
+    # Log successful initialization
+    logger.info("Signal system initialized successfully")
+    
+    # Schedule the first signal check
+    await signal_dispatcher.check_and_send_signal()
 
 # Define the scheduled function
 async def check_and_send_signals(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2291,6 +2170,7 @@ async def report_signal_system_status(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Error generating status report: {e}")
 
+
 async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Command to check signal system status for admins"""
     if not await is_user_admin(update, context):
@@ -2300,19 +2180,7 @@ async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TY
     global signal_dispatcher
     
     if not signal_dispatcher:
-        await update.message.reply_text("⚠️ Signal system not initialized yet. Please wait or check logs.")
-        return
-    
-    # Handle the case where signal_dispatcher is a dict with error info
-    if isinstance(signal_dispatcher, dict) and not signal_dispatcher.get("initialized", False):
-        error = signal_dispatcher.get("error", "Unknown error")
-        await update.message.reply_text(f"⚠️ Signal system failed to initialize: {error}")
-        return
-    
-    # Handle the case where it's properly initialized but failed
-    if not getattr(signal_dispatcher, "initialized", False):
-        error = getattr(signal_dispatcher, "initialization_error", "Unknown error")
-        await update.message.reply_text(f"⚠️ Signal system initialization failed: {error}")
+        await update.message.reply_text("⚠️ Signal system not initialized yet.")
         return
     
     try:
@@ -2322,20 +2190,21 @@ async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TY
         # Get time since last signal
         hours_since = (datetime.now() - signal_dispatcher.last_signal_time).total_seconds() / 3600
         
-        # Format status message
+        # Count signals sent today
+        today_signals = sum(1 for k,v in signal_dispatcher.signal_generator.signal_history.items() 
+                         if v['timestamp'].date() == datetime.now().date())
+        
+        # Format a detailed status message
         status_msg = (
             f"📊 SIGNAL SYSTEM STATUS 📊\n\n"
             f"MT5 Connection: {'✅ Connected' if mt5_connected else '❌ Disconnected'}\n"
             f"Hours since last signal: {hours_since:.1f}\n"
+            f"Signals sent today: {today_signals}\n"
             f"Next check eligible: {'✅ Yes' if hours_since >= signal_dispatcher.min_signal_interval_hours else '❌ No'}\n\n"
         )
         
-        # If MT5 is not connected, add connection error details
-        if not mt5_connected and signal_dispatcher.signal_generator.connection_error:
-            status_msg += f"Connection Error: {signal_dispatcher.signal_generator.connection_error}\n\n"
-        
-        # Add signal history if available
-        if hasattr(signal_dispatcher.signal_generator, 'signal_history') and signal_dispatcher.signal_generator.signal_history:
+        # Add signal history
+        if signal_dispatcher.signal_generator.signal_history:
             status_msg += "📝 RECENT SIGNALS:\n\n"
             
             # Sort by timestamp (most recent first)
@@ -2676,9 +2545,6 @@ def main() -> None:
     application.add_handler(CommandHandler("forwardmt5", forward_mt5_command))
     application.add_handler(CommandHandler("testaccount", test_account_command))
     application.add_handler(CommandHandler("signalstatus", signal_status_command))
-    application.add_handler(CommandHandler("checknews", check_news_command))
-    application.add_handler(CommandHandler("checksignals", check_signals_command))
-    application.add_handler(CommandHandler("testsignals", add_test_signal_command))
 
 
     application.add_handler(MessageHandler(filters.ALL, silent_update_logger), group=999)
@@ -2878,9 +2744,9 @@ def main() -> None:
     """---------------------------------
          Education Channel Messages
     ------------------------------------"""
-    minutes_until_educationMessages = 37 - (minutes_now % 37)
+    minutes_until_educationMessages = 40 - (minutes_now % 40)
     if minutes_until_educationMessages == 0:
-        minutes_until_educationMessages = 37
+        minutes_until_educationMessages = 40
     
     next_strategy = now + timedelta(minutes=minutes_until_educationMessages)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2888,7 +2754,7 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_ed_interval_message,
-        interval=timedelta(minutes=37),
+        interval=timedelta(minutes=40),
         first=seconds_until_strategy
     )
     

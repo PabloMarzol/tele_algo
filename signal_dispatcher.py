@@ -16,9 +16,9 @@ class SignalDispatcher:
         
         # Initialize MT5 signal generator
         self.signal_generator = MT5SignalGenerator(
-            mt5_username=os.getenv("MT5_USERNAME"),
-            mt5_password=os.getenv("MT5_PASSWORD"),
-            mt5_server=os.getenv("MT5_SERVER")
+            username=os.getenv("MT5_USERNAME"),
+            password=os.getenv("MT5_PASSWORD"),
+            server=os.getenv("MT5_SERVER")
         )
         
         # Track last signal time to control frequency

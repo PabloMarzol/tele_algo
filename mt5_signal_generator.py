@@ -16,17 +16,17 @@ logging.basicConfig(
 )
 
 class MT5SignalGenerator:
-    def __init__(self, mt5_username=None, mt5_password=None, mt5_server=None):
+    def __init__(self, username=None, password=None, server=None):
         """Initialize connection to MetaTrader5 terminal"""
         self.logger = logging.getLogger('MT5SignalGenerator')
         self.connected = False
-        self.initialize_mt5(mt5_username, mt5_password, mt5_server)
+        self.initialize_mt5(username, password, server)
         
         # Define strategy parameters with expanded asset list and lower timeframes
         self.strategies = {
             'ma_crossover': {
                 'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
@@ -38,7 +38,7 @@ class MT5SignalGenerator:
             },
             'rsi_reversal': {
                 'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
@@ -46,21 +46,21 @@ class MT5SignalGenerator:
                     mt5.TIMEFRAME_M15,   
                     mt5.TIMEFRAME_M30   
                 ],
-                'params': {'rsi_length': 14, 'overbought': 70, 'oversold': 30}
+                'params': {'rsi_length': 2, 'overbought': 95, 'oversold': 10}
             },
             'short_term_rsi': {
                 'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M5    # Only on 5-minute timeframe
+                    mt5.TIMEFRAME_M5   
                 ],
                 'params': {'rsi_length': 7, 'overbought': 75, 'oversold': 25}  # Faster RSI with more extreme thresholds
             },
             'support_resistance': {
                 'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'US100',
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
@@ -275,7 +275,7 @@ class MT5SignalGenerator:
         parameters = {
             # Original assets
             "XAUUSD": [0.15, 0.4, 0.2, 0.35, 0.5],    # Gold
-            "US100": [0.12, 0.3, 0.15, 0.25, 0.4],    # Nasdaq
+            "NAS100": [0.12, 0.3, 0.15, 0.25, 0.4],    # Nasdaq
             "EURUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # EUR/USD
             "GBPUSD": [0.06, 0.12, 0.08, 0.15, 0.25], # GBP/USD
             
@@ -305,7 +305,7 @@ class MT5SignalGenerator:
         # Format symbol for display with emojis and proper names
         symbol_display = {
             "XAUUSD": "🟡 GOLD (XAU/USD)",
-            "US100": "💻 NASDAQ (NAS100)",
+            "NAS100": "💻 NASDAQ (NAS100)",
             "EURUSD": "💱 EUR/USD",
             "GBPUSD": "💱 GBP/USD",
             "AUDUSD": "💱 AUD/USD",
@@ -323,7 +323,7 @@ class MT5SignalGenerator:
             decimals = 5  # Forex pairs
         elif symbol == "XAUUSD":
             decimals = 2  # Gold
-        elif symbol in ["US100", "FRA40", "UK100", "US30", "US500"]:
+        elif symbol in ["NAS100", "FRA40", "UK100", "US30", "US500"]:
             decimals = 0  # Indices (whole numbers)
         else:
             decimals = 2  # Default
