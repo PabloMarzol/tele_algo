@@ -1,552 +1,392 @@
-import logging
 import MetaTrader5 as mt5
-import random
-import os
-from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
-import talib
+from datetime import datetime, timedelta
+import time
+import logging
+import random
+import os
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename='mt5_signal_generator.log'
+)
+logger = logging.getLogger('MT5SignalGenerator')
 
 class MT5SignalGenerator:
-    """Class to generate trading signals from MT5 data."""
+    """
+    Signal generator for trading systems using MetaTrader 5
+    With enhanced features:
+    - Multiple timeframes (15M, 30M)
+    - Entry and stop loss ranges
+    - Multiple indicator combinations
+    """
     
-    def __init__(self, mt5_username=None, mt5_password=None, mt5_server=None):
-        """Initialize the MT5 signal generator."""
-        self.logger = logging.getLogger('MT5SignalGenerator')
+    def __init__(self, username=None, password=None, server=None):
+        """Initialize MT5 connection and signal parameters"""
         self.connected = False
+        self.last_check_time = datetime.now() - timedelta(hours=12)  # Start ready to check
         self.signal_history = {}  # Store generated signals
         
-        # Default parameters for signal generation
-        self.symbols = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "USOIL"]
+        # Symbol settings
+        self.symbols = ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "XAUUSD"]
         self.timeframes = {
+            "M5": mt5.TIMEFRAME_M5,
             "M15": mt5.TIMEFRAME_M15,
-            "H1": mt5.TIMEFRAME_H1,
-            "H4": mt5.TIMEFRAME_H4,
-            "D1": mt5.TIMEFRAME_D1
         }
+        self.default_timeframe = "M15"  # Changed from 1H to 15 min
         
-        # Signal frequency controls
-        self.min_minutes_between_signals = 60  # At least 60 minutes between signals
-        self.max_signals_per_hour = 1          # Maximum 1 signal per hour
-        self.max_signals_per_day = 5           # Maximum 5 signals per day
+        # Connect to MT5
+        self.connect_to_mt5(username, password, server)
         
-        # MT5 credentials
-        self.mt5_username = mt5_username or os.getenv("MT5_USERNAME")
-        self.mt5_password = mt5_password or os.getenv("MT5_PASSWORD")
-        self.mt5_server = mt5_server or os.getenv("MT5_SERVER")
+        # Signal settings
+        self.signal_cooldown_hours = 1  # Min hours between signals for same symbol
+        self.max_signals_per_day = 4  # Max signals per symbol per day
+        self.enable_range_entries = True  # Use price ranges instead of exact prices
         
-        # Try to connect to MT5
-        self.connect_to_mt5()
-    
-    def connect_to_mt5(self):
-        """Connect to the MetaTrader 5 terminal."""
+    def connect_to_mt5(self, username=None, password=None, server=None):
+        """Connect to MetaTrader 5 terminal"""
         try:
-            # Initialize MT5
+            # Load from environment variables if not provided
+            if not username:
+                username = os.environ.get("MT5_USERNAME", "")
+            if not password:
+                password = os.environ.get("MT5_PASSWORD", "")
+            if not server:
+                server = os.environ.get("MT5_SERVER", "")
+            
+            # Initialize MT5 connection
             if not mt5.initialize():
-                self.logger.error(f"MT5 initialization failed: {mt5.last_error()}")
-                self.connected = False
+                logger.error(f"MT5 initialization failed with error code {mt5.last_error()}")
                 return False
             
-            # Login to MT5 if credentials provided
-            if self.mt5_username and self.mt5_password:
-                login_result = mt5.login(
-                    login=int(self.mt5_username),
-                    password=self.mt5_password,
-                    server=self.mt5_server
-                )
-                
+            # Log in to MT5 account if credentials provided
+            if username and password and server:
+                login_result = mt5.login(username, password, server)
                 if not login_result:
-                    self.logger.error(f"MT5 login failed: {mt5.last_error()}")
-                    self.connected = False
+                    logger.error(f"MT5 login failed with error code {mt5.last_error()}")
                     return False
-                    
-                # Check connection
-                account_info = mt5.account_info()
-                if account_info is None:
-                    self.logger.error("Failed to get account info")
-                    self.connected = False
-                    return False
-                
-                self.logger.info(f"Connected to MT5: {account_info.server}")
-                self.connected = True
-                return True
+                logger.info(f"Connected to MT5 as {username} on {server}")
             else:
-                self.logger.warning("MT5 credentials not provided, working in limited mode")
-                self.connected = False
-                return False
-                
+                logger.warning("No MT5 credentials provided, using existing terminal connection")
+            
+            self.connected = True
+            return True
+            
         except Exception as e:
-            self.logger.error(f"Error connecting to MT5: {e}")
+            logger.error(f"Error connecting to MT5: {e}")
             self.connected = False
             return False
     
-    def generate_signal(self):
-        """
-        Generate a trading signal based on market analysis.
-        
-        Returns:
-            tuple: (formatted_signal_text, signal_data) if a signal is generated, (None, None) otherwise
-        """
-        signals = self.check_for_signals()
-        
-        if not signals:
-            return None, None
-        
-        # For now, just select the first signal
-        signal_data = signals[0]
-        
-        # Format the signal for display
-        formatted_signal = self.format_signal_message(signal_data)
-        
-        # Store in history
-        signal_id = f"{signal_data['symbol']}_{signal_data['direction']}_{datetime.now().strftime('%Y%m%d%H%M')}"
-        self.signal_history[signal_id] = signal_data
-        
-        return formatted_signal, signal_data
+    def disconnect_from_mt5(self):
+        """Disconnect from MetaTrader 5 terminal"""
+        if self.connected:
+            mt5.shutdown()
+            self.connected = False
+            logger.info("Disconnected from MT5")
     
-    def check_for_signals(self):
-        """Check for new trading signals across all symbols."""
-        signals = []
-        
-        # If not connected to MT5, use mock data
+    def fetch_data(self, symbol, timeframe_str=None, bars=200):
+        """Fetch historical data for a symbol and timeframe"""
         if not self.connected:
-            self.logger.warning("Not connected to MT5, generating mock signals...")
-            # 30% chance of generating a mock signal
-            if random.random() < 0.3:
-                signals.append(self.generate_mock_signal())
-            return signals
+            if not self.connect_to_mt5():
+                return None
+        
+        if not timeframe_str:
+            timeframe_str = self.default_timeframe
+        
+        timeframe = self.timeframes.get(timeframe_str, mt5.TIMEFRAME_M15)
         
         try:
-            # For each symbol, check indicators
-            for symbol in self.symbols:
-                # Use H1 timeframe for signal generation
-                timeframe = self.timeframes["H1"]
-                
-                # Fetch latest price data
-                rates = self.get_price_data(symbol, timeframe, 100)
-                
-                if rates is None or len(rates) < 50:
-                    self.logger.warning(f"Insufficient data for {symbol}")
-                    continue
-                
-                # Calculate indicators and check for signals
-                signal = self.analyze_indicators(symbol, rates)
-                if signal:
-                    signals.append(signal)
-            
-            return signals
-            
-        except Exception as e:
-            self.logger.error(f"Error checking for signals: {e}")
-            return signals
-    
-    def get_price_data(self, symbol, timeframe, count=100):
-        """Get price data from MT5."""
-        try:
-            # Check if MT5 is working properly
-            if not mt5.symbol_info(symbol):
-                if not mt5.symbol_select(symbol, True):
-                    self.logger.error(f"Failed to select symbol {symbol}")
-                    return None
-            
-            # Get rates
-            rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, count)
+            # Fetch the data from MT5
+            rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, bars)
             
             if rates is None or len(rates) == 0:
-                # MT5 is down, create mock data for testing
-                self.logger.warning(f"Using mock data for {symbol}")
-                return self.create_mock_data(count)
+                logger.error(f"Failed to fetch data for {symbol} on {timeframe_str}")
+                return None
             
             # Convert to pandas DataFrame
-            return pd.DataFrame(rates)
+            df = pd.DataFrame(rates)
+            df['time'] = pd.to_datetime(df['time'], unit='s')
             
+            return df
+        
         except Exception as e:
-            self.logger.error(f"Error getting price data for {symbol}: {e}")
-            # Return mock data for testing
-            return self.create_mock_data(count)
+            logger.error(f"Error fetching data for {symbol} on {timeframe_str}: {e}")
+            return None
     
-    def create_mock_data(self, count=100):
-        """Create mock price data for testing."""
-        current_time = datetime.now()
-        data = []
+    def add_indicators(self, df):
+        """Add multiple technical indicators to DataFrame"""
+        if df is None or len(df) == 0:
+            return None
         
-        close_price = 1.1000 + random.random() * 0.1  # Random starting price
-        
-        for i in range(count):
-            time_point = current_time - timedelta(hours=i)
-            timestamp = int(time_point.timestamp())
-            
-            # Generate random price movement (more realistic)
-            price_change = (random.random() - 0.5) * 0.002
-            close_price += price_change
-            
-            high_price = close_price + (random.random() * 0.001)
-            low_price = close_price - (random.random() * 0.001)
-            open_price = close_price - price_change * random.random()
-            
-            # Generate random volume
-            tick_volume = int(random.random() * 1000) + 100
-            
-            data.append({
-                'time': timestamp,
-                'open': open_price,
-                'high': high_price,
-                'low': low_price,
-                'close': close_price,
-                'tick_volume': tick_volume,
-                'spread': random.randint(1, 5),
-                'real_volume': tick_volume * 10
-            })
-        
-        return pd.DataFrame(data)
-    
-    def analyze_indicators(self, symbol, data_df):
-        """Analyze technical indicators to generate signals."""
         try:
-            # Extract price data
-            close = data_df['close'].values
-            high = data_df['high'].values
-            low = data_df['low'].values
+            # RSI indicator
+            delta = df['close'].diff()
+            gain = delta.where(delta > 0, 0)
+            loss = -delta.where(delta < 0, 0)
             
-            # Calculate indicators using TA-Lib if available
-            try:
-                # Moving averages
-                ema20 = talib.EMA(close, timeperiod=20)
-                ema50 = talib.EMA(close, timeperiod=50)
-                ema200 = talib.EMA(close, timeperiod=200)
-                
-                # RSI
-                rsi = talib.RSI(close, timeperiod=3)
-                
-                # MACD
-                macd, macd_signal, macd_hist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
-                
-                # Bollinger Bands
-                upper, middle, lower = talib.BBANDS(close, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
-                
-                # Stochastic
-                slowk, slowd = talib.STOCH(high, low, close, fastk_period=5, slowk_period=3, slowk_matype=0, slowd_period=3, slowd_matype=0)
-                
-            except AttributeError:
-                # If TA-Lib not available, use basic calculations
-                self.logger.warning("TA-Lib not available, using basic indicator calculations")
-                
-                # Simple moving averages instead of EMA
-                ema20 = np.convolve(close, np.ones(20)/20, mode='valid')
-                ema50 = np.convolve(close, np.ones(50)/50, mode='valid')
-                ema200 = np.convolve(close, np.ones(200)/200, mode='valid')
-                
-                # Pad the beginning to match array lengths
-                ema20 = np.append(np.array([np.nan] * (len(close) - len(ema20))), ema20)
-                ema50 = np.append(np.array([np.nan] * (len(close) - len(ema50))), ema50)
-                ema200 = np.append(np.array([np.nan] * (len(close) - len(ema200))), ema200)
-                
-                # Simple RSI calculation
-                deltas = np.diff(close)
-                seed = deltas[:3]
-                up = seed[seed >= 0].sum()/3.0
-                down = -seed[seed < 0].sum()/3.0
-                rs = up/down if down != 0 else 0
-                rsi = np.zeros_like(close)
-                rsi[:3] = 100. - 100./(1. + rs)
-                
-                for i in range(3, len(close)):
-                    delta = deltas[i - 1]
-                    if delta > 0:
-                        upval = delta
-                        downval = 0.
-                    else:
-                        upval = 0.
-                        downval = -delta
-                    up = (up * 13 + upval) / 3
-                    down = (down * 13 + downval) / 3
-                    rs = up/down if down != 0 else 0
-                    rsi[i] = 100. - 100./(1. + rs)
-                
-                # Simple MACD calculation
-                ema12 = np.convolve(close, np.ones(12)/12, mode='valid')
-                ema26 = np.convolve(close, np.ones(26)/26, mode='valid')
-                ema12 = np.append(np.array([np.nan] * (len(close) - len(ema12))), ema12)
-                ema26 = np.append(np.array([np.nan] * (len(close) - len(ema26))), ema26)
-                
-                macd = np.zeros_like(close)
-                for i in range(len(close)):
-                    if not np.isnan(ema12[i]) and not np.isnan(ema26[i]):
-                        macd[i] = ema12[i] - ema26[i]
-                
-                macd_signal = np.convolve(macd[~np.isnan(macd)], np.ones(9)/9, mode='valid')
-                macd_signal = np.append(np.array([np.nan] * (len(macd) - len(macd_signal))), macd_signal)
-                
-                macd_hist = np.zeros_like(close)
-                for i in range(len(close)):
-                    if not np.isnan(macd[i]) and not np.isnan(macd_signal[i]):
-                        macd_hist[i] = macd[i] - macd_signal[i]
-                
-                # Skip Bollinger Bands and Stochastic for basic implementation
-                upper = lower = middle = np.zeros_like(close)
-                slowk = slowd = np.zeros_like(close)
+            avg_gain = gain.rolling(window=3).mean()
+            avg_loss = loss.rolling(window=3).mean()
             
-            # Define signal criteria
-            # Check for BUY signals
-            buy_signal_conditions = [
-                # MACD Crossover
-                macd[-2] < macd_signal[-2] and macd[-1] > macd_signal[-1],
-                
-                # RSI recovering from oversold
-                rsi[-2] < 5 and rsi[-1] > 10,
-                
-                # Price crossing above 50 EMA
-                close[-2] < ema50[-2] and close[-1] > ema50[-1],
-                
-                # Bullish trend confirmation: 20 EMA > 50 EMA
-                ema20[-1] > ema50[-1],
-                
-                # Price above 200 EMA (long-term bullish)
-                close[-1] > ema200[-1]
-            ]
+            rs = avg_gain / avg_loss
+            df['rsi'] = 100 - (100 / (1 + rs))
             
-            # Check for SELL signals
-            sell_signal_conditions = [
-                # MACD Crossover
-                macd[-2] > macd_signal[-2] and macd[-1] < macd_signal[-1],
-                
-                # RSI declining from overbought
-                rsi[-2] > 95 and rsi[-1] < 90,
-                
-                # Price crossing below 50 EMA
-                close[-2] > ema50[-2] and close[-1] < ema50[-1],
-                
-                # Bearish trend confirmation: 20 EMA < 50 EMA
-                ema20[-1] < ema50[-1],
-                
-                # Price below 200 EMA (long-term bearish)
-                close[-1] < ema200[-1]
-            ]
+            # Multiple EMAs
+            df['ema_fast'] = df['close'].ewm(span=9, adjust=False).mean()
+            df['ema_medium'] = df['close'].ewm(span=21, adjust=False).mean()
+            df['ema_slow'] = df['close'].ewm(span=50, adjust=False).mean()
             
-            # Count the number of conditions met
-            buy_count = sum(1 for condition in buy_signal_conditions if condition)
-            sell_count = sum(1 for condition in sell_signal_conditions if condition)
+            # Bollinger Bands
+            df['sma_20'] = df['close'].rolling(window=20).mean()
+            df['std_20'] = df['close'].rolling(window=20).std()
+            df['bb_upper'] = df['sma_20'] + (df['std_20'] * 2)
+            df['bb_lower'] = df['sma_20'] - (df['std_20'] * 2)
+            df['bb_width'] = (df['bb_upper'] - df['bb_lower']) / df['sma_20']
             
-            # Generate a signal if enough conditions are met (at least 3)
-            if buy_count >= 3 and buy_count > sell_count:
-                return self.create_signal(symbol, "BUY", close[-1])
-            elif sell_count >= 3 and sell_count > buy_count:
-                return self.create_signal(symbol, "SELL", close[-1])
+            # Stochastic Oscillator
+            n = 14  # Default %K period
+            m = 3   # Default %K smoothing
+            t = 3   # Default %D period
             
-            return None
+            # Calculate %K
+            low_min = df['low'].rolling(window=n).min()
+            high_max = df['high'].rolling(window=n).max()
+            df['stoch_k'] = 100 * ((df['close'] - low_min) / (high_max - low_min))
             
+            # Calculate %D
+            df['stoch_d'] = df['stoch_k'].rolling(window=t).mean()
+            
+            return df
+        
         except Exception as e:
-            self.logger.error(f"Error analyzing indicators: {e}")
-            return None
+            logger.error(f"Error adding indicators: {e}")
+            return df
     
-    def create_signal(self, symbol, direction, current_price):
-        """Create a signal with entry, stop loss, and take profit levels."""
-        # Calculate pip value based on symbol
-        pip_value = self.get_pip_value(symbol)
+    def check_rsi_ema_signal(self, df, symbol):
+        """Check for trading signals based on RSI and EMA strategy"""
+        if df is None or len(df) < 50:
+            return None
         
-        # Set stop loss and take profit distances based on symbol volatility
-        sl_pips, tp1_pips, tp2_pips, tp3_pips = self.get_risk_reward_pips(symbol)
+        # Get the most recent data
+        current = df.iloc[-1]
+        previous = df.iloc[-2]
         
-        # Calculate entry, stop loss and take profit prices
-        if direction == "BUY":
-            entry_price = current_price
-            stop_loss = entry_price - (sl_pips * pip_value)
-            take_profit1 = entry_price + (tp1_pips * pip_value)
-            take_profit2 = entry_price + (tp2_pips * pip_value)
-            take_profit3 = entry_price + (tp3_pips * pip_value)
-        else:  # SELL
-            entry_price = current_price
-            stop_loss = entry_price + (sl_pips * pip_value)
-            take_profit1 = entry_price - (tp1_pips * pip_value)
-            take_profit2 = entry_price - (tp2_pips * pip_value)
-            take_profit3 = entry_price - (tp3_pips * pip_value)
+        # Strategy 1: RSI crosses with EMA trend confirmation
+        # BUY signal: RSI crosses above 10 (from oversold) and price is above EMA
+        # SELL signal: RSI crosses below 95 (from overbought) and price is below EMA
         
-        # Format prices based on symbol
-        entry_price = self.format_price(symbol, entry_price)
-        stop_loss = self.format_price(symbol, stop_loss)
-        take_profit1 = self.format_price(symbol, take_profit1)
-        take_profit2 = self.format_price(symbol, take_profit2)
-        take_profit3 = self.format_price(symbol, take_profit3)
+        signal = None
         
-        # Calculate risk-reward ratios
-        rr1 = tp1_pips / sl_pips
-        rr2 = tp2_pips / sl_pips
-        rr3 = tp3_pips / sl_pips
+        # BUY signal conditions
+        if (previous['rsi'] < 10 and current['rsi'] > 10 and 
+            current['close'] > current['ema_medium'] and
+            current['ema_fast'] > current['ema_medium']):
+            signal = {
+                'symbol': symbol,
+                'direction': 'BUY',
+                'strategy': 'RSI_EMA',
+                'timestamp': datetime.now()
+            }
+            
+        # SELL signal conditions
+        elif (previous['rsi'] > 95 and current['rsi'] < 95 and 
+              current['close'] < current['ema_medium'] and
+              current['ema_fast'] < current['ema_medium']):
+            signal = {
+                'symbol': symbol,
+                'direction': 'SELL',
+                'strategy': 'RSI_EMA',
+                'timestamp': datetime.now()
+            }
         
-        # Create signal data dictionary
-        signal = {
-            "symbol": symbol,
-            "direction": direction,
-            "entry_price": entry_price,
-            "stop_loss": stop_loss,
-            "take_profit": take_profit1,
-            "take_profit2": take_profit2,
-            "take_profit3": take_profit3,
-            "risk_reward1": round(rr1, 1),
-            "risk_reward2": round(rr2, 1),
-            "risk_reward3": round(rr3, 1),
-            "timeframe": "H1",
-            "timestamp": datetime.now(),
-            "analysis": self.generate_signal_analysis(symbol, direction)
-        }
+        if signal:
+            # Generate entry and exit levels
+            self.add_signal_levels(signal, df)
         
-        self.logger.info(f"Generated {direction} signal for {symbol} at {entry_price}")
         return signal
     
-    def get_pip_value(self, symbol):
-        """Get pip value for a symbol."""
-        if symbol in ["USDJPY", "GBPJPY", "EURJPY"]:
-            return 0.01  # 2 decimal places for JPY pairs
-        elif symbol == "XAUUSD":
-            return 0.1   # Gold (1 decimal place)
-        elif symbol == "USOIL":
-            return 0.01  # Oil (2 decimal places)
-        elif symbol in ["BTCUSD", "ETHUSD"]:
-            return 1.0   # Crypto (0 decimal places)
-        else:
-            return 0.0001  # 4 decimal places for most forex pairs
-    
-    def get_risk_reward_pips(self, symbol):
-        """Get appropriate stop loss and take profit distances based on symbol."""
-        # Default values
-        sl_pips = 30
-        tp1_pips = 30
-        tp2_pips = 60
-        tp3_pips = 90
+    def check_bb_stoch_signal(self, df, symbol):
+        """Check for trading signals based on Bollinger Bands and Stochastic strategy"""
+        if df is None or len(df) < 50:
+            return None
         
-        # Adjust based on symbol
-        if symbol == "XAUUSD":
-            sl_pips = 15    # Gold has higher pip value
-            tp1_pips = 20
-            tp2_pips = 40
-            tp3_pips = 80
-        elif symbol == "USOIL":
-            sl_pips = 20
-            tp1_pips = 30
-            tp2_pips = 60
-            tp3_pips = 120
-        elif symbol in ["BTCUSD", "ETHUSD"]:
-            sl_pips = 100   # Crypto is more volatile
-            tp1_pips = 150
-            tp2_pips = 300
-            tp3_pips = 600
-        elif symbol in ["USDJPY", "GBPJPY", "EURJPY"]:
-            sl_pips = 30    # JPY pairs
-            tp1_pips = 40
-            tp2_pips = 80
-            tp3_pips = 160
+        # Get the most recent data
+        current = df.iloc[-1]
+        previous = df.iloc[-2]
         
-        return sl_pips, tp1_pips, tp2_pips, tp3_pips
-    
-    def format_price(self, symbol, price):
-        """Format price with appropriate decimal places based on symbol."""
-        if symbol in ["USDJPY", "GBPJPY", "EURJPY"]:
-            return round(price, 3)  # 3 decimal places for JPY pairs
-        elif symbol == "XAUUSD":
-            return round(price, 2)  # 2 decimal places for Gold
-        elif symbol == "USOIL":
-            return round(price, 2)  # 2 decimal places for Oil
-        elif symbol in ["BTCUSD", "ETHUSD"]:
-            return round(price, 1)  # 1 decimal place for Crypto
-        else:
-            return round(price, 5)  # 5 decimal places for most forex pairs
-    
-    def generate_signal_analysis(self, symbol, direction):
-        """Generate a brief analysis of why this signal was triggered."""
-        # This would normally be based on the indicator analysis
-        # For now, just use some generic text
-        if direction == "BUY":
-            return (
-                f"Momentum factors indicate a constructive setup for {symbol}, with upward pressure supported by signal alignment across multiple timeframes. "
-                f"Suggested strategy: implement position scaling at predefined profit thresholds and reduce tail risk by shifting the stop to breakeven after the initial target is met."
-            )
-        else:
-            return (
-                f"Momentum factors indicate a weak outlook for {symbol}, with downside continuation supported by alignment in short-term signal flows. "
-                f"Suggested strategy: scale out gradually at each profit milestone, and neutralize exposure by moving the stop to breakeven following TP1."
-            )
-    
-    def format_signal_message(self, signal_data):
-        """Format signal data into a readable HTML message."""
-        direction = signal_data["direction"]
-        symbol = signal_data["symbol"]
+        # Strategy 2: Bollinger Band Breakout with Stochastic confirmation
+        # BUY signal: Price closes above upper BB and Stochastic K crosses above D in oversold territory
+        # SELL signal: Price closes below lower BB and Stochastic K crosses below D in overbought territory
         
-        # Direction emoji
-        direction_emoji = "🟢 BUY" if direction == "BUY" else "🔴 SELL"
+        signal = None
         
-        # Format the message
-        message = f"""<b>⚡️ VFX SIGNAL ALERT ⚡️</b>
-
-<b>{symbol} - {direction_emoji}</b>
-
-<b>Entry:</b> {signal_data["entry_price"]}
-<b>Stop Loss:</b> {signal_data["stop_loss"]}
-<b>Take Profit 1:</b> {signal_data["take_profit"]} (RR: 1:{signal_data["risk_reward1"]})
-<b>Take Profit 2:</b> {signal_data["take_profit2"]} (RR: 1:{signal_data["risk_reward2"]})
-<b>Take Profit 3:</b> {signal_data["take_profit3"]} (RR: 1:{signal_data["risk_reward3"]})
-
-<b>Timeframe:</b> {signal_data["timeframe"]}
-
-<b>Analysis:</b>
-{signal_data["analysis"]}
-
-⏰ <i>Signal generated at {signal_data["timestamp"].strftime('%Y-%m-%d %H:%M')}</i>
-
-<i>This is an automated signal based on our proprietary algorithm. Always apply proper risk management.</i>
-This is not financial advice! Trade at your own risk!
-"""
-        return message
-    
-    def generate_mock_signal(self, symbol=None):
-        """Generate a mock signal for testing."""
-        if symbol is None:
-            symbol = random.choice(self.symbols)
+        # BUY signal conditions
+        if (current['close'] > current['bb_upper'] and
+            previous['stoch_k'] < previous['stoch_d'] and
+            current['stoch_k'] > current['stoch_d'] and
+            previous['stoch_k'] < 30):
+            signal = {
+                'symbol': symbol,
+                'direction': 'BUY',
+                'strategy': 'BB_STOCH',
+                'timestamp': datetime.now()
+            }
+            
+        # SELL signal conditions
+        elif (current['close'] < current['bb_lower'] and
+              previous['stoch_k'] > previous['stoch_d'] and
+              current['stoch_k'] < current['stoch_d'] and
+              previous['stoch_k'] > 70):
+            signal = {
+                'symbol': symbol,
+                'direction': 'SELL',
+                'strategy': 'BB_STOCH',
+                'timestamp': datetime.now()
+            }
         
-        # Random direction
-        direction = random.choice(["BUY", "SELL"])
+        if signal:
+            # Generate entry and exit levels
+            self.add_signal_levels(signal, df)
         
-        # Random price based on symbol
-        if symbol == "EURUSD":
-            price = round(1.1000 + (random.random() - 0.5) * 0.1, 5)
-        elif symbol == "GBPUSD":
-            price = round(1.2500 + (random.random() - 0.5) * 0.1, 5)
-        elif symbol == "USDJPY":
-            price = round(140.00 + (random.random() - 0.5) * 5, 3)
-        elif symbol == "XAUUSD":  # Gold
-            price = round(1900 + (random.random() - 0.5) * 100, 2)
-        elif symbol == "USOIL":  # Oil
-            price = round(70 + (random.random() - 0.5) * 10, 2)
-        else:
-            price = round(1.0000 + random.random(), 5)
+        return signal
+    
+    def add_signal_levels(self, signal, df):
+        """Add entry/exit levels to signal with price ranges instead of exact points"""
+        try:
+            current = df.iloc[-1]
+            atr = self.calculate_atr(df, 14)  # 14-period ATR
+            
+            # Convert atr to price range percentage (roughly 0.5-1% of price for most forex)
+            range_pct = min(max(atr / current['close'], 0.0015), 0.0050)
+            
+            if signal['direction'] == 'BUY':
+                # For BUY signals
+                signal['entry_price'] = current['close']
+                
+                # Entry range (slightly below to slightly above current price)
+                signal['entry_range_low'] = round(current['close'] * (1 - range_pct), 5)
+                signal['entry_range_high'] = round(current['close'] * (1 + range_pct * 0.5), 5)
+                
+                # Stop loss range (below recent low)
+                recent_low = min(df['low'].iloc[-5:])
+                sl_level = min(recent_low, current['close'] * (1 - range_pct * 3))
+                signal['stop_loss'] = round(sl_level, 5)
+                signal['stop_range_low'] = round(sl_level * (1 - range_pct * 0.5), 5)
+                signal['stop_range_high'] = round(sl_level * (1 + range_pct * 0.5), 5)
+                
+                # Take profit levels (multiple targets)
+                risk = current['close'] - sl_level
+                signal['take_profit'] = round(current['close'] + risk * 1.5, 5)
+                signal['take_profit2'] = round(current['close'] + risk * 2.5, 5)
+                signal['take_profit3'] = round(current['close'] + risk * 4.0, 5)
+                
+            else:
+                # For SELL signals
+                signal['entry_price'] = current['close']
+                
+                # Entry range (slightly above to slightly below current price)
+                signal['entry_range_low'] = round(current['close'] * (1 - range_pct * 0.5), 5)
+                signal['entry_range_high'] = round(current['close'] * (1 + range_pct), 5)
+                
+                # Stop loss range (above recent high)
+                recent_high = max(df['high'].iloc[-5:])
+                sl_level = max(recent_high, current['close'] * (1 + range_pct * 3))
+                signal['stop_loss'] = round(sl_level, 5)
+                signal['stop_range_low'] = round(sl_level * (1 - range_pct * 0.5), 5)
+                signal['stop_range_high'] = round(sl_level * (1 + range_pct * 0.5), 5)
+                
+                # Take profit levels (multiple targets)
+                risk = sl_level - current['close']
+                signal['take_profit'] = round(current['close'] - risk * 1.5, 5)
+                signal['take_profit2'] = round(current['close'] - risk * 2.5, 5)
+                signal['take_profit3'] = round(current['close'] - risk * 4.0, 5)
+            
+        except Exception as e:
+            logger.error(f"Error adding signal levels: {e}")
+            # Fallback to basic levels if calculation fails
+            signal['entry_price'] = current['close']
+            signal['stop_loss'] = current['close'] * (0.98 if signal['direction'] == 'BUY' else 1.02)
+            signal['take_profit'] = current['close'] * (1.02 if signal['direction'] == 'BUY' else 0.98)
+    
+    def calculate_atr(self, df, period=14):
+        """Calculate Average True Range (ATR)"""
+        high_low = df['high'] - df['low']
+        high_close = np.abs(df['high'] - df['close'].shift())
+        low_close = np.abs(df['low'] - df['close'].shift())
         
-        return self.create_signal(symbol, direction, price)
+        tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+        atr = tr.rolling(period).mean().iloc[-1]
+        
+        return atr
     
-    def cleanup(self):
-        """Clean up MT5 connection."""
-        if mt5.terminal_info() is not None:
-            mt5.shutdown()
-            self.logger.info("MT5 connection shut down")
-        self.connected = False
-
-
-# For testing
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    def check_signal_cooldown(self, symbol):
+        """Check if symbol is on cooldown after recent signal"""
+        if symbol in self.signal_history:
+            last_signal_time = self.signal_history[symbol]['timestamp']
+            hours_since = (datetime.now() - last_signal_time).total_seconds() / 3600
+            
+            if hours_since < self.signal_cooldown_hours:
+                return False
+        
+        return True
     
-    # Test signal generation
-    generator = MT5SignalGenerator()
-    
-    signal_text, signal_data = generator.generate_signal()
-    
-    if signal_text:
-        print("Generated Signal:")
-        print(signal_text)
-        print("\nSignal Data:")
-        for key, value in signal_data.items():
-            if key != "timestamp":  # Skip timestamp for cleaner output
-                print(f"{key}: {value}")
-    else:
-        print("No signal generated")
-    
-    # Clean up
-    generator.cleanup()
+    def check_signals(self):
+        """Check for signals across all symbols and strategies"""
+        if not self.connected and not self.connect_to_mt5():
+            return None
+        
+        # Don't check too frequently
+        time_since_check = (datetime.now() - self.last_check_time).total_seconds() / 60
+        if time_since_check < 5:  # Check at most every 5 minutes
+            return None
+        
+        self.last_check_time = datetime.now()
+        
+        # Randomize symbol order to avoid always prioritizing the same symbols
+        symbols = self.symbols.copy()
+        random.shuffle(symbols)
+        
+        # Randomize timeframes to increase signal diversity
+        timeframes = list(self.timeframes.keys())
+        random.shuffle(timeframes)
+        
+        for symbol in symbols:
+            # Check cooldown period
+            if not self.check_signal_cooldown(symbol):
+                continue
+            
+            for timeframe in timeframes:
+                # Get historical data
+                df = self.fetch_data(symbol, timeframe, 200)
+                if df is None:
+                    continue
+                
+                # Add technical indicators
+                df = self.add_indicators(df)
+                if df is None:
+                    continue
+                
+                # Randomly select which strategy to check first for more variety
+                strategies = ["rsi_ema", "bb_stoch"]
+                random.shuffle(strategies)
+                
+                signal = None
+                for strategy in strategies:
+                    if strategy == "rsi_ema":
+                        signal = self.check_rsi_ema_signal(df, symbol)
+                    elif strategy == "bb_stoch":
+                        signal = self.check_bb_stoch_signal(df, symbol)
+                    
+                    if signal:
+                        # Add metadata to the signal
+                        signal['timeframe'] = timeframe
+                        
+                        # Store in history
+                        self.signal_history[symbol] = signal
+                        
+                        logger.info(f"New signal: {symbol} {signal['direction']} on {timeframe} - Strategy: {signal['strategy']}")
+                        return signal
+        
+        return None
