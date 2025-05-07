@@ -81,13 +81,13 @@ Take Profit 1: {tp1}
 Take Profit 2: {tp2}
 Take Profit 3: {tp3}
 
-Generate a brief (100-150 words), professional follow-up explanation that:
+Generate a brief (80-120 words), professional follow-up explanation that:
 1. Provides context on market conditions supporting this trade
 2. Explains the technical or fundamental rationale behind the signal (Avoid using retail trader terms, stick to quantitative Researcher terms, and highly technical language)
 3. Highlights key levels to watch beyond the provided targets
 4. Uses confident but not overly promotional tone
 5. DO NOT mention know technical indicators (e.g. RSI, MACD, EMA, Fibonacci, Support/Resistence etc..) Mention High level quantitative tools and formulas instead
-The message should sound natural, like it was written by a human trading expert.
+The message should sound natural, like it was written by a human trading expert. But at the same time keep it casual (remember that's telegram trading channel meant to impress retails traders)
 """
             
             # Call Groq API

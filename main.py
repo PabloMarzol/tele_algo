@@ -2179,7 +2179,6 @@ async def report_signal_system_status(context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Error generating status report: {e}")
 
-
 async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Command to check signal system status for admins"""
     if not await is_user_admin(update, context):
@@ -2234,6 +2233,12 @@ async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TY
         error_msg = f"Error retrieving signal status: {e}"
         logger.error(error_msg)
         await update.message.reply_text(f"⚠️ {error_msg}")
+
+async def check_and_send_signal_updates(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check for signal updates and send follow-up messages"""
+    global signal_dispatcher
+    if signal_dispatcher:
+        await signal_dispatcher.send_signal_updates()
 
 # -------------------------------------- MAIN ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -2776,8 +2781,8 @@ def main() -> None:
     # Schedule regular signal checks - run every hour
     job_queue.run_repeating(
         check_and_send_signals,
-        interval=600,  # 10 Min
-        first=60  # First check 2 minutes after bot start
+        interval=300,  # 5 Min
+        first=60  # First check 1 minute after bot start
     )
     
     job_queue.run_repeating(
@@ -2786,7 +2791,11 @@ def main() -> None:
         first=600  # First report 10 minutes after startup
     )
     
-    
+    # job_queue.run_repeating(
+    #     check_and_send_signal_updates,
+    #     interval=600,  # 30 minutes
+    #     first=60  # First check 5 minutes after startup
+    # )
     
     # Log scheduled jobs
     logger.info(f"Scheduled hourly welcome messages starting in {seconds_until_next_hour:.2f} seconds")

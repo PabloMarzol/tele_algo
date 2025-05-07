@@ -8,6 +8,7 @@ from mt5_signal_generator import MT5SignalGenerator
 from news_fetcher import FinancialNewsFetcher  
 from groq_client import GroqClient
 from signal_tracker import SignalTracker
+from signal_follow import SignalFollowUpGenerator
 
 load_dotenv()
 
@@ -25,6 +26,8 @@ class SignalDispatcher:
             password=os.getenv("MT5_PASSWORD"),
             server=os.getenv("MT5_SERVER")
         )
+        # self.signal_tracker = self.signal_generator.signal_history 
+
         
         # Track last signal time to control frequency
         self.last_signal_time = datetime.now() - timedelta(hours=12)  # Start ready to send
@@ -53,8 +56,45 @@ class SignalDispatcher:
         
         # Initialize signal tracker
         self.signal_tracker = SignalTracker()
-        self.logger.info("Signal tracker initialized")
+        self.signal_tracker.register_update_callback(self.handle_signal_updates)
+        self.logger.info("Signal tracker initialized with callback")
         
+        # Initialize follow-up generator
+        self.follow_up_generator = SignalFollowUpGenerator(signal_tracker=self.signal_tracker)
+
+    
+    async def handle_signal_updates(self, signals_to_update):
+        """Handle updates for signals that have crossed important thresholds"""
+        try:
+            results = []
+            for signal_update in signals_to_update:
+                try:
+                    signal_id = signal_update["signal_id"]
+                    signal_data = signal_update["signal"]
+                    status = signal_update["status"]
+                    
+                    # Generate follow-up message
+                    message = self.follow_up_generator.generate_message(signal_data, status)
+                    
+                    # Send to channel
+                    await self.bot.send_message(
+                        chat_id=self.signals_channel_id,
+                        text=message,
+                        parse_mode='HTML'
+                    )
+                    
+                    self.logger.info(f"Sent follow-up message for signal {signal_id}")
+                    results.append(signal_id)
+                    
+                except Exception as e:
+                    self.logger.error(f"Error handling signal update: {e}")
+            
+            return len(results)
+            
+        except Exception as e:
+            self.logger.error(f"Error handling signal updates: {e}")
+            return 0
+    
     
     async def check_and_send_signal(self):
         """Check if it's time to send a signal and do so if appropriate"""
@@ -291,7 +331,30 @@ class SignalDispatcher:
         except Exception as e:
             self.logger.error(f"Error sending signal follow-up: {e}")
     
-    
+    async def send_signal_updates(self):
+        """Check for signal updates and send follow-up messages."""
+        try:
+            # Process signals for updates and get generated messages
+            signal_updates = self.follow_up_generator.process_signals_for_updates()
+            
+            for update in signal_updates:
+                signal_id = update["signal_id"]
+                message = update["message"]
+                
+                # Send to channel
+                await self.bot.send_message(
+                    chat_id=self.signals_channel_id,
+                    text=message,
+                    parse_mode='HTML'
+                )
+                
+                self.logger.info(f"Sent follow-up message for signal {signal_id}")
+                
+            return len(signal_updates)
+            
+        except Exception as e:
+            self.logger.error(f"Error sending signal updates: {e}")
+            return 0
     def cleanup(self):
         """Clean up resources when shutting down"""
         self.signal_generator.cleanup()
