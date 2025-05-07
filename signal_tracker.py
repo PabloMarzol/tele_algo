@@ -476,6 +476,22 @@ class SignalTracker:
             "failed_signals": 0
         }
 
+    def register_update_callback(self, callback_function):
+        """Register a callback function to be called when signals need updates"""
+        self.update_callback = callback_function
+    
+    def monitor_active_signals(self):
+        """
+        Continuously monitor active signals for significant changes
+        and trigger callbacks when needed
+        """
+        signals_to_update = self.check_signals_for_updates()
+        
+        # If there are signals that need updates, call the callback
+        if signals_to_update and hasattr(self, 'update_callback'):
+            self.update_callback(signals_to_update)
+        
+        return len(signals_to_update)
 
 # For testing
 if __name__ == "__main__":
