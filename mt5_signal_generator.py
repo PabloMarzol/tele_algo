@@ -77,67 +77,69 @@ class MT5SignalGenerator:
         
         # Signal frequency control parameters
         self.max_signals_per_hour = 2   
-        self.max_signals_per_day = 10    
-        self.min_minutes_between_signals = 15
+        self.max_signals_per_day = 30    
+        self.min_minutes_between_signals = 30
     
     def initialize_mt5(self, username=None, password=None, server=None):
         """Connect to MetaTrader5 terminal with detailed logging"""
         try:
-            self.logger.info(f"Initializing MT5 connection...")
-            
-            # Log MT5 version 
+            self.logger.info("Initializing MT5 connection...")
             self.logger.info(f"MetaTrader5 package version: {mt5.__version__}")
             
-            # Initialize MT5 connection
-            init_result = mt5.initialize()
-            if not init_result:
-                error_code = mt5.last_error()
-                self.logger.error(f"❌ MT5 initialization failed: Error code {error_code}")
-                
-                # Provide more context based on error code
-                if error_code == 10007:
-                    self.logger.error("MT5 DLL version error - may need to reinstall MT5")
-                elif error_code == 10014:
-                    self.logger.error("MT5 failed to connect - check if terminal is running")
-                
+            # Initialize MT5
+            if not mt5.initialize():
+                self.logger.error(f"❌ MT5 initialization failed: Error code {mt5.last_error()}")
                 return False
             
-            # Log successful initialization
-            self.logger.info(f"✅ MT5 initialized successfully!")
+            self.logger.info("✅ MT5 initialized successfully!")
             
-            # Log terminal info
+            # Get terminal info
             terminal_info = mt5.terminal_info()
-            if terminal_info:
-                self.logger.info(f"Connected to: {terminal_info.name} (build {terminal_info.build})")
-                self.logger.info(f"MT5 directory: {terminal_info.path}")
+            self.logger.info(f"Connected to: {terminal_info.name} (build {terminal_info.build})")
+            self.logger.info(f"MT5 directory: {terminal_info.path}")
             
-            # Log in if credentials provided
+            # Login if credentials provided
             if username and password and server:
                 self.logger.info(f"Logging in to server: {server}...")
-                login_result = mt5.login(username, password, server)
                 
-                if not login_result:
-                    error_code = mt5.last_error()
-                    self.logger.error(f"❌ MT5 login failed: Error code {error_code}")
+                # Ensure proper types for login credentials
+                try:
+                    # Convert username to integer if it's a number
+                    if isinstance(username, str) and username.isdigit():
+                        username = int(username)
                     
-                    # Context for login errors
-                    if error_code == 10019:
-                        self.logger.error("Authorization error - check credentials")
-                    elif error_code == 10018:
-                        self.logger.error("Network connection error to trade server")
+                    login_result = mt5.login(
+                        login=username, 
+                        password=str(password),
+                        server=str(server)
+                    )
                     
+                    if not login_result:
+                        error_code = mt5.last_error()
+                        self.logger.error(f"❌ MT5 login failed: Error code {error_code}")
+                        return False
+                    
+                    # Get account info to confirm login
+                    account_info = mt5.account_info()
+                    if account_info:
+                        self.logger.info(f"✅ Successfully logged in as {account_info.login} on {account_info.server}")
+                        self.logger.info(f"Account: {account_info.name}, Balance: {account_info.balance} {account_info.currency}")
+                        self.connected = True
+                        return True
+                    else:
+                        self.logger.error("❌ MT5 login failed: Could not get account info")
+                        return False
+                        
+                except Exception as e:
+                    self.logger.error(f"❌ MT5 login error: {e}")
                     return False
-                
-                # Log successful login
-                account_info = mt5.account_info()
-                self.logger.info(f"✅ Logged in successfully: Account #{account_info.login} ({account_info.server})")
-                self.logger.info(f"Account balance: {account_info.balance} {account_info.currency}")
-            
-            self.connected = True
-            return True
+            else:
+                self.logger.warning("⚠️ No login credentials provided - using terminal with current connection")
+                self.connected = True
+                return True
             
         except Exception as e:
-            self.logger.error(f"❌ Error in MT5 connection: {str(e)}")
+            self.logger.error(f"❌ MT5 connection error: {e}")
             return False
     
     def get_price_data(self, symbol, timeframe, bars=100):

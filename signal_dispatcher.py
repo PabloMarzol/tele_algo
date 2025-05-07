@@ -1,8 +1,13 @@
+import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from mt5_signal_generator import MT5SignalGenerator
+
+from news_fetcher import FinancialNewsFetcher  
+from groq_client import GroqClient
+from signal_tracker import SignalTracker
 
 load_dotenv()
 
@@ -28,7 +33,28 @@ class SignalDispatcher:
         self.signals_sent_this_hour = 0
         self.last_daily_reset = datetime.now().date()
         self.last_hourly_reset = datetime.now().hour
-    
+
+        news_api_key = os.getenv("NEWS_API_KEY")
+        if news_api_key:
+            self.news_fetcher = FinancialNewsFetcher(api_key=news_api_key)
+            self.logger.info("News fetcher initialized")
+        else:
+            self.news_fetcher = None
+            self.logger.warning("News fetcher not initialized - no API key provided")
+        
+        # Initialize Groq client if API key is provided
+        groq_api_key = os.getenv("GROQ_API_KEY")
+        if groq_api_key:
+            self.groq_client = GroqClient(api_key=groq_api_key)
+            self.logger.info("Groq client initialized")
+        else:
+            self.groq_client = None
+            self.logger.warning("Groq client not initialized - no API key provided")
+        
+        # Initialize signal tracker
+        self.signal_tracker = SignalTracker()
+        self.logger.info("Signal tracker initialized")
+        
     
     async def check_and_send_signal(self):
         """Check if it's time to send a signal and do so if appropriate"""
@@ -72,7 +98,10 @@ class SignalDispatcher:
         
         if signal:
             try:
-                # Send the signal
+                # Extract signal info from formatted message
+                signal_info = self.extract_signal_info(signal)
+                
+                # Send the signal message
                 await self.bot.send_message(
                     chat_id=self.signals_channel_id,
                     text=signal,
@@ -84,12 +113,184 @@ class SignalDispatcher:
                 self.signals_sent_today += 1
                 self.signals_sent_this_hour += 1
                 
+                # Add to signal tracker
+                if signal_info:
+                    self.signal_tracker.add_signal(signal_info)
+                    
+                    # Schedule follow-up message
+                    asyncio.create_task(self.send_signal_followup(signal_info))
+                
                 self.logger.info(f"Sent trading signal at {now} - Daily: {self.signals_sent_today}/{self.signal_generator.max_signals_per_day}, Hourly: {self.signals_sent_this_hour}/{self.signal_generator.max_signals_per_hour}")
                 
             except Exception as e:
                 self.logger.error(f"Error sending trading signal: {e}")
         else:
             self.logger.info("No valid signals generated at this time")
+    
+    
+    def extract_signal_info(self, signal_message):
+        """Extract structured signal information from a formatted signal message string"""
+        try:
+            # Initialize empty signal info dictionary
+            signal_info = {}
+            
+            # Extract direction (BUY/SELL)
+            if "BUY LIMIT ORDERS" in signal_message:
+                signal_info["direction"] = "BUY"
+            elif "SELL LIMIT ORDERS" in signal_message:
+                signal_info["direction"] = "SELL"
+            else:
+                self.logger.error("Could not determine signal direction")
+                return None
+                
+            # Extract symbol by checking for common display names
+            symbol_mappings = {
+                "GOLD (XAU/USD)": "XAUUSD",
+                "NASDAQ (NAS100)": "NAS100",
+                "EUR/USD": "EURUSD",
+                "GBP/USD": "GBPUSD",
+                "AUD/USD": "AUDUSD",
+                "USD/CAD": "USDCAD",
+                "CAC 40 (FRA40)": "FRA40",
+                "FTSE 100 (UK100)": "UK100",
+                "DOW JONES (US30)": "US30",
+                "S&P 500 (US500)": "US500"
+            }
+            
+            # Check for each symbol in the message
+            for display_name, symbol in symbol_mappings.items():
+                if display_name in signal_message:
+                    signal_info["symbol"] = symbol
+                    break
+            
+            # If no symbol found using display names, try direct symbol names
+            if "symbol" not in signal_info:
+                for symbol in ["XAUUSD", "NAS100", "EURUSD", "GBPUSD", "AUDUSD", "USDCAD", "FRA40", "UK100", "US30", "US500"]:
+                    if symbol in signal_message:
+                        signal_info["symbol"] = symbol
+                        break
+            
+            if "symbol" not in signal_info:
+                self.logger.error("Could not determine symbol from signal message")
+                return None
+            
+            # Extract price levels using regex
+            import re
+            
+            # Look for entry zone
+            entry_zone_match = re.search(r"Entry Zone:.+?(\d+\.?\d*)\s*[-—]\s*(\d+\.?\d*)", signal_message)
+            if entry_zone_match:
+                signal_info["entry_range_low"] = float(entry_zone_match.group(1))
+                signal_info["entry_range_high"] = float(entry_zone_match.group(2))
+                # Also set an entry price as the midpoint for convenience
+                signal_info["entry_price"] = (signal_info["entry_range_low"] + signal_info["entry_range_high"]) / 2
+            
+            # Look for stop loss range
+            sl_range_match = re.search(r"Stop Loss Range:.+?(\d+\.?\d*)\s*[-—]\s*(\d+\.?\d*)", signal_message)
+            if sl_range_match:
+                signal_info["stop_range_low"] = float(sl_range_match.group(1))
+                signal_info["stop_range_high"] = float(sl_range_match.group(2))
+                # Also set a stop loss as the midpoint for convenience
+                signal_info["stop_loss"] = (signal_info["stop_range_low"] + signal_info["stop_range_high"]) / 2
+            
+            # Look for take profit levels
+            tp1_match = re.search(r"TP1:\s*(\d+\.?\d*)", signal_message)
+            if tp1_match:
+                signal_info["take_profit"] = float(tp1_match.group(1))
+            
+            tp2_match = re.search(r"TP2:\s*(\d+\.?\d*)", signal_message)
+            if tp2_match:
+                signal_info["take_profit2"] = float(tp2_match.group(1))
+            
+            tp3_match = re.search(r"TP3:\s*(\d+\.?\d*)", signal_message)
+            if tp3_match:
+                signal_info["take_profit3"] = float(tp3_match.group(1))
+            
+            # Add strategy and timeframe (not in the message, but we can set defaults)
+            signal_info["strategy"] = "VFX-LIMIT"
+            signal_info["timeframe"] = "M15"  # Default timeframe
+            
+            # Add timestamp
+            signal_info["timestamp"] = datetime.now()
+            
+            # Check if we have minimum required information
+            if "symbol" in signal_info and "direction" in signal_info:
+                return signal_info
+            else:
+                self.logger.error("Extracted signal info missing required fields")
+                return None
+        
+        except Exception as e:
+            self.logger.error(f"Error extracting signal info: {e}")
+            return None
+    
+    async def send_signal_followup(self, signal_info):
+        """Send a follow-up message with analysis after a signal"""
+        if not hasattr(self, 'groq_client') or self.groq_client is None:
+            self.logger.info("No Groq client available - skipping follow-up")
+            return
+        
+        try:
+            # Wait a bit to make it seem natural
+            await asyncio.sleep(90)  # 1.5 minutes
+            
+            # Generate follow-up text using Groq
+            followup = await self.groq_client.generate_signal_followup(signal_info)
+            
+            if not followup:
+                self.logger.error("Failed to generate signal follow-up")
+                return
+            
+            # Get symbol display name
+            symbol_display = {
+                "XAUUSD": "🟡 GOLD (XAU/USD)",
+                "NAS100": "💻 NASDAQ (NAS100)",
+                "EURUSD": "💱 EUR/USD",
+                "GBPUSD": "💱 GBP/USD",
+                "AUDUSD": "💱 AUD/USD",
+                "USDCAD": "💱 USD/CAD",
+                "FRA40": "🇫🇷 CAC 40 (FRA40)",
+                "UK100": "🇬🇧 FTSE 100 (UK100)",
+                "US30": "🇺🇸 DOW JONES (US30)",
+                "US500": "🇺🇸 S&P 500 (US500)"
+            }
+            
+            display_name = symbol_display.get(signal_info['symbol'], f"💱 {signal_info['symbol']}")
+            
+            # Format the message with enhanced styling
+            message = f"""
+    🔮 <b>VFX SIGNAL ANALYSIS</b> 🔮
+
+    <b>Asset:</b> {display_name}
+    <b>Direction:</b> {'🔼 BUY' if signal_info['direction'] == 'BUY' else '🔻 SELL'}
+
+    📊 <b>MARKET ANALYSIS</b> 📊
+
+    {followup}
+
+    🧠 <b>KEY TAKEAWAYS</b> 🧠
+
+    - Watch price/volume difference at entry range
+    - Manage risk with partial take-profits
+    - Stay disciplined with your stop loss
+
+    ⏰ <i>Analysis time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>
+
+    🚫 <i>For informational purposes only. Not financial advice.</i>
+    """
+            
+            # Send to channel
+            await self.bot.send_message(
+                chat_id=self.signals_channel_id,
+                text=message,
+                parse_mode='HTML'
+            )
+            
+            self.logger.info(f"Sent follow-up analysis for {signal_info['symbol']} {signal_info['direction']}")
+        
+        except Exception as e:
+            self.logger.error(f"Error sending signal follow-up: {e}")
+    
     
     def cleanup(self):
         """Clean up resources when shutting down"""

@@ -2126,19 +2126,28 @@ async def copy_template_callback(update: Update, context: ContextTypes.DEFAULT_T
 # -------------------------------------- SIGNALS HANDLERS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 signal_dispatcher = None
-
+signal_system_initialized = False
 async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
     """Initialize the signal system after bot startup"""
-    global signal_dispatcher
+    global signal_dispatcher, signal_system_initialized
     
-    # Initialize signal dispatcher with the bot instance
-    signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
+    # Skip if already initialized
+    if signal_system_initialized:
+        logger.info("Signal system already initialized, skipping")
+        return
     
-    # Log successful initialization
-    logger.info("Signal system initialized successfully")
-    
-    # Schedule the first signal check
-    await signal_dispatcher.check_and_send_signal()
+    try:
+        logger.info("Starting signal system initialization...")
+        
+        # Initialize signal dispatcher with the bot instance
+        signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
+        
+        # Mark as initialized
+        signal_system_initialized = True
+        logger.info("Signal system initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Error in init_signal_system: {e}")
 
 # Define the scheduled function
 async def check_and_send_signals(context: ContextTypes.DEFAULT_TYPE) -> None:
