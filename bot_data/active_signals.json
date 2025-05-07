@@ -88,5 +88,21 @@
     "strategy": "VFX-LIMIT",
     "timeframe": "M15",
     "timestamp": "2025-05-07T14:00:32.111219"
+  },
+  "XAUUSD_SELL_20250507144032": {
+    "direction": "SELL",
+    "symbol": "XAUUSD",
+    "entry_range_low": 3392.44,
+    "entry_range_high": 3397.53,
+    "entry_price": 3394.985,
+    "stop_range_low": 3406.01,
+    "stop_range_high": 3411.12,
+    "stop_loss": 3408.565,
+    "take_profit": 3385.66,
+    "take_profit2": 3380.57,
+    "take_profit3": 3375.48,
+    "strategy": "VFX-LIMIT",
+    "timeframe": "M15",
+    "timestamp": "2025-05-07T14:40:32.097158"
   }
 }
