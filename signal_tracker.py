@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import json
 import os
@@ -26,6 +27,21 @@ class SignalTracker:
         # Initialize MT5 connection
         self.mt5_connected = False
         self.init_mt5()
+        
+        # Track milestones for each signal
+        self.signal_milestones = {}
+        
+        # Important thresholds to track
+        self.important_thresholds = [25, 50, 75, 90]
+        
+        # Minimum price change % to trigger an update
+        self.min_price_change_pct = 5
+        
+        # Minimum time between updates for a single signal
+        self.min_update_interval_minutes = 30
+        
+        # Is the price monitor running
+        self.monitor_running = False
     
     def init_mt5(self):
         """Initialize connection to MetaTrader 5."""
@@ -143,11 +159,134 @@ class SignalTracker:
             self.save_signals()
             
             self.logger.info(f"Added new signal: {signal_id}")
+            # Initialize milestone tracking for this signal
+            self.signal_milestones[signal_id] = {
+                'last_pct': 0,
+                'reached_milestones': set(),
+                'last_update_time': datetime.now() - timedelta(hours=1),  # Allow immediate update
+                'take_profits_hit': set(),
+                'stop_loss_hit': False
+            }
+            
+            # Start the monitor if not running
+            if not self.monitor_running and hasattr(self, 'update_callback'):
+                asyncio.create_task(self.continuous_price_monitor())
+            
             return signal_id
+                
             
         except Exception as e:
             self.logger.error(f"Error adding signal: {e}")
             return None
+        
+    async def continuous_price_monitor(self):
+        """Continuously monitor prices for all active signals."""
+        self.monitor_running = True
+        self.logger.info("Starting continuous price monitor")
+        
+        try:
+            while True:
+                try:
+                    signals_to_update = []
+                    now = datetime.now()
+                    
+                    # Check each active signal
+                    for signal_id, signal in list(self.active_signals.items()):
+                        try:
+                            # Skip if updated too recently
+                            if signal_id in self.signal_milestones:
+                                milestone_data = self.signal_milestones[signal_id]
+                                last_update_time = milestone_data['last_update_time']
+                                minutes_since_update = (now - last_update_time).total_seconds() / 60
+                                
+                                if minutes_since_update < self.min_update_interval_minutes:
+                                    continue
+                            
+                            # Get current status
+                            status = self.check_signal_status(signal_id)
+                            if not status:
+                                continue
+                            
+                            # Check for significant changes
+                            update_needed = False
+                            
+                            # Get milestone data
+                            if signal_id in self.signal_milestones:
+                                milestone_data = self.signal_milestones[signal_id]
+                                last_pct = milestone_data['last_pct']
+                                reached_milestones = milestone_data['reached_milestones']
+                                take_profits_hit = milestone_data['take_profits_hit']
+                                stop_loss_hit = milestone_data['stop_loss_hit']
+                                
+                                current_pct = status['pct_to_tp1']
+                                pct_change = abs(current_pct - last_pct)
+                                
+                                # Check stop loss hit
+                                if status['stop_hit'] and not stop_loss_hit:
+                                    update_needed = True
+                                    milestone_data['stop_loss_hit'] = True
+                                
+                                # Check for take profits hit
+                                for i, hit in enumerate(status['tps_hit']):
+                                    if hit and i not in take_profits_hit:
+                                        update_needed = True
+                                        take_profits_hit.add(i)
+                                
+                                # Check for crossing thresholds
+                                for threshold in self.important_thresholds:
+                                    # Check if crossed threshold (in either direction)
+                                    crossed_up = last_pct < threshold and current_pct >= threshold
+                                    crossed_down = last_pct >= threshold and current_pct < threshold
+                                    
+                                    if crossed_up or crossed_down:
+                                        if crossed_up:
+                                            reached_milestones.add(threshold)
+                                        elif crossed_down and threshold in reached_milestones:
+                                            reached_milestones.remove(threshold)
+                                        
+                                        update_needed = True
+                                        break
+                                
+                                # Check for significant movement
+                                if pct_change >= self.min_price_change_pct:
+                                    update_needed = True
+                                
+                                # If update needed, add to list
+                                if update_needed:
+                                    self.logger.info(f"Signal {signal_id} needs update: last {last_pct:.1f}%, current {current_pct:.1f}%")
+                                    signals_to_update.append({
+                                        "signal_id": signal_id,
+                                        "signal": signal,
+                                        "status": status
+                                    })
+                                    
+                                    # Update tracking data
+                                    milestone_data['last_pct'] = current_pct
+                                    milestone_data['last_update_time'] = now
+                            
+                        except Exception as e:
+                            self.logger.error(f"Error monitoring signal {signal_id}: {e}")
+                    
+                    # If there are signals to update, call the callback
+                    if signals_to_update and hasattr(self, 'update_callback'):
+                        asyncio.create_task(self.update_callback(signals_to_update))
+                    
+                    # Cleanup completed signals
+                    await self.cleanup_completed_signals_async()
+                    
+                    # Sleep before next check
+                    await asyncio.sleep(15)  # Check every 15 seconds
+                    
+                except Exception as e:
+                    self.logger.error(f"Error in continuous monitor loop: {e}")
+                    await asyncio.sleep(60)  # Longer sleep on error
+            
+        except asyncio.CancelledError:
+            self.logger.info("Continuous price monitor cancelled")
+            self.monitor_running = False
+        except Exception as e:
+            self.logger.error(f"Continuous price monitor crashed: {e}")
+            self.monitor_running = False
     
     def remove_signal(self, signal_id):
         """
@@ -458,6 +597,10 @@ class SignalTracker:
             self.logger.error(f"Error cleaning up signals: {e}")
             return 0
     
+    async def cleanup_completed_signals_async(self):
+        """Async version of cleanup_completed_signals."""
+        return self.cleanup_completed_signals()  
+ 
     def get_signal_history(self, days=7):
         """
         Get statistics on signal performance over time.
@@ -479,19 +622,25 @@ class SignalTracker:
     def register_update_callback(self, callback_function):
         """Register a callback function to be called when signals need updates"""
         self.update_callback = callback_function
+        self.logger.info("Update callback registered")
     
-    def monitor_active_signals(self):
+    async def monitor_active_signals(self):
         """
-        Continuously monitor active signals for significant changes
-        and trigger callbacks when needed
+        Monitor active signals for significant changes and trigger callback when needed
         """
-        signals_to_update = self.check_signals_for_updates()
-        
-        # If there are signals that need updates, call the callback
-        if signals_to_update and hasattr(self, 'update_callback'):
-            self.update_callback(signals_to_update)
-        
-        return len(signals_to_update)
+        try:
+            signals_to_update = self.check_signals_for_updates()
+            
+            # If there are signals that need updates and a callback is registered
+            if signals_to_update and hasattr(self, 'update_callback'):
+                self.logger.info(f"Calling update callback for {len(signals_to_update)} signals")
+                await self.update_callback(signals_to_update)
+                return len(signals_to_update)
+            return 0
+            
+        except Exception as e:
+            self.logger.error(f"Error monitoring active signals: {e}")
+            return 0
 
 # For testing
 if __name__ == "__main__":

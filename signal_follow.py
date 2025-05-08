@@ -24,6 +24,19 @@ class SignalFollowUpGenerator:
         # Get Groq API credentials from environment variables
         self.api_key = os.getenv("GROQ_API_KEY")
         self.model = os.getenv("GROQ_MODEL", "meta-llama/llama-4-maverick-17b-128e-instruct")
+        self.models = [
+            "meta-llama/llama-4-maverick-17b-128e-instruct",  # Primary model
+            "compound-beta",
+            "deepseek-r1-distill-llama-70b",
+            "qwen-qwq-32b",
+            "gemma2-9b-it"
+        ]
+        # Current model index (start with primary model)
+        self.current_model_index = 0
+        
+        # Model cooldown tracking
+        self.model_cooldowns = {model: None for model in self.models}
+        
         
         if not self.api_key:
             self.logger.error("GROQ_API_KEY not found in environment variables")
@@ -172,121 +185,139 @@ class SignalFollowUpGenerator:
         Returns:
             str: Generated message or None if failed
         """
-        try:
-            # Create the prompt for Groq
-            symbol = context.get("symbol", "Unknown")
-            direction = context.get("direction", "Unknown")
-            message_type = context.get("message_type", "progress_update")
+        now = datetime.now()
+        message = None
+        
+        # Try each model in sequence until success or all models fail
+        for model_index in range(len(self.models)):
+            # Calculate the actual model index to use (rotate through models)
+            idx = (self.current_model_index + model_index) % len(self.models)
+            model = self.models[idx]
             
-            # Customize the prompt based on the message type
-            base_prompt = f"""
-You are an expert Quantitative Trader/Researcher with over 20 years of experience. Generate a professional, concise follow-up message for a trading signal that has been sent to VIP clients. The message should be informative, engaging, and encourage traders to stay with the signal. Use emoji strategically and format the message so it has spaces and bold fonts accordingly.
-
-Signal Details:
-- Symbol: {symbol}
-- Direction: {direction}
-- Entry Price: {context.get('entry_price')}
-- Current Price: {context.get('current_price')}
-- Take Profit Targets: {context.get('take_profits')}
-- Stop Loss: {context.get('stop_loss')}
-- Current Progress to TP1: {context.get('progress'):.1f}%
-- Currently in Profit: {context.get('in_profit')}
-- Profit/Loss Pips: {context.get('profit_pips'):.1f}
-
-Additional Context:
-"""
-
-            # Add specific context based on message type
-            if message_type == "take_profit_hit":
-                base_prompt += f"""
-- Take Profit {context.get('tp_hit')} has been hit!
-- Price reached {context.get('tp_hit_price')}
-- Create an enthusiastic message celebrating this win
-- Include advice about managing the remaining position (moving stop loss, trailing, etc.)
-"""
-            elif message_type == "stop_loss_hit":
-                base_prompt += f"""
-- Stop Loss has been triggered at {context.get('stop_loss')}
-- Create a professional and reassuring message
-- Mention that risk management is key to long-term success
-- Encourage them to look forward to the next setup
-"""
-            elif message_type == "major_milestone":
-                base_prompt += f"""
-- Signal has reached a significant milestone: {context.get('milestone')} toward TP1
-- Create an encouraging message highlighting this progress
-- Include a brief technical observation about the current price action
-- Remind about proper position management
-"""
-            else:  # progress_update
-                base_prompt += f"""
-- Regular progress update for this signal
-- Currently at {context.get('progress'):.1f}% toward TP1
-- Create a balanced, informative update
-- Include a brief market observation relevant to this trade
-"""
-
-            base_prompt += """
-Important:
-- Keep the message under 150 words
-- Start with "📊 SIGNAL UPDATE:" followed by symbol and direction
-- Sound professional and confident
-- Include 3-5 relevant emojis throughout (not just at beginning)
-- End with a brief, encouraging note
-- Make sure the message matches the context of the trade (winning, losing, or in progress)
-- NO DISCLAIMERS or irrelevant information
-- Follow the following for format using HTML 
--->✅ TP1 Hit!\n\n
-The trade is unfolding exactly as planned 🎯
-\n
-🟢 Partial profits secured — locking in gains without emotion.
-📊 Price action remains favorable, holding above key zones with strong momentum.
-\n
-🚨 Stop Loss has been moved to Breakeven — risk now fully neutralized.
-We're now in a free trade — the best kind. 😎
-\n
-📌 Next target: TP2
-Let the market do the heavy lifting from here.
-We'll continue to monitor for signs of strength or exhaustion.
-
-⚙️ Risk-managed. Precision-executed. Professionally guided.
-Stay focused, team. 🧠💼<--
-
-Generate only the message without any explanations.
-The message should sound natural, like it was written by a human trading expert. But at the same time keep it casual (remember that's telegram trading channel meant to impress retails traders)
-
-"""
-
-            # Prepare the API request
-            payload = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": "You are a professional quantitative trader/researcher with over 20 years of experience and 2 phd in Quantitative Finance and Machine Learning."},
-                    {"role": "user", "content": base_prompt}
-                ],
-                "temperature": 0.7,
-                "max_tokens": 300
-            }
+            # Check if this model is on cooldown
+            cooldown_until = self.model_cooldowns[model]
+            if cooldown_until and now < cooldown_until:
+                seconds_remaining = (cooldown_until - now).total_seconds()
+                self.logger.info(f"Model {model} is on cooldown for {seconds_remaining:.1f}s, trying next model")
+                continue
             
-            # Call the Groq API
-            response = requests.post(
-                self.base_url,
-                headers=self.headers,
-                json=payload
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                message = result["choices"][0]["message"]["content"].strip()
-                self.logger.info(f"Successfully generated follow-up message using Groq for {symbol} {direction}")
-                return message
-            else:
-                self.logger.error(f"Error from Groq API: {response.status_code} - {response.text}")
-                return None
+            try:
+                # Create the prompt for Groq
+                symbol = context.get("symbol", "Unknown")
+                direction = context.get("direction", "Unknown")
+                message_type = context.get("message_type", "progress_update")
                 
-        except Exception as e:
-            self.logger.error(f"Error querying Groq API: {e}")
-            return None
+                # Customize the prompt based on the message type
+                base_prompt = f"""
+        You are an expert Quantitative Trader/Researcher with over 20 years of experience. Generate a professional, visually appealing follow-up message for a trading signal in a VIP Telegram channel.
+
+        Signal Details:
+        - Symbol: {symbol}
+        - Direction: {direction}
+        - Entry Price: {context.get('entry_price')}
+        - Current Price: {context.get('current_price')}
+        - Take Profit Targets: {context.get('take_profits')}
+        - Stop Loss: {context.get('stop_loss')}
+        - Current Progress to TP1: {context.get('progress'):.1f}%
+        - Currently in Profit: {context.get('in_profit')}
+        - Profit/Loss Pips: {context.get('profit_pips'):.1f}
+
+        Additional Context:
+        """
+
+                # Add specific context based on message type
+                if message_type == "take_profit_hit":
+                    base_prompt += f"""
+        - Take Profit {context.get('tp_hit')} has been hit!
+        - Price reached {context.get('tp_hit_price')}
+        - Create an enthusiastic message celebrating this win
+        - Include advice about managing the remaining position (moving stop loss, trailing, etc.)
+        """
+                elif message_type == "stop_loss_hit":
+                    base_prompt += f"""
+        - Stop Loss has been triggered at {context.get('stop_loss')}
+        - Create a professional and reassuring message
+        - Mention that risk management is key to long-term success
+        - Encourage them to look forward to the next setup
+        """
+                elif message_type == "major_milestone":
+                    base_prompt += f"""
+        - Signal has reached a significant milestone: {context.get('milestone')} toward TP1
+        - Create an encouraging message highlighting this progress
+        - Include a brief technical observation about the current price action
+        - Remind about proper position management
+        """
+                else:  # progress_update
+                    base_prompt += f"""
+        - Regular progress update for this signal
+        - Currently at {context.get('progress'):.1f}% toward TP1
+        - Create a balanced, informative update
+        - Include a brief market observation relevant to this trade
+        """
+
+                base_prompt += """
+        TELEGRAM FORMATTING GUIDELINES:
+        - Create a visually structured message with clear sections
+        - Use line breaks to separate sections
+        - Start with a prominent header with emojis (e.g., "📊 SIGNAL UPDATE: EURUSD BUY 📈")
+        - Use <b>bold text</b> for important information and section headers
+        - Use emojis to start each major point or section (not just decorative, but meaningful)
+        - Include a clear status section showing current price, progress percentage, and profit/loss
+        - End with a motivational note or clear next steps
+
+        STRUCTURE YOUR MESSAGE LIKE THIS:
+        📊 <b>SIGNAL UPDATE: [SYMBOL] [DIRECTION]</b> 📈
+
+        ⏱ <b>Status:</b> [Current status in 1-2 sentences]
+
+        💰 <b>Performance:</b>
+        - Entry: [entry price]
+        - Current: [current price]
+        - Profit/Loss: [amount] pips
+        - Progress to TP1: [percentage]%
+
+        🔍 <b>Market Insight:</b>
+        [Brief technical observation]
+
+        🚀 <b>Next Steps:</b>
+        [What traders should do now]
+
+        [Encouraging closing note]
+
+        Make the message conversational but professional. Use the exact structure above, maintaining the 
+        emojis and formatting shown. The message should feel exclusive and valuable to VIP traders.
+        """
+
+                # Prepare the API request
+                payload = {
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": "You are a professional quantitative trader/researcher with over 20 years of experience and 2 PhDs in Quantitative Finance and Machine Learning."},
+                        {"role": "user", "content": base_prompt}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 300
+                }
+                
+                  # Call the Groq API
+                response = requests.post(
+                    self.base_url,
+                    headers=self.headers,
+                    json=payload
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    message = result["choices"][0]["message"]["content"].strip()
+                    self.logger.info(f"Successfully generated follow-up message using Groq for {symbol} {direction}")
+                    return message
+                else:
+                    self.logger.error(f"Error from Groq API: {response.status_code} - {response.text}")
+                    return None
+                    
+            except Exception as e:
+                self.logger.error(f"Error querying Groq API: {e}")
+                return None
             
     def generate_fallback_message(self, signal_data, status, message_type):
         """

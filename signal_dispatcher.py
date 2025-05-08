@@ -66,7 +66,7 @@ class SignalDispatcher:
     async def handle_signal_updates(self, signals_to_update):
         """Handle updates for signals that have crossed important thresholds"""
         try:
-            results = []
+            update_count = 0
             for signal_update in signals_to_update:
                 try:
                     signal_id = signal_update["signal_id"]
@@ -74,7 +74,17 @@ class SignalDispatcher:
                     status = signal_update["status"]
                     
                     # Generate follow-up message
-                    message = self.follow_up_generator.generate_message(signal_data, status)
+                    message = await self.follow_up_generator.query_groq(
+                        self.follow_up_generator.create_message_context(
+                            signal_data, status, self._determine_message_type(status)
+                        )
+                    )
+                    
+                    # If Groq fails, use fallback
+                    if not message:
+                        message = self.follow_up_generator.generate_fallback_message(
+                            signal_data, status, self._determine_message_type(status)
+                        )
                     
                     # Send to channel
                     await self.bot.send_message(
@@ -83,23 +93,48 @@ class SignalDispatcher:
                         parse_mode='HTML'
                     )
                     
+                    update_count += 1
                     self.logger.info(f"Sent follow-up message for signal {signal_id}")
-                    results.append(signal_id)
+                    
+                    # Add a small delay between messages to prevent flooding
+                    if len(signals_to_update) > 1:
+                        await asyncio.sleep(1)
                     
                 except Exception as e:
                     self.logger.error(f"Error handling signal update: {e}")
             
-            return len(results)
+            if update_count > 0:
+                self.logger.info(f"Processed {update_count} signal updates")
+                
+            return update_count
             
         except Exception as e:
             self.logger.error(f"Error handling signal updates: {e}")
             return 0
     
+    def _determine_message_type(self, status):
+        """Determine the message type based on signal status."""
+        if status.get("stop_hit", False):
+            return "stop_loss_hit"
+        
+        if any(status.get("tps_hit", [])):
+            return "take_profit_hit"
+        
+        if status.get("pct_to_tp1", 0) >= 90:
+            return "major_milestone"
+        elif status.get("pct_to_tp1", 0) >= 75:
+            return "major_milestone"
+        elif status.get("pct_to_tp1", 0) >= 50:
+            return "major_milestone"
+        elif status.get("pct_to_tp1", 0) >= 25:
+            return "major_milestone"
+        
+        return "progress_update"
     
     async def check_and_send_signal(self):
         """Check if it's time to send a signal and do so if appropriate"""
         now = datetime.now()
-        self.signal_tracker.monitor_active_signals()
+        
         # Reset daily counter if needed
         if now.date() != self.last_daily_reset:
             self.signals_sent_today = 0
@@ -167,7 +202,9 @@ class SignalDispatcher:
         else:
             self.logger.info("No valid signals generated at this time")
         
-        self.signal_tracker.monitor_active_signals()
+        updated_count = await self.signal_tracker.monitor_active_signals()
+        if updated_count > 0:
+            self.logger.info(f"Processed updates for {updated_count} signals")
 
     def extract_signal_info(self, signal_message):
         """Extract structured signal information from a formatted signal message string"""
