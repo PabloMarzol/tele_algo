@@ -14,5 +14,53 @@
     "strategy": "VFX-LIMIT",
     "timeframe": "M15",
     "timestamp": "2025-05-08T17:18:54.112478"
+  },
+  "XAUUSD_BUY_20250508175155": {
+    "direction": "BUY",
+    "symbol": "XAUUSD",
+    "entry_range_low": 3306.71,
+    "entry_range_high": 3311.68,
+    "entry_price": 3309.1949999999997,
+    "stop_range_low": 3293.48,
+    "stop_range_high": 3298.43,
+    "stop_loss": 3295.955,
+    "take_profit": 3318.3,
+    "take_profit2": 3323.27,
+    "take_profit3": 3328.24,
+    "strategy": "VFX-LIMIT",
+    "timeframe": "M15",
+    "timestamp": "2025-05-08T17:51:55.797966"
+  },
+  "XAUUSD_SELL_20250508180437": {
+    "direction": "SELL",
+    "symbol": "XAUUSD",
+    "entry_range_low": 3305.64,
+    "entry_range_high": 3310.6,
+    "entry_price": 3308.12,
+    "stop_range_low": 3318.86,
+    "stop_range_high": 3323.84,
+    "stop_loss": 3321.3500000000004,
+    "take_profit": 3299.03,
+    "take_profit2": 3294.07,
+    "take_profit3": 3289.11,
+    "strategy": "VFX-LIMIT",
+    "timeframe": "M15",
+    "timestamp": "2025-05-08T18:04:37.045939"
+  },
+  "XAUUSD_SELL_20250508181046": {
+    "direction": "SELL",
+    "symbol": "XAUUSD",
+    "entry_range_low": 3299.28,
+    "entry_range_high": 3304.23,
+    "entry_price": 3301.755,
+    "stop_range_low": 3312.48,
+    "stop_range_high": 3317.45,
+    "stop_loss": 3314.965,
+    "take_profit": 3292.68,
+    "take_profit2": 3287.73,
+    "take_profit3": 3282.78,
+    "strategy": "VFX-LIMIT",
+    "timeframe": "M15",
+    "timestamp": "2025-05-08T18:10:46.867439"
   }
 }

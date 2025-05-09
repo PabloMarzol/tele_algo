@@ -175,7 +175,7 @@ class SignalFollowUpGenerator:
         
         return context
         
-    def query_groq(self, context):
+    async def query_groq(self, context):
         """
         Generate a message using Groq API.
         
@@ -288,7 +288,7 @@ class SignalFollowUpGenerator:
         emojis and formatting shown. The message should feel exclusive and valuable to VIP traders.
         """
 
-                # Prepare the API request
+                 # Prepare the API request
                 payload = {
                     "model": self.model,
                     "messages": [
@@ -299,7 +299,7 @@ class SignalFollowUpGenerator:
                     "max_tokens": 300
                 }
                 
-                  # Call the Groq API
+                # Call the Groq API
                 response = requests.post(
                     self.base_url,
                     headers=self.headers,
@@ -309,6 +309,10 @@ class SignalFollowUpGenerator:
                 if response.status_code == 200:
                     result = response.json()
                     message = result["choices"][0]["message"]["content"].strip()
+                    
+                    # Post-process message to ensure consistent formatting
+                    message = self.post_process_telegram_message(message, symbol, direction, context)
+                    
                     self.logger.info(f"Successfully generated follow-up message using Groq for {symbol} {direction}")
                     return message
                 else:
@@ -318,29 +322,95 @@ class SignalFollowUpGenerator:
             except Exception as e:
                 self.logger.error(f"Error querying Groq API: {e}")
                 return None
-            
+    
+    def post_process_telegram_message(self, message, symbol, direction, context):
+        """
+        Apply post-processing to ensure consistent, visually appealing formatting
+        for Telegram messages, regardless of the LLM output quality.
+        """
+        # Ensure message starts with a proper header if not already
+        if not message.startswith("📊"):
+            message = f"📊 <b>SIGNAL UPDATE: {symbol} {direction}</b> 📈\n\n" + message
+        
+        # Ensure sections are properly spaced
+        message = re.sub(r'\n{3,}', '\n\n', message)  # No more than 2 consecutive line breaks
+        
+        # Fix common formatting issues
+        message = re.sub(r'<b>\s+', '<b>', message)  # Remove space after <b>
+        message = re.sub(r'\s+</b>', '</b>', message)  # Remove space before </b>
+        
+        # Make sure entry/current prices are bold
+        if "Entry:" in message and "<b>" not in message.split("Entry:")[1].split("\n")[0]:
+            message = message.replace("Entry:", "Entry: <b>")
+            next_line_index = message.find("\n", message.find("Entry:"))
+            if next_line_index != -1:
+                message = message[:next_line_index] + "</b>" + message[next_line_index:]
+                
+        if "Current:" in message and "<b>" not in message.split("Current:")[1].split("\n")[0]:
+            message = message.replace("Current:", "Current: <b>")
+            next_line_index = message.find("\n", message.find("Current:"))
+            if next_line_index != -1:
+                message = message[:next_line_index] + "</b>" + message[next_line_index:]
+        
+        # Ensure the proper emoji density (at least 5)
+        emoji_count = len(re.findall(r'[\U00010000-\U0010ffff]', message, re.UNICODE))
+        common_emojis = ["📊", "📈", "📉", "💰", "⏱", "🚀", "🔍", "⚡", "💼", "🎯", "✅", "⚠️", "💎"]
+        
+        if emoji_count < 5:
+            # Add some relevant emojis to section headers that don't have them
+            sections = ["Status:", "Performance:", "Market Insight:", "Next Steps:"]
+            for section in sections:
+                if section in message and not re.search(r'[\U00010000-\U0010ffff]\s*<b>' + section, message, re.UNICODE):
+                    emoji = random.choice(common_emojis)
+                    common_emojis.remove(emoji)  # Don't reuse emojis
+                    message = message.replace(f"<b>{section}</b>", f"{emoji} <b>{section}</b>")
+        
+        # Special cases for different message types
+        message_type = context.get("message_type", "progress_update")
+        
+        if message_type == "take_profit_hit":
+            if "🎯" not in message and "🎮" not in message:
+                message = message.replace("SIGNAL UPDATE", "SIGNAL UPDATE 🎯 TARGET HIT")
+                
+        elif message_type == "stop_loss_hit":
+            if "⚠️" not in message and "🛑" not in message:
+                message = message.replace("SIGNAL UPDATE", "SIGNAL UPDATE ⚠️ STOP HIT")
+        
+        elif message_type == "major_milestone":
+            milestone = context.get("milestone", "")
+            if "🏆" not in message and "🏅" not in message:
+                message = message.replace("SIGNAL UPDATE", f"SIGNAL UPDATE 🏆 {milestone} MILESTONE")
+        
+        # Ensure there's a proper conclusion
+        if not re.search(r'(Stay\s+tuned|Happy\s+trading|Trade\s+safe|Keep\s+watching|Keep\s+trading)', message, re.IGNORECASE):
+            message += "\n\n🚀 <b>Happy trading, VIP members!</b>"
+        
+        return message
+    
+           
     def generate_fallback_message(self, signal_data, status, message_type):
         """
         Generate a fallback message using templates when Groq is unavailable.
-        
-        Args:
-            signal_data (dict): The original signal data
-            status (dict): Current status of the signal
-            message_type (str): Type of message to generate
-            
-        Returns:
-            str: Fallback message
+        These fallback messages follow the same visual formatting standards.
         """
         symbol = signal_data.get("symbol", "Unknown")
         direction = signal_data.get("direction", "Unknown")
+        entry_price = signal_data.get("entry_price", 0)
+        current_price = status.get("current_price", 0)
+        profit_pips = status.get("profit_pips", 0)
+        progress = status.get("pct_to_tp1", 0)
         
-        additional_info = ""
-        if status.get("in_profit", False):
-            additional_info = f"Position is currently in profit by {status.get('profit_pips', 0):.1f} pips."
-        else:
-            additional_info = f"Position is currently down by {abs(status.get('profit_pips', 0)):.1f} pips."
-            
+        # Extract take profits
+        take_profits = []
+        for i in range(1, 4):
+            tp_key = f"take_profit{i}" if i > 1 else "take_profit"
+            if tp_key in signal_data:
+                take_profits.append(signal_data.get(tp_key))
+        
+        profit_status = "in profit" if status.get("in_profit", False) else "in drawdown"
+        
         if message_type == "take_profit_hit":
+            # Determine which take profit was hit
             tp_num = 0
             for i, hit in enumerate(status.get("tps_hit", [])):
                 if hit:
@@ -352,50 +422,100 @@ class SignalFollowUpGenerator:
             if tp_key in signal_data:
                 tp_price = signal_data[tp_key]
                 
-            message = self.message_templates["take_profit_hit"].format(
-                symbol=symbol,
-                direction=direction,
-                tp_num=tp_num,
-                tp_price=tp_price,
-                additional_info=additional_info
-            )
+            return f"""📊 <b>SIGNAL UPDATE: {symbol} {direction}</b> 🎯
+
+    ⚡ <b>Target Hit!</b> Take Profit {tp_num} reached at {tp_price}!
+
+    💰 <b>Performance:</b>
+    - Entry: <b>{entry_price}</b>
+    - Current: <b>{current_price}</b>
+    - Profit: <b>{abs(profit_pips):.1f}</b> pips
+
+    🔍 <b>Market Analysis:</b>
+    Price has reached our target as predicted. The setup played out perfectly.
+
+    🚀 <b>Next Steps:</b>
+    - Move stop loss to breakeven if you haven't already
+    - Consider trailing remaining position to lock in profits
+    - Partial profits are key to long-term success
+
+    🏆 <b>Congratulations to all VIP members who followed this signal!</b>
+    """
             
         elif message_type == "stop_loss_hit":
-            message = self.message_templates["stop_loss_hit"].format(
-                symbol=symbol,
-                direction=direction,
-                sl_price=signal_data.get("stop_loss", 0),
-                additional_info=additional_info
-            )
+            return f"""📊 <b>SIGNAL UPDATE: {symbol} {direction}</b> ⚠️
+
+    🛑 <b>Stop Loss Triggered:</b> Position closed at {signal_data.get("stop_loss")}
+
+    💰 <b>Performance:</b>
+    - Entry: <b>{entry_price}</b>
+    - Exit: <b>{current_price}</b>
+    - Loss: <b>{abs(profit_pips):.1f}</b> pips
+
+    🔍 <b>Market Analysis:</b>
+    Market conditions shifted against our position. Risk management always comes first.
+
+    🚀 <b>Next Steps:</b>
+    - This is part of trading - not every signal wins
+    - Our risk management kept the loss contained
+    - Stay disciplined and ready for the next opportunity
+
+    💼 <b>Remember: Professional traders focus on long-term results, not individual trades!</b>
+    """
             
         elif message_type == "major_milestone":
             milestone = None
-            if status.get("pct_to_tp1", 0) >= 90:
+            if progress >= 90:
                 milestone = "90%"
-            elif status.get("pct_to_tp1", 0) >= 75:
+            elif progress >= 75:
                 milestone = "75%"
-            elif status.get("pct_to_tp1", 0) >= 50:
+            elif progress >= 50:
                 milestone = "50%"
-            elif status.get("pct_to_tp1", 0) >= 25:
+            elif progress >= 25:
                 milestone = "25%"
                 
-            message = self.message_templates["major_milestone"].format(
-                symbol=symbol,
-                direction=direction,
-                milestone=milestone,
-                progress=status.get("pct_to_tp1", 0),
-                additional_info=additional_info
-            )
+            return f"""📊 <b>SIGNAL UPDATE: {symbol} {direction}</b> 🏆
+
+    ⭐ <b>{milestone} Milestone Reached!</b> Signal progressing nicely.
+
+    💰 <b>Performance:</b>
+    - Entry: <b>{entry_price}</b>
+    - Current: <b>{current_price}</b>
+    - Current {profit_status}: <b>{abs(profit_pips):.1f}</b> pips
+    - Progress to TP1: <b>{progress:.1f}%</b>
+
+    🔍 <b>Market Analysis:</b>
+    Price action continues to follow our projection. Key level at {milestone} has been reached.
+
+    🚀 <b>Next Steps:</b>
+    - Continue holding for targets
+    - Consider adjusting stop loss to protect gains
+    - Stay patient and let the trade develop
+
+    💎 <b>Great progress, VIP traders! Let's see this through to target.</b>
+    """
             
         else:  # progress_update
-            message = self.message_templates["progress_update"].format(
-                symbol=symbol,
-                direction=direction,
-                progress=status.get("pct_to_tp1", 0),
-                additional_info=additional_info
-            )
-            
-        return f"📊 SIGNAL UPDATE: {message}"
+            return f"""📊 <b>SIGNAL UPDATE: {symbol} {direction}</b> 📈
+
+    ⏱ <b>Status:</b> Signal is currently {profit_status}.
+
+    💰 <b>Performance:</b>
+    - Entry: <b>{entry_price}</b>
+    - Current: <b>{current_price}</b>
+    - Current {profit_status}: <b>{abs(profit_pips):.1f}</b> pips
+    - Progress to TP1: <b>{progress:.1f}%</b>
+
+    🔍 <b>Market Analysis:</b>
+    Price continues to develop with our expectation. Key levels ahead at {take_profits[0] if take_profits else 'target'}.
+
+    🚀 <b>Next Steps:</b>
+    - Continue holding for targets
+    - Maintain disciplined risk management
+    - Watch for potential acceleration in momentum
+
+    💼 <b>Stay patient, VIP members! Quality setups take time to develop.</b>
+    """
     
     def process_signals_for_updates(self, min_pct_change=5, min_update_interval_minutes=15):
         """

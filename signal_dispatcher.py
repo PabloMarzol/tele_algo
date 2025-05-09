@@ -372,27 +372,37 @@ class SignalDispatcher:
     async def send_signal_updates(self):
         """Check for signal updates and send follow-up messages."""
         try:
-            # Process signals for updates and get generated messages
+            # Add debugging to identify the issue
+            self.logger.info(f"Bot type: {type(self.bot)}")
+            self.logger.info(f"Channel ID: {self.signals_channel_id}")
+            
+            # Process signals for updates
             signal_updates = self.follow_up_generator.process_signals_for_updates()
             
             for update in signal_updates:
                 signal_id = update["signal_id"]
                 message = update["message"]
                 
-                # Send to channel
-                await self.bot.send_message(
-                    chat_id=self.signals_channel_id,
-                    text=message,
-                    parse_mode='HTML'
-                )
+                # More debugging
+                self.logger.info(f"Attempting to send message for signal {signal_id}")
                 
-                self.logger.info(f"Sent follow-up message for signal {signal_id}")
+                # Try sending message with error catching
+                try:
+                    await self.bot.send_message(
+                        chat_id=self.signals_channel_id,
+                        text=message,
+                        parse_mode='HTML'
+                    )
+                    self.logger.info(f"Successfully sent follow-up message for signal {signal_id}")
+                except Exception as e:
+                    self.logger.error(f"Error sending specific message: {e}")
                 
             return len(signal_updates)
             
         except Exception as e:
             self.logger.error(f"Error sending signal updates: {e}")
             return 0
+        
     def cleanup(self):
         """Clean up resources when shutting down"""
         self.signal_generator.cleanup()
