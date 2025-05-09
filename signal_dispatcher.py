@@ -9,8 +9,10 @@ from news_fetcher import FinancialNewsFetcher
 from groq_client import GroqClient
 from signal_tracker import SignalTracker
 from signal_follow import SignalFollowUpGenerator
+from mt5_signal_executor import MT5SignalExecutor
 
 load_dotenv()
+ADMIN_USER_ID = [7823596188, 7396303047]
 
 class SignalDispatcher:
     """Manages trading signal generation and distribution"""
@@ -26,6 +28,14 @@ class SignalDispatcher:
             password=os.getenv("MT5_PASSWORD"),
             server=os.getenv("MT5_SERVER")
         )
+        # Initialize the signal executor
+        self.signal_executor = MT5SignalExecutor(
+            username=os.getenv("MT5_USERNAME"),
+            password=os.getenv("MT5_PASSWORD"),
+            server=os.getenv("MT5_SERVER"),
+            risk_percent=1.0  # 1% risk per trade
+        )
+        self.auto_execute = False
         # self.signal_tracker = self.signal_generator.signal_history 
 
         
@@ -176,7 +186,7 @@ class SignalDispatcher:
                 # Extract signal info from formatted message
                 signal_info = self.extract_signal_info(signal)
                 
-                # Send the signal message
+                # Send the signal message to the channel
                 await self.bot.send_message(
                     chat_id=self.signals_channel_id,
                     text=signal,
@@ -188,9 +198,83 @@ class SignalDispatcher:
                 self.signals_sent_today += 1
                 self.signals_sent_this_hour += 1
                 
-                # Add to signal tracker
+                # Add to signal tracker and get the signal_id
                 if signal_info:
-                    self.signal_tracker.add_signal(signal_info)
+                    signal_id = self.signal_tracker.add_signal(signal_info)
+                    
+                    # Add signal_id to the signal_info dict for the executor
+                    signal_info['signal_id'] = signal_id
+                    
+                    # Execute the signal automatically
+                    try:
+                        execution_result = self.signal_executor.execute_signal(signal_info)
+                        
+                        # Log the execution result
+                        if execution_result["success"]:
+                            self.logger.info(f"Signal {signal_id} executed successfully: {execution_result['order_count']} orders placed")
+                            
+                            # Format order details for the admin notification
+                            order_details = "\n".join([
+                                f"• Order {i+1}: ID {order['order_id']}, Entry {order['entry_price']:.2f}, SL {order['stop_loss']:.2f}, Lot {order['lot_size']:.2f}"
+                                for i, order in enumerate(execution_result['orders'])
+                            ])
+                            
+                            # Send execution notification to admin only
+                            admin_msg = f"""
+                        🤖 <b>VFX_Algo Trading Signal</b> 🤖
+
+                        Symbol: {signal_info['symbol']} {signal_info['direction']}
+                        Placed {execution_result['order_count']} limit orders across the entry range.
+
+                        <b>Order Details:</b>
+                        {order_details}
+
+                        <b>Take Profit Levels:</b>
+                        - TP1: {execution_result['take_profits'][0] if execution_result['take_profits'] else 'N/A'}
+                        {f"• TP2: {execution_result['take_profits'][1]}" if len(execution_result['take_profits']) > 1 else ""}
+                        {f"• TP3: {execution_result['take_profits'][2]}" if len(execution_result['take_profits']) > 2 else ""}
+
+                        Total Position Size: {execution_result.get('total_lot_size', 0):.2f} lots
+                        Signal ID: {signal_id}
+                        """
+                            # Send to admin only
+                            for admin_id in ADMIN_USER_ID:
+                                try:
+                                    await self.bot.send_message(
+                                        chat_id=admin_id,
+                                        text=admin_msg,
+                                        parse_mode='HTML'
+                                    )
+                                except Exception as e:
+                                    self.logger.error(f"Failed to send execution notification to admin {admin_id}: {e}")
+                        else:
+                            error_msg = f"Failed to execute signal {signal_id}: {execution_result['error']}"
+                            self.logger.error(error_msg)
+                            
+                            # Notify admin of execution failure
+                            for admin_id in ADMIN_USER_ID:
+                                try:
+                                    await self.bot.send_message(
+                                        chat_id=admin_id,
+                                        text=f"⚠️ EXECUTION FAILED: {signal_info['symbol']} {signal_info['direction']}\n\nError: {execution_result['error']}",
+                                        parse_mode='HTML'
+                                    )
+                                except Exception as e:
+                                    self.logger.error(f"Failed to send execution error to admin {admin_id}: {e}")
+                                    
+                    except Exception as e:
+                        self.logger.error(f"Error during signal execution: {e}")
+                        
+                        # Notify admin of execution exception
+                        for admin_id in ADMIN_USER_ID:
+                            try:
+                                await self.bot.send_message(
+                                    chat_id=admin_id,
+                                    text=f"⚠️ EXECUTION ERROR: {signal_info['symbol']} {signal_info['direction']}\n\nException: {str(e)}",
+                                    parse_mode='HTML'
+                                )
+                            except Exception as notify_error:
+                                self.logger.error(f"Failed to send execution exception to admin {admin_id}: {notify_error}")
                     
                     # Schedule follow-up message
                     asyncio.create_task(self.send_signal_followup(signal_info))

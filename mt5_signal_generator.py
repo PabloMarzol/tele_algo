@@ -209,14 +209,13 @@ class MT5SignalGenerator:
             
         return None
     
-    def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=14, overbought=70, oversold=30):
+    def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=3, overbought=95, oversold=5):
         """Calculate RSI reversal signal with Polars"""
         df = self.get_price_data(symbol, timeframe, bars=rsi_length*3)
         if df is None or df.height < rsi_length:
             return None
         
         # For RSI calculation, we'll use talib on the numpy array
-        # (Polars doesn't have built-in RSI calculation)
         closes = df["close"].to_numpy()
         rsi_values = talib.RSI(closes, timeperiod=rsi_length)
         

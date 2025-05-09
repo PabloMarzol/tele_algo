@@ -355,7 +355,7 @@ class SignalTracker:
             # Calculate status based on direction
             if direction == "BUY":
                 in_profit = current_price > entry_price
-                profit_pips = current_price - entry_price
+                profit_pips = self.calculate_pips(symbol, current_price - entry_price)
                 
                 # Calculate percentages to take profits
                 pct_to_tps = []
@@ -373,7 +373,7 @@ class SignalTracker:
                 
             else:  # SELL signal
                 in_profit = current_price < entry_price
-                profit_pips = entry_price - current_price
+                profit_pips = self.calculate_pips(symbol, entry_price - current_price)
                 
                 # Calculate percentages to take profits
                 pct_to_tps = []
@@ -415,7 +415,32 @@ class SignalTracker:
         except Exception as e:
             self.logger.error(f"Error checking signal status: {e}")
             return None
-    
+    def calculate_pips(self, symbol, price_difference):
+        """
+        Calculate pips based on the asset type.
+        
+        Args:
+            symbol (str): Trading symbol
+            price_difference (float): Raw price difference
+        
+        Returns:
+            float: Value in pips
+        """
+        # For forex pairs (4 or 5 decimal places usually)
+        if symbol in ["EURUSD", "GBPUSD", "AUDUSD", "USDCAD"]:
+            return price_difference * 10000  # Convert to pips (4th decimal place)
+        
+        # For gold (2 decimal places usually)
+        elif symbol == "XAUUSD":
+            return price_difference * 10  # Gold is often measured in 0.1 increments
+        
+        # For indices (whole numbers or 1 decimal place)
+        elif symbol in ["NAS100", "FRA40", "UK100", "US30", "US500"]:
+            return price_difference  # Indices are often measured in whole points
+        
+        # Default for other symbols
+        else:
+            return price_difference * 100 
     def get_current_price(self, symbol):
         """
         Get current price from MT5.
