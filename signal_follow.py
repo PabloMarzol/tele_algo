@@ -1,6 +1,8 @@
 import os
 import logging
 from datetime import datetime
+import random
+import re
 import requests
 import json
 from dotenv import load_dotenv
