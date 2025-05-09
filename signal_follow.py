@@ -13,7 +13,7 @@ load_dotenv()
 class SignalFollowUpGenerator:
     """Generates follow-up messages for active trading signals using Groq API."""
     
-    def __init__(self, signal_tracker=None):
+    def __init__(self, signal_tracker="deepseek-r1-distill-llama-70b"):
         """
         Initialize the follow-up message generator.
         
@@ -27,11 +27,10 @@ class SignalFollowUpGenerator:
         self.api_key = os.getenv("GROQ_API_KEY")
         self.model = os.getenv("GROQ_MODEL", "meta-llama/llama-4-maverick-17b-128e-instruct")
         self.models = [
-            "meta-llama/llama-4-maverick-17b-128e-instruct",  # Primary model
-            "compound-beta",
+            "meta-llama/llama-4-maverick-17b-128e-instruct",
             "deepseek-r1-distill-llama-70b",
             "qwen-qwq-32b",
-            "gemma2-9b-it"
+            "compound-beta"
         ]
         # Current model index (start with primary model)
         self.current_model_index = 0
@@ -108,74 +107,80 @@ class SignalFollowUpGenerator:
             return f"Signal update for {symbol} {direction}: Check your trading platform for the latest status."
     
     def create_message_context(self, signal_data, status, message_type):
-        """
-        Create context information for Groq to generate a follow-up message.
-        
-        Args:
-            signal_data (dict): The original signal data
-            status (dict): Current status of the signal
-            message_type (str): Type of message to generate
+        """Create context information for Groq to generate a follow-up message."""
+        try:
+            # Extract signal information
+            symbol = signal_data.get("symbol", "Unknown")
+            direction = signal_data.get("direction", "Unknown")
+            entry_price = signal_data.get("entry_price", 0)
+            current_price = status.get("current_price", 0)
             
-        Returns:
-            dict: Context for Groq message generation
-        """
-        # Extract signal information
-        symbol = signal_data.get("symbol", "Unknown")
-        direction = signal_data.get("direction", "Unknown")
-        entry_price = signal_data.get("entry_price", 0)
-        current_price = status.get("current_price", 0)
-        
-        # Format take profit values
-        take_profits = []
-        for i in range(1, 4):
-            tp_key = f"take_profit{i}" if i > 1 else "take_profit"
-            if tp_key in signal_data:
-                take_profits.append(signal_data[tp_key])
-        
-        # Get profit/loss information
-        in_profit = status.get("in_profit", False)
-        profit_pips = status.get("profit_pips", 0)
-        progress = status.get("pct_to_tp1", 0)
-        
-        # Determine which take profit was hit (if any)
-        tp_hit = None
-        tp_hit_price = None
-        for i, hit in enumerate(status.get("tps_hit", [])):
-            if hit:
-                tp_hit = i + 1
-                tp_hit_price = take_profits[i] if i < len(take_profits) else None
-                break
-        
-        # Determine milestone if applicable
-        milestone = None
-        if progress >= 90:
-            milestone = "90%"
-        elif progress >= 75:
-            milestone = "75%"
-        elif progress >= 50:
-            milestone = "50%"
-        elif progress >= 25:
-            milestone = "25%"
+            # Format take profit values
+            take_profits = []
+            for i in range(1, 4):
+                tp_key = f"take_profit{i}" if i > 1 else "take_profit"
+                if tp_key in signal_data:
+                    take_profits.append(signal_data[tp_key])
             
-        # Create context with all relevant information
-        context = {
-            "message_type": message_type,
-            "symbol": symbol,
-            "direction": direction,
-            "entry_price": entry_price,
-            "current_price": current_price,
-            "take_profits": take_profits,
-            "stop_loss": signal_data.get("stop_loss", 0),
-            "in_profit": in_profit,
-            "profit_pips": profit_pips,
-            "progress": progress,
-            "tp_hit": tp_hit,
-            "tp_hit_price": tp_hit_price,
-            "milestone": milestone,
-            "stop_hit": status.get("stop_hit", False),
-        }
-        
-        return context
+            # Get profit/loss information
+            in_profit = status.get("in_profit", False)
+            profit_pips = status.get("profit_pips", 0)
+            progress = status.get("pct_to_tp1", 0)
+            
+            # Determine which take profit was hit (if any)
+            tp_hit = None
+            tp_hit_price = None
+            for i, hit in enumerate(status.get("tps_hit", [])):
+                if hit:
+                    tp_hit = i + 1
+                    tp_hit_price = take_profits[i] if i < len(take_profits) else None
+                    break
+            
+            # Determine message type based on status if not already set
+            if message_type == "progress_update":
+                if tp_hit is not None:
+                    message_type = "take_profit_hit"
+                elif status.get("stop_hit", False):
+                    message_type = "stop_loss_hit"
+                
+            # Determine milestone if applicable
+            milestone = None
+            if progress >= 90:
+                milestone = "90%"
+            elif progress >= 75:
+                milestone = "75%"
+            elif progress >= 50:
+                milestone = "50%"
+            elif progress >= 25:
+                milestone = "25%"
+                
+            # Create context with all relevant information
+            context = {
+                "message_type": message_type,
+                "symbol": symbol,
+                "direction": direction,
+                "entry_price": entry_price,
+                "current_price": current_price,
+                "take_profits": take_profits,
+                "stop_loss": signal_data.get("stop_loss", 0),
+                "in_profit": in_profit,
+                "profit_pips": profit_pips,
+                "progress": progress,
+                "tp_hit": tp_hit,
+                "tp_hit_price": tp_hit_price,
+                "milestone": milestone,
+                "stop_hit": status.get("stop_hit", False),
+            }
+            
+            return context
+        except Exception as e:
+            self.logger.error(f"Error creating message context: {e}")
+            # Return basic context to avoid failure
+            return {
+                "message_type": message_type,
+                "symbol": signal_data.get("symbol", "Unknown"),
+                "direction": signal_data.get("direction", "Unknown")
+            }
         
     async def query_groq(self, context):
         """
@@ -389,12 +394,27 @@ class SignalFollowUpGenerator:
         
         return message
     
-           
+    def format_price(self, price, symbol):
+        """Format price values based on the asset type."""
+        try:
+            # Convert to float if it's a string
+            if isinstance(price, str):
+                price = float(price)
+                
+            # Format based on symbol type
+            if symbol in ["EURUSD", "GBPUSD", "AUDUSD", "USDCAD"]:
+                return f"{price:.5f}"  
+            elif symbol == "XAUUSD":
+                return f"{price:.2f}"  
+            elif symbol in ["NAS100", "FRA40", "UK100", "US30", "US500"]:
+                return f"{price:.1f}"  
+            else:
+                return f"{price:.2f}"  
+        except (ValueError, TypeError):
+            return str(price)        
+        
     def generate_fallback_message(self, signal_data, status, message_type):
-        """
-        Generate a fallback message using templates when Groq is unavailable.
-        These fallback messages follow the same visual formatting standards.
-        """
+        """Generate a fallback message using templates when Groq is unavailable."""
         symbol = signal_data.get("symbol", "Unknown")
         direction = signal_data.get("direction", "Unknown")
         entry_price = signal_data.get("entry_price", 0)
@@ -414,23 +434,24 @@ class SignalFollowUpGenerator:
         if message_type == "take_profit_hit":
             # Determine which take profit was hit
             tp_num = 0
+            tp_price = None
             for i, hit in enumerate(status.get("tps_hit", [])):
                 if hit:
                     tp_num = i + 1
+                    tp_price = take_profits[i] if i < len(take_profits) else None
                     break
                     
-            tp_price = None
-            tp_key = f"take_profit{tp_num}" if tp_num > 1 else "take_profit"
-            if tp_key in signal_data:
-                tp_price = signal_data[tp_key]
-                
+            if tp_num == 0:  # Fallback if no TP is marked as hit
+                tp_num = 1
+                tp_price = take_profits[0] if take_profits else None
+            
             return f"""📊 <b>SIGNAL UPDATE: {symbol} {direction}</b> 🎯
 
-    ⚡ <b>Target Hit!</b> Take Profit {tp_num} reached at {tp_price}!
+    ⚡ <b>Target Hit!</b> Take Profit {tp_num} reached at {self.format_price(tp_price, symbol)}!
 
     💰 <b>Performance:</b>
-    - Entry: <b>{entry_price}</b>
-    - Current: <b>{current_price}</b>
+    - Entry: <b>{self.format_price(entry_price, symbol)}</b>
+    - Current: <b>{self.format_price(current_price, symbol)}</b>
     - Profit: <b>{abs(profit_pips):.1f}</b> pips
 
     🔍 <b>Market Analysis:</b>
@@ -447,11 +468,11 @@ class SignalFollowUpGenerator:
         elif message_type == "stop_loss_hit":
             return f"""📊 <b>SIGNAL UPDATE: {symbol} {direction}</b> ⚠️
 
-    🛑 <b>Stop Loss Triggered:</b> Position closed at {signal_data.get("stop_loss")}
+    🛑 <b>Stop Loss Triggered:</b> Position closed at {self.format_price(signal_data.get("stop_loss"), symbol)}
 
     💰 <b>Performance:</b>
-    - Entry: <b>{entry_price}</b>
-    - Exit: <b>{current_price}</b>
+    - Entry: <b>{self.format_price(entry_price, symbol)}</b>
+    - Exit: <b>{self.format_price(current_price, symbol)}</b>
     - Loss: <b>{abs(profit_pips):.1f}</b> pips
 
     🔍 <b>Market Analysis:</b>
@@ -481,8 +502,8 @@ class SignalFollowUpGenerator:
     ⭐ <b>{milestone} Milestone Reached!</b> Signal progressing nicely.
 
     💰 <b>Performance:</b>
-    - Entry: <b>{entry_price}</b>
-    - Current: <b>{current_price}</b>
+    - Entry: <b>{self.format_price(entry_price, symbol)}</b>
+    - Current: <b>{self.format_price(current_price, symbol)}</b>
     - Current {profit_status}: <b>{abs(profit_pips):.1f}</b> pips
     - Progress to TP1: <b>{progress:.1f}%</b>
 
@@ -503,13 +524,13 @@ class SignalFollowUpGenerator:
     ⏱ <b>Status:</b> Signal is currently {profit_status}.
 
     💰 <b>Performance:</b>
-    - Entry: <b>{entry_price}</b>
-    - Current: <b>{current_price}</b>
+    - Entry: <b>{self.format_price(entry_price, symbol)}</b>
+    - Current: <b>{self.format_price(current_price, symbol)}</b>
     - Current {profit_status}: <b>{abs(profit_pips):.1f}</b> pips
     - Progress to TP1: <b>{progress:.1f}%</b>
 
     🔍 <b>Market Analysis:</b>
-    Price continues to develop with our expectation. Key levels ahead at {take_profits[0] if take_profits else 'target'}.
+    Price continues to develop with our expectation. Key levels ahead at {self.format_price(take_profits[0], symbol) if take_profits else 'target'}.
 
     🚀 <b>Next Steps:</b>
     - Continue holding for targets

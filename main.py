@@ -2782,7 +2782,7 @@ def main() -> None:
     job_queue.run_repeating(
         check_and_send_signals,
         interval=300,  # 5 Min
-        first=60  # First check 1 minute after bot start
+        first=30  # First check 1 minute after bot start
     )
     
     job_queue.run_repeating(
