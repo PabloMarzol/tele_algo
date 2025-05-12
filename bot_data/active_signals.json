@@ -48,6 +48,7 @@
     "timeframe": "M15",
     "timestamp": "2025-05-12T18:22:21.267385",
     "signal_id": "FRA40_SELL_20250512182221"
+<<<<<<< HEAD
   },
   "NAS100_BUY_20250512183659": {
     "direction": "BUY",
@@ -80,5 +81,7 @@
     "strategy": "VFX-LIMIT",
     "timeframe": "M15",
     "timestamp": "2025-05-12T18:45:30.275997"
+=======
+>>>>>>> 62d4dbb5a516539f917c782d401ea965c0b515ec
   }
 }
