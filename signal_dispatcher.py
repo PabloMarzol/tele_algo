@@ -220,23 +220,27 @@ class SignalDispatcher:
                             ])
                             
                             # Send execution notification to admin only
+                            order_details = ""
+                            for i, order in enumerate(execution_result['orders']):
+                                order_details += f"• Order {i+1}: ID {order['order_id']}, Entry {order['entry_price']:.2f}, SL {order['stop_loss']:.2f}, Lot {order['lot_size']:.2f}, TP at {order['take_profit']:.2f}\n"
+
+                            # Send execution notification to admin only
                             admin_msg = f"""
-                        🤖 <b>VFX_Algo Trading Signal</b> 🤖
+                            🤖 <b>VFX_Algo Trading Signal</b> 🤖
 
-                        Symbol: {signal_info['symbol']} {signal_info['direction']}
-                        Placed {execution_result['order_count']} limit orders across the entry range.
+                            Symbol: {signal_info['symbol']} {signal_info['direction']}
+                            Placed {execution_result['order_count']} limit orders across the entry range.
 
-                        <b>Order Details:</b>
-                        {order_details}
+                            <b>Order Details:</b>
+                            {order_details}
+                            <b>Take Profit Levels:</b>
+                            - TP1: {execution_result['take_profits'][0] if execution_result['take_profits'] else 'N/A'}
+                            {f"• TP2: {execution_result['take_profits'][1]}" if len(execution_result['take_profits']) > 1 else ""}
+                            {f"• TP3: {execution_result['take_profits'][2]}" if len(execution_result['take_profits']) > 2 else ""}
 
-                        <b>Take Profit Levels:</b>
-                        - TP1: {execution_result['take_profits'][0] if execution_result['take_profits'] else 'N/A'}
-                        {f"• TP2: {execution_result['take_profits'][1]}" if len(execution_result['take_profits']) > 1 else ""}
-                        {f"• TP3: {execution_result['take_profits'][2]}" if len(execution_result['take_profits']) > 2 else ""}
-
-                        Total Position Size: {execution_result.get('total_lot_size', 0):.2f} lots
-                        Signal ID: {signal_id}
-                        """
+                            Total Position Size: {execution_result.get('total_lot_size', 0):.2f} lots
+                            Signal ID: {signal_id}
+                            """
                             # Send to admin only
                             for admin_id in ADMIN_USER_ID:
                                 try:
