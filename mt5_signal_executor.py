@@ -101,7 +101,7 @@ class MT5SignalExecutor:
     
     def execute_signal(self, signal_data):
         """
-        Execute a trading signal on MT5 with multiple scaled entries.
+        Execute a trading signal on MT5 with multiple scaled entries, each with its own TP level.
         
         Args:
             signal_data (dict): Signal data including symbol, direction, entry range, stop loss, take profits
@@ -159,8 +159,9 @@ class MT5SignalExecutor:
             if account_info:
                 self.logger.info(f"Account trade mode: {account_info.trade_mode}, Margin level: {account_info.margin_level}%")
             
-            # Determine entry points - we'll use 3 entry points spread across the range
-            num_entries = 3
+            # Determine number of entry points based on available take profits
+            # We'll cap it to the number of TPs available to simplify position management
+            num_entries = min(len(take_profits), 3)  # Maximum 3 entries
             
             # Calculate step size between entries
             entry_step = (entry_high - entry_low) / (num_entries - 1) if num_entries > 1 else 0
@@ -174,10 +175,14 @@ class MT5SignalExecutor:
             # Calculate lot size based on risk management
             # We'll calculate the total position size and then divide it among our entries
             total_lot_size = self.calculate_position_size(symbol, (entry_low + entry_high) / 2, (stop_low + stop_high) / 2, direction)
-            
-            # Divide the total lot size among our entries
-            # Use weighting: more lots at better prices (lower for buy, higher for sell)
-            lot_weights = [1.5, 1.2, 1.0] if direction == "BUY" else [1.0, 1.2, 1.5]  # More weight to better prices
+    
+            # Define relative weights for distributing lots
+            if direction == "BUY":
+                # For BUY: more weight to lower prices
+                raw_weights = [0.5, 0.3, 0.2] if num_entries == 3 else [0.7, 0.3] if num_entries == 2 else [1.0]
+            else:
+                # For SELL: more weight to higher prices
+                raw_weights = [0.2, 0.3, 0.5] if num_entries == 3 else [0.3, 0.7] if num_entries == 2 else [1.0]
             
             # Get the minimum lot size and step
             min_lot = symbol_info.volume_min
@@ -185,35 +190,35 @@ class MT5SignalExecutor:
             
             # Calculate weighted lot sizes and ensure they meet minimums
             lot_sizes = []
-            remaining_lots = total_lot_size
-            
-            for i in range(num_entries - 1):  # Process all except the last one
-                # Calculate weighted lot size
-                lot_size = total_lot_size * lot_weights[i]
+            for i in range(num_entries):
+                # Calculate proportional lot size
+                lot_size = total_lot_size * raw_weights[i]
                 
                 # Round to nearest step
                 lot_size = round(lot_size / lot_step) * lot_step
                 
-                # Ensure minimum lot size
+                # Ensure lot size meets minimum
                 if lot_size < min_lot:
                     lot_size = min_lot
-                    
-                # Don't allow lot size to exceed remaining lots
-                if lot_size > remaining_lots:
-                    lot_size = remaining_lots
+                
+                # Ensure lot size doesn't exceed maximum
+                if lot_size > symbol_info.volume_max:
+                    lot_size = symbol_info.volume_max
                 
                 lot_sizes.append(lot_size)
-                remaining_lots -= lot_size
             
-            # Last entry gets any remaining lots
-            last_lot = max(remaining_lots, min_lot)
-            last_lot = round(last_lot / lot_step) * lot_step  # Ensure it matches step size
-            lot_sizes.append(last_lot)
+            # Adjust if the sum exceeds maximum
+            total_allocated = sum(lot_sizes)
+            if total_allocated > symbol_info.volume_max:
+                # Scale back proportionally
+                scale_factor = symbol_info.volume_max / total_allocated
+                for i in range(num_entries):
+                    lot_sizes[i] = max(min_lot, round((lot_sizes[i] * scale_factor) / lot_step) * lot_step)
             
             # Log the execution plan
             self.logger.info(f"Executing {signal_id} with {num_entries} entries:")
             for i in range(num_entries):
-                self.logger.info(f"Entry {i+1}: Price {entry_prices[i]:.5f}, Lot Size {lot_sizes[i]:.2f}")
+                self.logger.info(f"Entry {i+1}: Price {entry_prices[i]:.5f}, Lot Size {lot_sizes[i]:.2f}, TP {take_profits[i]:.5f}")
             
             # Select the order type based on direction
             order_type = mt5.ORDER_TYPE_BUY_LIMIT if direction == "BUY" else mt5.ORDER_TYPE_SELL_LIMIT
@@ -233,6 +238,10 @@ class MT5SignalExecutor:
                 position_pct = i / (num_entries - 1) if num_entries > 1 else 0
                 stop_loss = stop_low + (stop_high - stop_low) * position_pct
                 
+                # Assign take profit level to this entry
+                # Each entry gets its own take profit level
+                take_profit = take_profits[i]
+                
                 # Prepare the order request
                 request = {
                     "action": mt5.TRADE_ACTION_PENDING,
@@ -241,7 +250,7 @@ class MT5SignalExecutor:
                     "type": order_type,
                     "price": entry_price,
                     "sl": stop_loss,
-                    "tp": take_profits[0],  # Set first take profit level
+                    "tp": take_profit,  # Each entry gets its own take profit
                     "deviation": self.slippage_pips,
                     "magic": 123456 + i,  # Unique magic number for each entry
                     "comment": f"{safe_comment}{i+1}",
@@ -250,7 +259,7 @@ class MT5SignalExecutor:
                 }
                 
                 # Log the order details
-                self.logger.info(f"Sending order {i+1} for {symbol} {direction} at {entry_price:.5f}")
+                self.logger.info(f"Sending order {i+1} for {symbol} {direction} at {entry_price:.5f} with TP at {take_profit:.5f}")
                 
                 # Send the order with retries
                 success = False
@@ -323,12 +332,8 @@ class MT5SignalExecutor:
                         "entry_price": entry_price,
                         "stop_loss": stop_loss,
                         "lot_size": lot_size,
-                        "take_profit": take_profits[0]
+                        "take_profit": take_profit
                     })
-                    
-                    # If there are additional take profit levels, set them for this order
-                    if len(take_profits) > 1:
-                        self.set_partial_take_profits(order_id, symbol, direction, lot_size, take_profits)
             
             # Check if any orders were executed successfully
             if executed_orders:
@@ -381,7 +386,7 @@ class MT5SignalExecutor:
             account_info = mt5.account_info()
             if not account_info:
                 self.logger.error("Failed to get account info")
-                return self.default_lot_sizes.get(symbol, 0.1)
+                return self.default_lot_sizes.get(symbol, 0.5)
             
             account_balance = account_info.balance
             
@@ -392,7 +397,7 @@ class MT5SignalExecutor:
             symbol_info = mt5.symbol_info(symbol)
             if not symbol_info:
                 self.logger.error(f"Failed to get symbol info for {symbol}")
-                return self.default_lot_sizes.get(symbol, 0.1)
+                return self.default_lot_sizes.get(symbol, 0.5)
             
             # Log detailed symbol info for debugging
             self.logger.info(f"Symbol info for {symbol}: min_lot={symbol_info.volume_min}, max_lot={symbol_info.volume_max}, step={symbol_info.volume_step}")
@@ -417,9 +422,9 @@ class MT5SignalExecutor:
             
             self.logger.info(f"SL distance for {symbol}: {sl_distance:.5f} ({pip_distance:.1f} pips)")
             
-            # Calculate pip value (approximate - depends on account currency)
+            # Calculate pip value
             # For major Forex pairs with USD as quote currency
-            lot_size = 0.1  # Start with minimum standard lot
+            lot_size = 1.0  # Start with minimum standard lot
             
             if "USD" in symbol[-3:]:  # If USD is the quote currency
                 pip_value = symbol_info.trade_tick_value * (pip_size / point)
@@ -456,7 +461,7 @@ class MT5SignalExecutor:
                     
                 # For some brokers/accounts, test if the lot size is valid
                 # by checking if it's between min and max, and a multiple of step
-                is_valid = (min_lot <= lot_size <= max_lot) and (abs(lot_size % step) < 0.0001)
+                is_valid = (min_lot <= lot_size <= max_lot) #and (abs(lot_size % step) < 0.0001)
                 if not is_valid:
                     self.logger.warning(f"Calculated lot size {lot_size} appears invalid! Falling back to default.")
                     return self.default_lot_sizes.get(symbol, min_lot)
@@ -464,11 +469,11 @@ class MT5SignalExecutor:
                 return lot_size
             else:
                 self.logger.warning(f"Invalid stop loss distance or pip value for {symbol}")
-                return self.default_lot_sizes.get(symbol, 0.1)
+                return self.default_lot_sizes.get(symbol, 0.5)
                 
         except Exception as e:
             self.logger.error(f"Error calculating position size: {e}")
-            return self.default_lot_sizes.get(symbol, 0.1)
+            return self.default_lot_sizes.get(symbol, 0.5)
     
     def set_partial_take_profits(self, order_id, symbol, direction, lot_size, take_profits):
         """
