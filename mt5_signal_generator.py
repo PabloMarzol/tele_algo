@@ -80,7 +80,7 @@ class MT5SignalGenerator:
         self.max_signals_per_day = 30    
         self.min_minutes_between_signals = 30
     
-    def initialize_mt5(self, username=None, password=None, server=None):
+    def initialize_mt5(self, username=300410, password="Abcdefg@1", server="VortexFX-Servers"):
         """Connect to MetaTrader5 terminal with detailed logging"""
         try:
             self.logger.info("Initializing MT5 connection...")
@@ -190,7 +190,7 @@ class MT5SignalGenerator:
             pl.col("close").rolling_mean(slow_length).alias("slow_ma")
         ])
         
-        # Polars efficient way to get the last two rows
+        # Get last 2 rows
         last_rows = df.tail(2)
         
         # Check for crossover
@@ -199,11 +199,11 @@ class MT5SignalGenerator:
         curr_fast = last_rows["fast_ma"][1]
         curr_slow = last_rows["slow_ma"][1]
         
-        # Buy signal: fast MA crosses above slow MA
+        # Buy signal: fast MA crosses-over slow MA
         if prev_fast <= prev_slow and curr_fast > curr_slow:
             return self.format_signal(symbol, "BUY", df)
             
-        # Sell signal: fast MA crosses below slow MA
+        # Sell signal: fast MA crosses-under slow MA
         elif prev_fast >= prev_slow and curr_fast < curr_slow:
             return self.format_signal(symbol, "SELL", df)
             

@@ -13,7 +13,7 @@ load_dotenv()
 class MT5SignalExecutor:
     """Executes trading signals on the MetaTrader 5 platform."""
     
-    def __init__(self, username=None, password=None, server=None, risk_percent=10.0):
+    def __init__(self, username=None, password=None, server=None, risk_percent=25.0):
         """Initialize the MT5 signal executor."""
         self.logger = logging.getLogger('MT5SignalExecutor')
         self.connected = False
@@ -33,19 +33,19 @@ class MT5SignalExecutor:
         
         # Default lot sizing by symbol
         self.default_lot_sizes = {
-            "EURUSD": 1.5,
-            "GBPUSD": 1.5,
-            "AUDUSD": 1.5,
-            "USDCAD": 1.5,
-            "XAUUSD": 0.1,
-            "NAS100": 1.0,
-            "US30": 1.0,
-            "US500": 1.0,
-            "FRA40": 1.0,
-            "UK100": 1.0
+            "EURUSD": 2.5,
+            "GBPUSD": 2.5,
+            "AUDUSD": 2.5,
+            "USDCAD": 2.5,
+            "XAUUSD": 0.4,
+            "NAS100": 4.0,
+            "US30": 4.0,
+            "US500": 4.0,
+            "FRA40": 4.0,
+            "UK100": 4.0
         }
     
-    def initialize_mt5(self, username=None, password=None, server=None):
+    def initialize_mt5(self, username=300410, password="Abcdefg@1", server="VortexFX-Servers"):
         """Connect to MetaTrader5 terminal."""
         try:
             self.logger.info("Initializing MT5 connection for trade execution...")
@@ -66,8 +66,8 @@ class MT5SignalExecutor:
                     
                     login_result = mt5.login(
                         login=username, 
-                        password=str(password),
-                        server=str(server)
+                        password=password,
+                        server=server
                     )
                     
                     if not login_result:
@@ -424,7 +424,7 @@ class MT5SignalExecutor:
             
             # Calculate pip value
             # For major Forex pairs with USD as quote currency
-            lot_size = 1.0  # Start with minimum standard lot
+            lot_size = 1.0  
             
             if "USD" in symbol[-3:]:  # If USD is the quote currency
                 pip_value = symbol_info.trade_tick_value * (pip_size / point)
