@@ -930,7 +930,7 @@ class MT5SignalExecutor:
                     
                     # Check if we have enough profit to activate trailing stop
                     if profit_pips < min_profit_pips:
-                        self.logger.info(f"Position {order_id} profit ({profit_pips:.1f} pips) below minimum threshold ({min_profit_pips} pips)")
+                        self.logger.info(f"Position {order_id} from symbol {symbol}, profit ({profit_pips:.1f} pips) below minimum threshold ({min_profit_pips} pips)")
                         results["details"].append({
                             "order_id": order_id,
                             "symbol": symbol,
@@ -952,7 +952,7 @@ class MT5SignalExecutor:
                         
                         # Only move stop loss if it would move up (don't move it down)
                         if current_sl < new_sl:
-                            self.logger.info(f"Updating trailing stop for BUY position {order_id}: {current_sl:.5f} -> {new_sl:.5f}")
+                            self.logger.info(f"Updating trailing stop for BUY position {order_id} from symbol {symbol}: {current_sl:.5f} -> {new_sl:.5f}")
                             
                             # Modify ONLY the stop loss, leaving take profit untouched
                             request = {
@@ -1009,7 +1009,7 @@ class MT5SignalExecutor:
                         
                         # Only move stop loss if it would move down (don't move it up)
                         if current_sl > new_sl or current_sl == 0:
-                            self.logger.info(f"Updating trailing stop for SELL position {order_id}: {current_sl:.5f} -> {new_sl:.5f}")
+                            self.logger.info(f"Updating trailing stop for SELL position {order_id} from symbol {symbol}: {current_sl:.5f} -> {new_sl:.5f}")
                             
                             # Modify ONLY the stop loss, leaving take profit untouched
                             request = {
