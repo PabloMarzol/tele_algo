@@ -24,16 +24,16 @@ class SignalDispatcher:
         
         # Initialize MT5 signal generator
         self.signal_generator = MT5SignalGenerator(
-            username=os.getenv("MT5_USERNAME"),
-            password=os.getenv("MT5_PASSWORD"),
-            server=os.getenv("MT5_SERVER")
+            username = os.getenv("MT5_USERNAME"),
+            password = os.getenv("MT5_PASSWORD"),
+            server = os.getenv("MT5_SERVER")
         )
         # Initialize the signal executor
         self.signal_executor = MT5SignalExecutor(
-            username=os.getenv("MT5_USERNAME"),
-            password=os.getenv("MT5_PASSWORD"),
-            server=os.getenv("MT5_SERVER"),
-            risk_percent=1.0  # 1% risk per trade
+            username = os.getenv("MT5_USERNAME"),
+            password = os.getenv("MT5_PASSWORD"),
+            server = os.getenv("MT5_SERVER"),
+            risk_percent = 0.4  # risk % per trade
         )
         self.auto_execute = False
         # self.signal_tracker = self.signal_generator.signal_history 
@@ -457,6 +457,57 @@ class SignalDispatcher:
         except Exception as e:
             self.logger.error(f"Error sending signal follow-up: {e}")
     
+    async def check_and_apply_trailing_stops(self):
+        """
+        Check active positions and apply trailing stops where appropriate.
+        """
+        try:
+            # Skip if signal executor is not initialized
+            if not hasattr(self, 'signal_executor') or not self.signal_executor.initialized:
+                self.logger.warning("Signal executor not initialized, skipping trailing stop check")
+                return
+            
+            # Apply trailing stops to all active positions
+            result = self.signal_executor.apply_trailing_stop()
+            
+            if result["success"]:
+                if result["positions_updated"] > 0:
+                    self.logger.info(f"Modify positions' orders for {result['positions_updated']} out of {result['positions_checked']} positions")
+                    
+                    # Notify admin of trailing stop updates
+                    if result["positions_updated"] > 0:
+                        update_details = "\n".join([
+                            f"• {detail['symbol']} {detail['direction']}: Limit_Order moved from {detail['old_sl']:.5f} to {detail['new_sl']:.5f} (Profit: {detail['profit_pips']:.1f} pips)"
+                            for detail in result["details"] if detail.get("updated", False)
+                        ])
+                        
+                        admin_msg = f"""
+    🔄 <b>LIMIT_ORDERS UPDATED</b> 🔄
+
+    Updated {result["positions_updated"]} out of {result["positions_checked"]} positions:
+
+    {update_details}
+    """
+                        
+                        # Send to admin only
+                        for admin_id in ADMIN_USER_ID:
+                            try:
+                                await self.bot.send_message(
+                                    chat_id=admin_id,
+                                    text=admin_msg,
+                                    parse_mode='HTML'
+                                )
+                            except Exception as e:
+                                self.logger.error(f"Failed to send trailing stop notification to admin {admin_id}: {e}")
+                else:
+                    self.logger.info(f"No trailing stops updated. Checked {result['positions_checked']} positions.")
+            else:
+                self.logger.error(f"Error applying trailing stops: {result['error']}")
+                
+        except Exception as e:
+            self.logger.error(f"Error in check_and_apply_trailing_stops: {e}")
+        
+    
     async def send_signal_updates(self):
         """Check for signal updates and send follow-up messages."""
         try:
@@ -490,6 +541,8 @@ class SignalDispatcher:
         except Exception as e:
             self.logger.error(f"Error sending signal updates: {e}")
             return 0
+    
+    
         
     def cleanup(self):
         """Clean up resources when shutting down"""

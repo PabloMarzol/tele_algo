@@ -20,7 +20,6 @@ from auth_system import TradingAccountAuth
 from db_manager import TradingBotDatabase
 from telegram.ext.filters import MessageFilter
 from vfx_Scheduler import VFXMessageScheduler
-from mt5_signal_generator import MT5SignalGenerator
 from signal_dispatcher import SignalDispatcher
 from config import Config
 
@@ -4072,6 +4071,12 @@ def main() -> None:
         report_signal_system_status,
         interval=21600,  # Every 6 hours
         first=600  # First report 10 minutes after startup
+    )
+    
+    job_queue.run_repeating(
+        lambda context: asyncio.create_task(signal_dispatcher.check_and_apply_trailing_stops()),
+        interval=300,  # Every 5 minutes
+        first=120  # Start 2 minutes after bot startup
     )
   
     

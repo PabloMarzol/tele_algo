@@ -45,7 +45,7 @@ class MT5SignalExecutor:
             "UK100": 4.0
         }
     
-    def initialize_mt5(self, username=300410, password="Abcdefg@1", server="VortexFX-Servers"):
+    def initialize_mt5(self, username=None, password=None, server=None):
         """Connect to MetaTrader5 terminal."""
         try:
             self.logger.info("Initializing MT5 connection for trade execution...")
@@ -99,6 +99,77 @@ class MT5SignalExecutor:
             self.logger.error(f"❌ MT5 connection error: {e}")
             return False
     
+    # Add this function to the MT5SignalExecutor class
+    def validate_price(self, symbol, price, direction):
+        """
+        Validate if the provided price is valid for the given symbol and direction.
+        
+        Args:
+            symbol (str): Trading symbol
+            price (float): The price to validate
+            direction (str): Trade direction (BUY/SELL)
+            
+        Returns:
+            tuple: (is_valid, adjusted_price) - boolean indicating if price is valid and adjusted price if needed
+        """
+        try:
+            # Get symbol info
+            symbol_info = mt5.symbol_info(symbol)
+            if not symbol_info:
+                self.logger.error(f"Failed to get symbol info for {symbol}")
+                return False, price
+            
+            # Get current market price
+            tick = mt5.symbol_info_tick(symbol)
+            if not tick:
+                self.logger.error(f"Failed to get tick data for {symbol}")
+                return False, price
+            
+            # Get bid and ask prices
+            bid = tick.bid
+            ask = tick.ask
+            
+            # For BUY LIMIT orders, price must be below ASK
+            # For SELL LIMIT orders, price must be above BID
+            is_valid = True
+            adjusted_price = price
+            
+            if direction == "BUY":
+                if price >= ask:
+                    # Price is too high for BUY LIMIT - adjust it
+                    self.logger.warning(f"BUY LIMIT price {price:.5f} is >= current ASK {ask:.5f}, which is invalid")
+                    # Set price slightly below current ask (about 1 point away)
+                    adjusted_price = ask - (symbol_info.point * 2)
+                    self.logger.info(f"Adjusted BUY LIMIT price to {adjusted_price:.5f}")
+            else:  # SELL LIMIT
+                if price <= bid:
+                    # Price is too low for SELL LIMIT - adjust it
+                    self.logger.warning(f"SELL LIMIT price {price:.5f} is <= current BID {bid:.5f}, which is invalid")
+                    # Set price slightly above current bid (about 1 point away)
+                    adjusted_price = bid + (symbol_info.point * 2)
+                    self.logger.info(f"Adjusted SELL LIMIT price to {adjusted_price:.5f}")
+            
+            # Validate against symbol min/max prices if available
+            if hasattr(symbol_info, "minprice") and hasattr(symbol_info, "maxprice"):
+                if adjusted_price < symbol_info.minprice:
+                    self.logger.warning(f"Price {adjusted_price:.5f} is below minimum allowed {symbol_info.minprice:.5f}")
+                    adjusted_price = symbol_info.minprice
+                elif adjusted_price > symbol_info.maxprice:
+                    self.logger.warning(f"Price {adjusted_price:.5f} is above maximum allowed {symbol_info.maxprice:.5f}")
+                    adjusted_price = symbol_info.maxprice
+            
+            # Check if price has expected number of decimal places
+            decimals = len(str(adjusted_price).split('.')[-1])
+            if decimals > symbol_info.digits:
+                # Round to the correct number of decimal places
+                adjusted_price = round(adjusted_price, symbol_info.digits)
+                
+            return is_valid, adjusted_price
+        
+        except Exception as e:
+            self.logger.error(f"Error validating price: {e}")
+            return False, price
+        
     def execute_signal(self, signal_data):
         """
         Execute a trading signal on MT5 with multiple scaled entries, each with its own TP level.
@@ -234,13 +305,25 @@ class MT5SignalExecutor:
                 entry_price = entry_prices[i]
                 lot_size = lot_sizes[i]
                 
-                # Calculate stop loss for this entry - use proportional position in the range
+                # Skip if lot size is invalid
+                if lot_size < min_lot or lot_size <= 0:
+                    self.logger.warning(f"Skipping order {i+1} - invalid lot size: {lot_size}")
+                    continue
+                
+                # Calculate stop loss for this entry
                 position_pct = i / (num_entries - 1) if num_entries > 1 else 0
                 stop_loss = stop_low + (stop_high - stop_low) * position_pct
                 
                 # Assign take profit level to this entry
-                # Each entry gets its own take profit level
                 take_profit = take_profits[i]
+                
+                # Validate and possibly adjust entry price
+                is_valid_price, adjusted_entry_price = self.validate_price(symbol, entry_price, direction)
+                if not is_valid_price:
+                    self.logger.warning(f"Price validation issue for order {i+1} - using adjusted price: {adjusted_entry_price:.5f}")
+                
+                # Use the adjusted entry price
+                entry_price = adjusted_entry_price
                 
                 # Prepare the order request
                 request = {
@@ -250,12 +333,12 @@ class MT5SignalExecutor:
                     "type": order_type,
                     "price": entry_price,
                     "sl": stop_loss,
-                    "tp": take_profit,  # Each entry gets its own take profit
+                    "tp": take_profit,
                     "deviation": self.slippage_pips,
-                    "magic": 123456 + i,  # Unique magic number for each entry
+                    "magic": 123456 + i,
                     "comment": f"{safe_comment}{i+1}",
-                    "type_time": mt5.ORDER_TIME_GTC,  # Good till canceled
-                    "type_filling": mt5.ORDER_FILLING_IOC,  # Immediate or cancel
+                    "type_time": mt5.ORDER_TIME_GTC,
+                    "type_filling": mt5.ORDER_FILLING_IOC,
                 }
                 
                 # Log the order details
@@ -285,6 +368,31 @@ class MT5SignalExecutor:
                                 else:
                                     # We're already at minimum lot size, so this won't work
                                     break
+                            
+                            if result.retcode == 10015:  # Invalid price error
+                                self.logger.warning(f"Invalid price error for order {i+1}. Price was {entry_price:.5f}")
+                                
+                                # Get current market conditions
+                                tick = mt5.symbol_info_tick(symbol)
+                                if tick:
+                                    bid = tick.bid
+                                    ask = tick.ask
+                                    self.logger.info(f"Current market prices - Bid: {bid:.5f}, Ask: {ask:.5f}")
+                                
+                                # Try to adjust the price based on direction
+                                if direction == "BUY":
+                                    # For BUY LIMIT, price must be below current ASK
+                                    if tick and entry_price >= ask:
+                                        entry_price = ask - (symbol_info.point * 5)  # 5 points below ASK
+                                        self.logger.info(f"Adjusting BUY price to {entry_price:.5f} (below ASK)")
+                                else:
+                                    # For SELL LIMIT, price must be above current BID
+                                    if tick and entry_price <= bid:
+                                        entry_price = bid + (symbol_info.point * 5)  # 5 points above BID
+                                        self.logger.info(f"Adjusting SELL price to {entry_price:.5f} (above BID)")
+                                
+                                # Update the request with new price
+                                request["price"] = entry_price
                             
                             if attempt < self.retry_attempts - 1:
                                 time.sleep(self.retry_delay)
@@ -710,6 +818,228 @@ class MT5SignalExecutor:
             
         except Exception as e:
             self.logger.error(f"Error closing position: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def apply_trailing_stop(self, signal_id=None, trailing_pips=None, min_profit_pips=None):
+        """
+        Apply trailing stop to active positions.
+        
+        Args:
+            signal_id (str, optional): Specific signal ID to apply trailing stop to, or None for all active signals
+            trailing_pips (float, optional): Distance to maintain between price and stop loss in pips
+            min_profit_pips (float, optional): Minimum profit in pips before trailing stop activates
+            
+        Returns:
+            dict: Results of trailing stop operations
+        """
+        if not self.connected or not self.initialized:
+            if not self.initialize_mt5():
+                return {"success": False, "error": "MT5 not connected"}
+        
+        # Set defaults if not provided
+        if trailing_pips is None:
+            trailing_pips = 50  # Default trailing stop distance
+        
+        if min_profit_pips is None:
+            min_profit_pips = 20  # Default minimum profit before trailing activates
+        
+        results = {
+            "success": True,
+            "positions_updated": 0,
+            "positions_checked": 0,
+            "details": []
+        }
+        
+        try:
+            # Get all signals or filter by signal_id
+            signals_to_check = []
+            if signal_id:
+                if signal_id in self.executed_signals:
+                    signals_to_check = [signal_id]
+                else:
+                    return {"success": False, "error": f"Signal {signal_id} not found"}
+            else:
+                signals_to_check = list(self.executed_signals.keys())
+            
+            # Process each signal
+            for sig_id in signals_to_check:
+                signal_info = self.executed_signals[sig_id]
+                symbol = signal_info["symbol"]
+                direction = signal_info["direction"]
+                orders = signal_info.get("orders", [])
+                
+                # Check if the signal has associated orders
+                if not orders:
+                    continue
+                
+                # Process each order in the signal
+                for order_idx, order in enumerate(orders):
+                    order_id = order["order_id"]
+                    
+                    # Get current position info
+                    position = None
+                    positions = mt5.positions_get(ticket=order_id)
+                    
+                    # If not found by ticket, try by magic number
+                    if not positions:
+                        positions = mt5.positions_get(symbol=symbol)
+                        if positions:
+                            for pos in positions:
+                                if pos.magic == 123456 + order_idx:
+                                    position = pos
+                                    break
+                    else:
+                        position = positions[0]
+                    
+                    if not position:
+                        # Position might be closed already
+                        continue
+                    
+                    results["positions_checked"] += 1
+                    
+                    # Get current market price
+                    tick = mt5.symbol_info_tick(symbol)
+                    if not tick:
+                        self.logger.error(f"Failed to get tick data for {symbol}")
+                        continue
+                    
+                    # Determine current price based on direction
+                    current_price = tick.bid if direction == "BUY" else tick.ask
+                    
+                    # Get symbol info for pip calculations
+                    symbol_info = mt5.symbol_info(symbol)
+                    if not symbol_info:
+                        self.logger.error(f"Failed to get symbol info for {symbol}")
+                        continue
+                    
+                    # Calculate pip size based on symbol digits
+                    point = symbol_info.point
+                    digits = symbol_info.digits
+                    
+                    # For Forex, 1 pip is usually 0.0001 for 4-digit symbols, 0.00001 for 5-digit
+                    if digits == 5 or digits == 3:  # 5-digit Forex or 3-digit indices/commodities
+                        pip_size = point * 10
+                    else:  # Standard 4-digit Forex or 2-digit indices
+                        pip_size = point
+                    
+                    # Calculate current profit in pips
+                    entry_price = position.price_open
+                    if direction == "BUY":
+                        profit_pips = (current_price - entry_price) / pip_size
+                    else:  # SELL
+                        profit_pips = (entry_price - current_price) / pip_size
+                    
+                    # Check if we have enough profit to activate trailing stop
+                    if profit_pips < min_profit_pips:
+                        self.logger.info(f"Position {order_id} profit ({profit_pips:.1f} pips) below minimum threshold ({min_profit_pips} pips)")
+                        results["details"].append({
+                            "order_id": order_id,
+                            "symbol": symbol,
+                            "direction": direction,
+                            "profit_pips": profit_pips,
+                            "min_profit_pips": min_profit_pips,
+                            "updated": False,
+                            "reason": "Profit below threshold"
+                        })
+                        continue
+                    
+                    # Calculate new stop loss based on trailing distance
+                    current_sl = position.sl
+                    
+                    if direction == "BUY":
+                        # For BUY, move stop loss up as price moves up
+                        # Calculate new stop loss level
+                        new_sl = current_price - (trailing_pips * pip_size)
+                        
+                        # Only move stop loss if it would move up (don't move it down)
+                        if current_sl < new_sl:
+                            self.logger.info(f"Updating trailing stop for BUY position {order_id}: {current_sl:.5f} -> {new_sl:.5f}")
+                            
+                            # Modify the position's stop loss
+                            result = self.modify_position(sig_id, new_sl=new_sl)
+                            
+                            if result["success"]:
+                                results["positions_updated"] += 1
+                                results["details"].append({
+                                    "order_id": order_id,
+                                    "symbol": symbol,
+                                    "direction": direction,
+                                    "old_sl": current_sl,
+                                    "new_sl": new_sl,
+                                    "profit_pips": profit_pips,
+                                    "trailing_pips": trailing_pips,
+                                    "updated": True
+                                })
+                            else:
+                                results["details"].append({
+                                    "order_id": order_id,
+                                    "symbol": symbol,
+                                    "direction": direction,
+                                    "profit_pips": profit_pips,
+                                    "updated": False,
+                                    "reason": f"Modify failed: {result['error']}"
+                                })
+                        else:
+                            results["details"].append({
+                                "order_id": order_id,
+                                "symbol": symbol,
+                                "direction": direction,
+                                "current_sl": current_sl,
+                                "calculated_sl": new_sl,
+                                "profit_pips": profit_pips,
+                                "updated": False,
+                                "reason": "Current SL already higher"
+                            })
+                    
+                    else:  # SELL
+                        # For SELL, move stop loss down as price moves down
+                        # Calculate new stop loss level
+                        new_sl = current_price + (trailing_pips * pip_size)
+                        
+                        # Only move stop loss if it would move down (don't move it up)
+                        if current_sl > new_sl or current_sl == 0:
+                            self.logger.info(f"Updating trailing stop for SELL position {order_id}: {current_sl:.5f} -> {new_sl:.5f}")
+                            
+                            # Modify the position's stop loss
+                            result = self.modify_position(sig_id, new_sl=new_sl)
+                            
+                            if result["success"]:
+                                results["positions_updated"] += 1
+                                results["details"].append({
+                                    "order_id": order_id,
+                                    "symbol": symbol,
+                                    "direction": direction,
+                                    "old_sl": current_sl,
+                                    "new_sl": new_sl,
+                                    "profit_pips": profit_pips,
+                                    "trailing_pips": trailing_pips,
+                                    "updated": True
+                                })
+                            else:
+                                results["details"].append({
+                                    "order_id": order_id,
+                                    "symbol": symbol,
+                                    "direction": direction,
+                                    "profit_pips": profit_pips,
+                                    "updated": False,
+                                    "reason": f"Modify failed: {result['error']}"
+                                })
+                        else:
+                            results["details"].append({
+                                "order_id": order_id,
+                                "symbol": symbol,
+                                "direction": direction,
+                                "current_sl": current_sl,
+                                "calculated_sl": new_sl,
+                                "profit_pips": profit_pips,
+                                "updated": False,
+                                "reason": "Current SL already lower"
+                            })
+            
+            return results
+            
+        except Exception as e:
+            self.logger.error(f"Error in apply_trailing_stop: {e}")
             return {"success": False, "error": str(e)}
     
     def modify_position(self, signal_id, new_sl=None, new_tp=None):
