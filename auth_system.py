@@ -53,6 +53,120 @@ class TradingAccountAuth:
             print(f"Account {account_number} validation: FAILED - not numeric")
             return False
 
+    # def verify_account(self, account_number, user_id):
+    #     """Verify if the account number exists in the real Accounts_List.csv."""
+    #     try:
+    #         # Convert to integer
+    #         account_int = int(account_number)
+            
+    #         # Load the accounts CSV
+    #         try:
+    #             accounts_df = pl.read_csv("./bot_data/Accounts_List.csv")
+                
+    #             # Check if account exists
+    #             account_match = accounts_df.filter(pl.col("Account") == account_int)
+                
+    #             if account_match.height > 0:
+    #                 # Account exists in the list
+    #                 account_owner = account_match.select("Name")[0, 0]
+    #                 print(f"Account {account_number} verified: belongs to {account_owner}")
+                    
+    #                 # Record verification in our system
+    #                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+    #                 # Initialize the trading_accounts DataFrame if it doesn't exist
+    #                 if not hasattr(self, 'trading_accounts') or self.trading_accounts is None:
+    #                     self.trading_accounts = pl.DataFrame({
+    #                         "account_number": [account_number],
+    #                         "user_id": [user_id],
+    #                         "verified": [True],
+    #                         "verification_date": [now]
+    #                     })
+    #                 else:
+    #                     # Check if account already exists in our tracking dataframe
+    #                     try:
+    #                         account_exists = self.trading_accounts.filter(pl.col("account_number") == account_number)
+    #                     except Exception as e:
+    #                         print(f"Error checking if account exists: {e}")
+    #                         account_exists = None
+                        
+    #                     if account_exists is not None and account_exists.height > 0:
+    #                         # Update existing record
+    #                         try:
+    #                             self.trading_accounts = self.trading_accounts.with_columns([
+    #                                 pl.when(pl.col("account_number") == account_number)
+    #                                 .then(pl.lit(user_id))
+    #                                 .otherwise(pl.col("user_id"))
+    #                                 .alias("user_id"),
+                                    
+    #                                 pl.when(pl.col("account_number") == account_number)
+    #                                 .then(pl.lit(True))
+    #                                 .otherwise(pl.col("verified"))
+    #                                 .alias("verified"),
+                                    
+    #                                 pl.when(pl.col("account_number") == account_number)
+    #                                 .then(pl.lit(now))
+    #                                 .otherwise(pl.col("verification_date"))
+    #                                 .alias("verification_date")
+    #                             ])
+    #                         except Exception as e:
+    #                             print(f"Error updating existing account: {e}")
+    #                     else:
+    #                         # Add new record - make sure all columns match
+    #                         try:
+    #                             new_record = pl.DataFrame({
+    #                                 "account_number": [account_number],
+    #                                 "user_id": [user_id],
+    #                                 "verified": [True],
+    #                                 "verification_date": [now]
+    #                             })
+                                
+    #                             # Ensure new_record has the same schema as trading_accounts
+    #                             for col in self.trading_accounts.columns:
+    #                                 if col not in new_record.columns:
+    #                                     # Add missing column with default value
+    #                                     new_record = new_record.with_columns(pl.lit(None).alias(col))
+                                
+    #                             # Select only columns that are in trading_accounts
+    #                             new_record = new_record.select(self.trading_accounts.columns)
+                                
+    #                             self.trading_accounts = pl.concat([self.trading_accounts, new_record])
+    #                         except Exception as e:
+    #                             print(f"Error adding new account record: {e}")
+                    
+    #                 # Add to verified users dictionary for quick lookup
+    #                 self.verified_users[user_id] = {
+    #                     "account_number": account_number,
+    #                     "verified_at": now,
+    #                     "account_owner": account_owner
+    #                 }
+                    
+    #                 return True
+    #             else:
+    #                 print(f"Account {account_number} not found in Accounts_List.csv")
+    #                 return False
+                    
+    #         except Exception as e:
+    #             print(f"Error loading or processing Accounts_List.csv: {e}")
+    #             # Fall back to a more basic verification method
+    #             print("Falling back to basic verification method")
+                
+    #             # Just record the attempt for now
+    #             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    #             self.verified_users[user_id] = {
+    #                 "account_number": account_number,
+    #                 "verified_at": now,
+    #                 "verified": False
+    #             }
+    #             return False
+                    
+    #     except ValueError:
+    #         print(f"Could not convert account number to integer for verification")
+    #         return False
+    #     except Exception as e:
+    #         print(f"Unexpected error in verify_account: {e}")
+    #         return False
+    
     def verify_account(self, account_number, user_id):
         """Verify if the account number exists in the real Accounts_List.csv."""
         try:
@@ -71,53 +185,10 @@ class TradingAccountAuth:
                     account_owner = account_match.select("Name")[0, 0]
                     print(f"Account {account_number} verified: belongs to {account_owner}")
                     
-                    # Record verification in our system
-                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    # Initialize the trading_accounts DataFrame if it doesn't exist
-                    if not hasattr(self, 'trading_accounts') or self.trading_accounts is None:
-                        self.trading_accounts = pl.DataFrame({
-                            "account_number": [account_number],
-                            "user_id": [user_id],
-                            "verified": [True],
-                            "verification_date": [now]
-                        })
-                    else:
-                        # Check if account already exists in our tracking dataframe
-                        account_exists = self.trading_accounts.filter(pl.col("account_number") == account_number)
-                        
-                        if account_exists.height > 0:
-                            # Update existing record
-                            self.trading_accounts = self.trading_accounts.with_columns([
-                                pl.when(pl.col("account_number") == account_number)
-                                .then(pl.lit(user_id))
-                                .otherwise(pl.col("user_id"))
-                                .alias("user_id"),
-                                
-                                pl.when(pl.col("account_number") == account_number)
-                                .then(pl.lit(True))
-                                .otherwise(pl.col("verified"))
-                                .alias("verified"),
-                                
-                                pl.when(pl.col("account_number") == account_number)
-                                .then(pl.lit(now))
-                                .otherwise(pl.col("verification_date"))
-                                .alias("verification_date")
-                            ])
-                        else:
-                            # Add new record
-                            new_record = pl.DataFrame({
-                                "account_number": [account_number],
-                                "user_id": [user_id],
-                                "verified": [True],
-                                "verification_date": [now]
-                            })
-                            self.trading_accounts = pl.concat([self.trading_accounts, new_record])
-                    
-                    # Add to verified users dictionary for quick lookup
+                    # Just store in verified_users dict without trying to update the DataFrame
                     self.verified_users[user_id] = {
                         "account_number": account_number,
-                        "verified_at": now,
+                        "verified_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "account_owner": account_owner
                     }
                     
@@ -139,9 +210,12 @@ class TradingAccountAuth:
                     "verified": False
                 }
                 return False
-                
+                    
         except ValueError:
             print(f"Could not convert account number to integer for verification")
+            return False
+        except Exception as e:
+            print(f"Unexpected error in verify_account: {e}")
             return False
     
     def is_user_verified(self, user_id):

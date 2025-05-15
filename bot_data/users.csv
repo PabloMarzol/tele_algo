@@ -1,5 +1,6 @@
-user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_account,is_verified,join_date,last_active,banned,notes,trading_interest,vip_channels,vip_added_date,copier_forwarded,copier_forwarded_date
-7823596188,VFX_FX2,VFX,Quant-Researcher,5,4500,TR12345678,false,2025-04-24 01:59:15,2025-05-06 14:12:59,false,"","","","",false,""
-1127393419,MagusQuant,Magus,Quant,5,2000,TR12345678,false,2025-04-24 02:08:24,2025-04-30 01:26:48,false,"",propcapital,"","",false,""
-6983253508,VFXTRADEX,VFX,"",0,0,"",false,2025-04-24 13:06:39,2025-04-24 13:06:39,false,"","","","",false,""
-8113209614,VFX_1Bot,DM,"",0,0,"",false,2025-04-27 20:56:24,2025-04-27 20:56:24,false,"","","","",false,""
+user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_account,is_verified,join_date,last_active,banned,notes,trading_interest,vip_channels,vip_added_date,copier_forwarded,copier_forwarded_date,source_channel,first_contact_date,auto_welcomed,auto_welcome_date,risk_profile_text,last_response,last_response_time
+7823596188,VFX_FX2,VFX,Quant-Researcher,5,4500,TR12345678,false,2025-04-24 01:59:15,2025-05-14 12:36:24,false,"","","","",false,"","","",false,"","","",""
+,,,,,,,,,,,,,,,,,,,,,,,
+6983253508,VFXTRADEX,VFX,"",0,0,"",false,2025-04-24 13:06:39,2025-04-24 13:06:39,false,"","","","",false,"","","",false,"","","",""
+8113209614,VFX_1Bot,DM,"",0,0,"",false,2025-04-27 20:56:24,2025-04-27 20:56:24,false,"","","","",false,"","","",false,"","","",""
+1127393419,MagusQuant,Magus,Quant,5,25000,300239,true,2025-05-15 01:08:05,2025-05-15 01:08:05,false,"","","","",false,"",main_channel,2025-05-15 01:08:43,true,2025-05-15 01:08:43,medium,300239,2025-05-15 01:10:33
