@@ -33,7 +33,7 @@ class SignalDispatcher:
             username = os.getenv("MT5_USERNAME"),
             password = os.getenv("MT5_PASSWORD"),
             server = os.getenv("MT5_SERVER"),
-            risk_percent = 0.4  # risk % per trade
+            risk_percent = 0.7  # risk % per trade
         )
         self.auto_execute = False
         # self.signal_tracker = self.signal_generator.signal_history 
@@ -506,8 +506,7 @@ class SignalDispatcher:
                 
         except Exception as e:
             self.logger.error(f"Error in check_and_apply_trailing_stops: {e}")
-        
-    
+            
     async def send_signal_updates(self):
         """Check for signal updates and send follow-up messages."""
         try:
@@ -542,7 +541,79 @@ class SignalDispatcher:
             self.logger.error(f"Error sending signal updates: {e}")
             return 0
     
-    
+    async def send_daily_stats(self):
+        """
+        Send daily statistics to admin.
+        """
+        try:
+            # Skip if signal executor is not initialized
+            if not hasattr(self, 'signal_executor') or not self.signal_executor.initialized:
+                self.logger.warning("Signal executor not initialized, skipping daily stats")
+                return
+            
+            # Generate daily stats
+            result = self.signal_executor.generate_daily_stats()
+            
+            if not result["success"]:
+                self.logger.error(f"Failed to generate daily stats: {result.get('error', 'Unknown error')}")
+                return
+            
+            stats = result["stats"]
+            
+            # Format the stats message
+            stats_msg = f"""
+    📊 <b>DAILY TRADING STATISTICS</b> 📊
+    <i>{stats['date']}</i>
+
+    <b>Summary:</b>
+    - Signals Executed: {stats['signals_executed']}
+    - Positions Opened: {stats['positions_opened']}
+    - Positions Closed: {stats['positions_closed']}
+    - Active Positions: {stats['active_positions']}
+
+    <b>Performance:</b>
+    - Wins: {stats['wins']}
+    - Losses: {stats['losses']}
+    - Win Rate: {stats['win_rate']:.1f}%
+    - Total Profit: ${stats['total_profit']:.2f}
+    - Total Pips: {stats['total_pips']:.1f}
+    - Return: {stats['return_percentage']:.2f}%
+
+    <b>Symbols Traded:</b> {', '.join(stats['symbols_traded'])}
+    """
+            
+            # Add details of closed positions
+            closed_positions = [detail for detail in stats['signal_details'] if detail['status'] in ['WIN', 'LOSS']]
+            if closed_positions:
+                closed_details = "\n".join([
+                    f"• {detail['symbol']} {detail['direction']}: {detail['status']} (${detail['profit']:.2f})"
+                    for detail in closed_positions
+                ])
+                stats_msg += f"\n\n<b>Closed Positions:</b>\n{closed_details}"
+            
+            # Add details of active positions
+            active_positions = [detail for detail in stats['signal_details'] if detail['status'] == 'ACTIVE']
+            if active_positions:
+                active_details = "\n".join([
+                    f"• {detail['symbol']} {detail['direction']}: ${detail['unrealized_profit']:.2f} ({detail['unrealized_pips']:.1f} pips)"
+                    for detail in active_positions
+                ])
+                stats_msg += f"\n\n<b>Active Positions:</b>\n{active_details}"
+            
+            # Send to admin
+            for admin_id in ADMIN_USER_ID:
+                try:
+                    await self.bot.send_message(
+                        chat_id=admin_id,
+                        text=stats_msg,
+                        parse_mode='HTML'
+                    )
+                    self.logger.info(f"Sent daily stats to admin {admin_id}")
+                except Exception as e:
+                    self.logger.error(f"Failed to send daily stats to admin {admin_id}: {e}")
+            
+        except Exception as e:
+            self.logger.error(f"Error in send_daily_stats: {e}")
         
     def cleanup(self):
         """Clean up resources when shutting down"""

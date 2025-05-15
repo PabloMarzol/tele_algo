@@ -33,11 +33,11 @@ class MT5SignalExecutor:
         
         # Default lot sizing by symbol
         self.default_lot_sizes = {
-            "EURUSD": 2.5,
-            "GBPUSD": 2.5,
-            "AUDUSD": 2.5,
-            "USDCAD": 2.5,
-            "XAUUSD": 0.4,
+            "EURUSD": 1.5,
+            "GBPUSD": 1.5,
+            "AUDUSD": 1.5,
+            "USDCAD": 1.5,
+            "XAUUSD": 0.3,
             "NAS100": 4.0,
             "US30": 4.0,
             "US500": 4.0,
@@ -822,7 +822,7 @@ class MT5SignalExecutor:
     
     def apply_trailing_stop(self, signal_id=None, trailing_pips=None, min_profit_pips=None):
         """
-        Apply trailing stop to active positions.
+        Apply trailing stop to active positions by moving only the stop loss.
         
         Args:
             signal_id (str, optional): Specific signal ID to apply trailing stop to, or None for all active signals
@@ -955,10 +955,17 @@ class MT5SignalExecutor:
                         if current_sl < new_sl:
                             self.logger.info(f"Updating trailing stop for BUY position {order_id}: {current_sl:.5f} -> {new_sl:.5f}")
                             
-                            # Modify the position's stop loss
-                            result = self.modify_position(sig_id, new_sl=new_sl)
+                            # Modify ONLY the stop loss, leaving take profit untouched
+                            request = {
+                                "action": mt5.TRADE_ACTION_SLTP,
+                                "symbol": symbol,
+                                "position": position.ticket,
+                                "sl": new_sl  # Only modify stop loss
+                            }
                             
-                            if result["success"]:
+                            result = mt5.order_send(request)
+                            
+                            if result and result.retcode == mt5.TRADE_RETCODE_DONE:
                                 results["positions_updated"] += 1
                                 results["details"].append({
                                     "order_id": order_id,
@@ -970,14 +977,19 @@ class MT5SignalExecutor:
                                     "trailing_pips": trailing_pips,
                                     "updated": True
                                 })
+                                
+                                # Update stored order info
+                                order["stop_loss"] = new_sl
                             else:
+                                error_code = mt5.last_error() if not result else result.retcode
+                                self.logger.error(f"Failed to modify BUY position {order_id}: {error_code}")
                                 results["details"].append({
                                     "order_id": order_id,
                                     "symbol": symbol,
                                     "direction": direction,
                                     "profit_pips": profit_pips,
                                     "updated": False,
-                                    "reason": f"Modify failed: {result['error']}"
+                                    "reason": f"Modify failed: {error_code}"
                                 })
                         else:
                             results["details"].append({
@@ -1000,10 +1012,17 @@ class MT5SignalExecutor:
                         if current_sl > new_sl or current_sl == 0:
                             self.logger.info(f"Updating trailing stop for SELL position {order_id}: {current_sl:.5f} -> {new_sl:.5f}")
                             
-                            # Modify the position's stop loss
-                            result = self.modify_position(sig_id, new_sl=new_sl)
+                            # Modify ONLY the stop loss, leaving take profit untouched
+                            request = {
+                                "action": mt5.TRADE_ACTION_SLTP,
+                                "symbol": symbol,
+                                "position": position.ticket,
+                                "sl": new_sl  # Only modify stop loss
+                            }
                             
-                            if result["success"]:
+                            result = mt5.order_send(request)
+                            
+                            if result and result.retcode == mt5.TRADE_RETCODE_DONE:
                                 results["positions_updated"] += 1
                                 results["details"].append({
                                     "order_id": order_id,
@@ -1015,14 +1034,19 @@ class MT5SignalExecutor:
                                     "trailing_pips": trailing_pips,
                                     "updated": True
                                 })
+                                
+                                # Update stored order info
+                                order["stop_loss"] = new_sl
                             else:
+                                error_code = mt5.last_error() if not result else result.retcode
+                                self.logger.error(f"Failed to modify SELL position {order_id}: {error_code}")
                                 results["details"].append({
                                     "order_id": order_id,
                                     "symbol": symbol,
                                     "direction": direction,
                                     "profit_pips": profit_pips,
                                     "updated": False,
-                                    "reason": f"Modify failed: {result['error']}"
+                                    "reason": f"Modify failed: {error_code}"
                                 })
                         else:
                             results["details"].append({
@@ -1042,14 +1066,15 @@ class MT5SignalExecutor:
             self.logger.error(f"Error in apply_trailing_stop: {e}")
             return {"success": False, "error": str(e)}
     
-    def modify_position(self, signal_id, new_sl=None, new_tp=None):
+    def modify_position(self, signal_id, position_ticket=None, new_sl=None, new_tp=None):
         """
         Modify stop loss and/or take profit for a position.
         
         Args:
             signal_id (str): ID of the signal to modify
-            new_sl (float): New stop loss price, or None to keep current
-            new_tp (float): New take profit price, or None to keep current
+            position_ticket (int, optional): Specific position ticket to modify, or None to modify all positions for this signal
+            new_sl (float, optional): New stop loss price, or None to keep current
+            new_tp (float, optional): New take profit price, or None to keep current
             
         Returns:
             dict: Result of the modification
@@ -1063,55 +1088,112 @@ class MT5SignalExecutor:
         
         try:
             signal_info = self.executed_signals[signal_id]
-            order_id = signal_info["order_id"]
             symbol = signal_info["symbol"]
+            orders = signal_info.get("orders", [])
             
-            # Check if the position is still open
-            positions = mt5.positions_get(symbol=symbol)
-            position = None
+            if not orders:
+                return {"success": False, "error": "No orders found for this signal"}
             
-            if positions:
-                for pos in positions:
-                    if pos.ticket == order_id or pos.magic == 123456:
-                        position = pos
-                        break
-            
-            if not position:
-                return {"success": False, "error": "Position not found"}
-            
-            # Use current values if new ones not provided
-            sl = new_sl if new_sl is not None else position.sl
-            tp = new_tp if new_tp is not None else position.tp
-            
-            # Prepare modification request
-            request = {
-                "action": mt5.TRADE_ACTION_MODIFY,
-                "symbol": symbol,
-                "position": position.ticket,
-                "sl": sl,
-                "tp": tp
+            # Track results
+            results = {
+                "success": True,
+                "positions_modified": 0,
+                "details": []
             }
             
-            # Send the modification request
-            result = mt5.order_send(request)
-            
-            if result.retcode == mt5.TRADE_RETCODE_DONE:
-                self.logger.info(f"✅ Position {signal_id} modified successfully")
+            # Process each order in the signal
+            for order_idx, order in enumerate(orders):
+                order_id = order["order_id"]
                 
-                # Update executed signals
-                if new_sl is not None:
-                    self.executed_signals[signal_id]["stop_loss"] = new_sl
-                if new_tp is not None:
-                    self.executed_signals[signal_id]["take_profits"][0] = new_tp
+                # Skip if we're targeting a specific position and this isn't it
+                if position_ticket is not None and order_id != position_ticket:
+                    continue
                 
-                return {
-                    "success": True,
-                    "new_sl": sl,
-                    "new_tp": tp
+                # Check if the position is still open
+                positions = mt5.positions_get(ticket=order_id)
+                position = None
+                
+                if not positions:
+                    # Try by symbol and magic
+                    positions = mt5.positions_get(symbol=symbol)
+                    if positions:
+                        for pos in positions:
+                            if pos.ticket == order_id or pos.magic == 123456 + order_idx:
+                                position = pos
+                                break
+                else:
+                    position = positions[0]
+                
+                if not position:
+                    results["details"].append({
+                        "order_id": order_id,
+                        "symbol": symbol,
+                        "modified": False,
+                        "reason": "Position not found"
+                    })
+                    continue
+                
+                # Prepare modification request
+                # Only include parameters that need to be modified
+                request = {
+                    "action": mt5.TRADE_ACTION_SLTP,
+                    "symbol": symbol,
+                    "position": position.ticket
                 }
-            else:
-                self.logger.error(f"❌ Failed to modify position with error code: {result.retcode}")
-                return {"success": False, "error": f"Failed to modify position: {result.retcode}"}
+                
+                # Only add SL or TP to the request if they are changing
+                if new_sl is not None:
+                    request["sl"] = new_sl
+                
+                if new_tp is not None:
+                    request["tp"] = new_tp
+                
+                # Skip if nothing to modify
+                if "sl" not in request and "tp" not in request:
+                    results["details"].append({
+                        "order_id": order_id,
+                        "symbol": symbol,
+                        "modified": False,
+                        "reason": "No changes requested"
+                    })
+                    continue
+                
+                # Send the modification request
+                result = mt5.order_send(request)
+                
+                if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+                    self.logger.info(f"✅ Position {order_id} modified successfully")
+                    
+                    # Update executed signals record
+                    if new_sl is not None:
+                        order["stop_loss"] = new_sl
+                    if new_tp is not None:
+                        order["take_profit"] = new_tp
+                    
+                    results["positions_modified"] += 1
+                    results["details"].append({
+                        "order_id": order_id,
+                        "symbol": symbol,
+                        "modified": True,
+                        "new_sl": new_sl if new_sl is not None else position.sl,
+                        "new_tp": new_tp if new_tp is not None else position.tp
+                    })
+                else:
+                    error_code = mt5.last_error() if not result else result.retcode
+                    self.logger.error(f"❌ Failed to modify position with error code: {error_code}")
+                    results["details"].append({
+                        "order_id": order_id,
+                        "symbol": symbol,
+                        "modified": False,
+                        "reason": f"Failed to modify position: {error_code}"
+                    })
+            
+            # Determine overall success
+            if results["positions_modified"] == 0 and position_ticket is not None:
+                results["success"] = False
+                results["error"] = "Failed to modify specified position"
+            
+            return results
             
         except Exception as e:
             self.logger.error(f"Error modifying position: {e}")
@@ -1146,6 +1228,229 @@ class MT5SignalExecutor:
             
         except Exception as e:
             self.logger.error(f"Error getting account info: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def generate_daily_stats(self):
+        """
+        Generate statistics for signals executed today.
+        
+        Returns:
+            dict: Statistics about today's signals
+        """
+        if not self.connected or not self.initialized:
+            if not self.initialize_mt5():
+                return {"success": False, "error": "MT5 not connected"}
+        
+        try:
+            # Get today's date
+            today = datetime.now().date()
+            today_str = today.strftime("%Y-%m-%d")
+            
+            # Get account info for balance calculations
+            account_info = mt5.account_info()
+            if not account_info:
+                return {"success": False, "error": "Failed to get account info"}
+            
+            current_balance = account_info.balance
+            start_balance = account_info.balance  # We'll adjust this if we find closed trades
+            
+            # Initialize statistics
+            stats = {
+                "date": today_str,
+                "signals_executed": 0,
+                "positions_opened": 0,
+                "positions_closed": 0,
+                "wins": 0,
+                "losses": 0,
+                "total_profit": 0.0,
+                "total_pips": 0.0,
+                "win_rate": 0.0,
+                "return_percentage": 0.0,
+                "active_positions": 0,
+                "symbols_traded": set(),
+                "signal_details": []
+            }
+            
+            # Find signals executed today
+            today_signals = []
+            for signal_id, signal_info in self.executed_signals.items():
+                execution_time = signal_info.get("execution_time", "")
+                if execution_time.startswith(today_str):
+                    today_signals.append(signal_id)
+                    stats["signals_executed"] += 1
+                    stats["symbols_traded"].add(signal_info["symbol"])
+            
+            # Get history orders for today
+            from_date = datetime(today.year, today.month, today.day)
+            to_date = datetime(today.year, today.month, today.day, 23, 59, 59)
+            
+            # Convert to MT5 datetime format
+            from_date = mt5.datetime_to_time(from_date)
+            to_date = mt5.datetime_to_time(to_date)
+            
+            # Get history orders
+            history_orders = mt5.history_orders_get(from_date, to_date)
+            
+            # Track orders specifically from our signals
+            signal_orders = set()
+            for signal_id in today_signals:
+                signal_info = self.executed_signals[signal_id]
+                for order in signal_info.get("orders", []):
+                    signal_orders.add(order["order_id"])
+            
+            # Track closed positions
+            closed_positions = []
+            if history_orders:
+                for order in history_orders:
+                    # Check if it's our signal-generated order
+                    if order.magic >= 123456 and order.magic < 123500:
+                        # Check if this order opened a position that was later closed
+                        if order.state == mt5.ORDER_STATE_FILLED and order.position_id > 0:
+                            stats["positions_opened"] += 1
+                            
+                            # Get the deals related to this position
+                            deals = mt5.history_deals_get(position=order.position_id)
+                            
+                            if deals:
+                                # Find the closing deal
+                                closing_deal = None
+                                for deal in deals:
+                                    if deal.entry == mt5.DEAL_ENTRY_OUT:
+                                        closing_deal = deal
+                                        break
+                                
+                                if closing_deal:
+                                    # This position was closed today
+                                    stats["positions_closed"] += 1
+                                    
+                                    # Calculate profit
+                                    profit = closing_deal.profit
+                                    stats["total_profit"] += profit
+                                    
+                                    # Determine win or loss
+                                    if profit > 0:
+                                        stats["wins"] += 1
+                                    else:
+                                        stats["losses"] += 1
+                                    
+                                    # Calculate pips
+                                    symbol_info = mt5.symbol_info(order.symbol)
+                                    if symbol_info:
+                                        point = symbol_info.point
+                                        digits = symbol_info.digits
+                                        
+                                        # For Forex, 1 pip is usually 0.0001 for 4-digit symbols, 0.00001 for 5-digit
+                                        if digits == 5 or digits == 3:  # 5-digit Forex or 3-digit indices/commodities
+                                            pip_size = point * 10
+                                        else:  # Standard 4-digit Forex or 2-digit indices
+                                            pip_size = point
+                                        
+                                        # Calculate price difference
+                                        if order.type == mt5.ORDER_TYPE_BUY or order.type == mt5.ORDER_TYPE_BUY_LIMIT:
+                                            pips = (closing_deal.price - order.price_open) / pip_size
+                                        else:
+                                            pips = (order.price_open - closing_deal.price) / pip_size
+                                        
+                                        stats["total_pips"] += pips
+                                    
+                                    # Add to closed positions list
+                                    closed_position = {
+                                        "position_id": order.position_id,
+                                        "symbol": order.symbol,
+                                        "type": "BUY" if order.type in [mt5.ORDER_TYPE_BUY, mt5.ORDER_TYPE_BUY_LIMIT] else "SELL",
+                                        "open_price": order.price_open,
+                                        "close_price": closing_deal.price,
+                                        "profit": profit,
+                                        "magic": order.magic
+                                    }
+                                    closed_positions.append(closed_position)
+            
+            # Check active positions
+            active_positions = mt5.positions_get()
+            if active_positions:
+                for position in active_positions:
+                    # Check if it's our signal-generated position
+                    if position.magic >= 123456 and position.magic < 123500:
+                        stats["active_positions"] += 1
+                        
+                        # Calculate unrealized profit for active positions
+                        symbol_info = mt5.symbol_info(position.symbol)
+                        if symbol_info:
+                            point = symbol_info.point
+                            digits = symbol_info.digits
+                            
+                            # For Forex, 1 pip is usually 0.0001 for 4-digit symbols, 0.00001 for 5-digit
+                            if digits == 5 or digits == 3:  # 5-digit Forex or 3-digit indices/commodities
+                                pip_size = point * 10
+                            else:  # Standard 4-digit Forex or 2-digit indices
+                                pip_size = point
+                            
+                            # Calculate pips for active positions
+                            if position.type == 0:  # BUY
+                                current_price = symbol_info.bid
+                                unrealized_pips = (current_price - position.price_open) / pip_size
+                            else:  # SELL
+                                current_price = symbol_info.ask
+                                unrealized_pips = (position.price_open - current_price) / pip_size
+                            
+                            # Find which signal this position belongs to
+                            found_signal = False
+                            for signal_id, signal_info in self.executed_signals.items():
+                                for order in signal_info.get("orders", []):
+                                    if order["order_id"] == position.ticket:
+                                        # Found the signal
+                                        found_signal = True
+                                        signal_detail = {
+                                            "signal_id": signal_id,
+                                            "symbol": position.symbol,
+                                            "direction": "BUY" if position.type == 0 else "SELL",
+                                            "entry_price": position.price_open,
+                                            "current_price": current_price,
+                                            "unrealized_profit": position.profit,
+                                            "unrealized_pips": unrealized_pips,
+                                            "status": "ACTIVE",
+                                            "lot_size": position.volume
+                                        }
+                                        stats["signal_details"].append(signal_detail)
+                                        break
+                                if found_signal:
+                                    break
+            
+            # Add closed position details to signal details
+            for position in closed_positions:
+                # Find which signal this position belongs to
+                for signal_id, signal_info in self.executed_signals.items():
+                    for order in signal_info.get("orders", []):
+                        if order["order_id"] == position["position_id"]:
+                            # Found the signal
+                            signal_detail = {
+                                "signal_id": signal_id,
+                                "symbol": position["symbol"],
+                                "direction": position["type"],
+                                "entry_price": position["open_price"],
+                                "exit_price": position["close_price"],
+                                "profit": position["profit"],
+                                "status": "WIN" if position["profit"] > 0 else "LOSS"
+                            }
+                            stats["signal_details"].append(signal_detail)
+                            break
+            
+            # Calculate win rate
+            total_closed = stats["wins"] + stats["losses"]
+            if total_closed > 0:
+                stats["win_rate"] = (stats["wins"] / total_closed) * 100
+            
+            # Calculate return percentage
+            if start_balance > 0:
+                stats["return_percentage"] = (stats["total_profit"] / start_balance) * 100
+            
+            # Convert symbols_traded to list for serialization
+            stats["symbols_traded"] = list(stats["symbols_traded"])
+            
+            return {"success": True, "stats": stats}
+            
+        except Exception as e:
+            self.logger.error(f"Error generating daily stats: {e}")
             return {"success": False, "error": str(e)}
     
     def cleanup(self):

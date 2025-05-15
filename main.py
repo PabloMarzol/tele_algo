@@ -4075,8 +4075,13 @@ def main() -> None:
     
     job_queue.run_repeating(
         lambda context: asyncio.create_task(signal_dispatcher.check_and_apply_trailing_stops()),
-        interval=300,  # Every 5 minutes
-        first=120  # Start 2 minutes after bot startup
+        interval=120,  # Every 5 minutes
+        first=60  # Start 2 minutes after bot startup
+    )
+    
+    job_queue.run_daily(
+        lambda context: asyncio.create_task(signal_dispatcher.send_daily_stats()),
+        time=time(hour=22, minute=0)
     )
   
     

@@ -30,9 +30,9 @@ class MT5SignalGenerator:
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M5,
-                    mt5.TIMEFRAME_M15,   
-                    mt5.TIMEFRAME_M30  
+                    mt5.TIMEFRAME_M5
+                    #mt5.TIMEFRAME_M15,   
+                    #mt5.TIMEFRAME_M30  
                 ],
                 'params': {'fast_length': 9, 'slow_length': 21}
             },
@@ -42,21 +42,11 @@ class MT5SignalGenerator:
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M5,   
+                   #mt5.TIMEFRAME_M5,   
                     mt5.TIMEFRAME_M15,   
                     mt5.TIMEFRAME_M30   
                 ],
                 'params': {'rsi_length': 2, 'overbought': 95, 'oversold': 10}
-            },
-            'short_term_rsi': {
-                'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
-                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
-                ],
-                'timeframes': [
-                    mt5.TIMEFRAME_M5   
-                ],
-                'params': {'rsi_length': 7, 'overbought': 75, 'oversold': 25}  # Faster RSI with more extreme thresholds
             },
             'support_resistance': {
                 'symbols': [
@@ -65,8 +55,8 @@ class MT5SignalGenerator:
                 ],
                 'timeframes': [
                     mt5.TIMEFRAME_M5,  
-                    mt5.TIMEFRAME_M15,  
-                    mt5.TIMEFRAME_M30
+                    mt5.TIMEFRAME_M15  
+                    #mt5.TIMEFRAME_M30
                 ],
                 'params': {'lookback': 20, 'threshold': 0.001}
             }
@@ -76,11 +66,11 @@ class MT5SignalGenerator:
         self.signal_history = {}
         
         # Signal frequency control parameters
-        self.max_signals_per_hour = 2   
+        self.max_signals_per_hour = 4   
         self.max_signals_per_day = 30    
-        self.min_minutes_between_signals = 30
+        self.min_minutes_between_signals = 15
     
-    def initialize_mt5(self, username=300410, password="Abcdefg@1", server="VortexFX-Servers"):
+    def initialize_mt5(self, username=295277, password="Abcdefg@1", server="VortexFX-Servers"):
         """Connect to MetaTrader5 terminal with detailed logging"""
         try:
             self.logger.info("Initializing MT5 connection...")
@@ -209,7 +199,7 @@ class MT5SignalGenerator:
             
         return None
     
-    def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=3, overbought=95, oversold=5):
+    def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=2, overbought=95, oversold=5):
         """Calculate RSI reversal signal with Polars"""
         df = self.get_price_data(symbol, timeframe, bars=rsi_length*3)
         if df is None or df.height < rsi_length:
