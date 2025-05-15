@@ -64,5 +64,38 @@
     "strategy": "VFX-LIMIT",
     "timeframe": "M15",
     "timestamp": "2025-05-15T17:15:25.270173"
+  },
+  "USDCAD_SELL_20250515180134": {
+    "direction": "SELL",
+    "symbol": "USDCAD",
+    "entry_range_low": 1.39869,
+    "entry_range_high": 1.39939,
+    "entry_price": 1.3990399999999998,
+    "stop_range_low": 1.40009,
+    "stop_range_high": 1.40079,
+    "stop_loss": 1.4004400000000001,
+    "take_profit": 1.39771,
+    "take_profit2": 1.39701,
+    "take_profit3": 1.39589,
+    "strategy": "VFX-LIMIT",
+    "timeframe": "M15",
+    "timestamp": "2025-05-15T18:01:34.340208",
+    "signal_id": "USDCAD_SELL_20250515180134"
+  },
+  "XAUUSD_SELL_20250515181634": {
+    "direction": "SELL",
+    "symbol": "XAUUSD",
+    "entry_range_low": 3224.51,
+    "entry_range_high": 3229.35,
+    "entry_price": 3226.9300000000003,
+    "stop_range_low": 3237.41,
+    "stop_range_high": 3242.27,
+    "stop_loss": 3239.84,
+    "take_profit": 3218.06,
+    "take_profit2": 3213.22,
+    "take_profit3": 3208.39,
+    "strategy": "VFX-LIMIT",
+    "timeframe": "M15",
+    "timestamp": "2025-05-15T18:16:34.353131"
   }
 }

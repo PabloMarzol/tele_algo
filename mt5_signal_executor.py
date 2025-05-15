@@ -280,9 +280,11 @@ class MT5SignalExecutor:
             
             # Adjust if the sum exceeds maximum
             total_allocated = sum(lot_sizes)
-            if total_allocated > symbol_info.volume_max:
+            if total_allocated > total_lot_size * 1.05:  # Allow 5% tolerance for rounding
                 # Scale back proportionally
-                scale_factor = symbol_info.volume_max / total_allocated
+                scale_factor = total_lot_size / total_allocated
+                self.logger.warning(f"Total allocated lots ({total_allocated:.2f}) exceeds risk-based lot size ({total_lot_size:.2f}). Scaling by {scale_factor:.2f}")
+                
                 for i in range(num_entries):
                     lot_sizes[i] = max(min_lot, round((lot_sizes[i] * scale_factor) / lot_step) * lot_step)
             
@@ -494,28 +496,28 @@ class MT5SignalExecutor:
             account_info = mt5.account_info()
             if not account_info:
                 self.logger.error("Failed to get account info")
-                return self.default_lot_sizes.get(symbol, 0.5)
+                return self.default_lot_sizes.get(symbol, 0.01)
             
             account_balance = account_info.balance
             
-            # Calculate risk amount
+            # Calculate risk amount (% of balance)
             risk_amount = account_balance * (self.risk_percent / 100)
             
             # Get symbol info
             symbol_info = mt5.symbol_info(symbol)
             if not symbol_info:
                 self.logger.error(f"Failed to get symbol info for {symbol}")
-                return self.default_lot_sizes.get(symbol, 0.5)
+                return self.default_lot_sizes.get(symbol, 0.01)
             
             # Log detailed symbol info for debugging
             self.logger.info(f"Symbol info for {symbol}: min_lot={symbol_info.volume_min}, max_lot={symbol_info.volume_max}, step={symbol_info.volume_step}")
             
-            # Calculate stop loss distance in pips
+            # Calculate stop loss distance in price terms
             if direction == "BUY":
                 sl_distance = abs(entry_price - stop_loss)
             else:
                 sl_distance = abs(stop_loss - entry_price)
-                
+                    
             # Convert to pips based on symbol digits
             point = symbol_info.point
             digits = symbol_info.digits
@@ -525,25 +527,31 @@ class MT5SignalExecutor:
                 pip_size = point * 10
             else:  # Standard 4-digit Forex or 2-digit indices
                 pip_size = point
-                
+                    
             pip_distance = sl_distance / pip_size
             
             self.logger.info(f"SL distance for {symbol}: {sl_distance:.5f} ({pip_distance:.1f} pips)")
             
-            # Calculate pip value
-            # For major Forex pairs with USD as quote currency
-            lot_size = 1.0  
+            # Get tick value (value of 1 point movement per lot)
+            tick_value = symbol_info.trade_tick_value
             
-            if "USD" in symbol[-3:]:  # If USD is the quote currency
-                pip_value = symbol_info.trade_tick_value * (pip_size / point)
-            else:
-                # For other symbols, use a simpler approximation
-                pip_value = symbol_info.trade_tick_value
+            # Calculate pip value per lot (how much 1 pip is worth per 1 lot)
+            pip_value = tick_value * (pip_size / point)
             
             # Calculate lot size based on risk
             if pip_distance > 0 and pip_value > 0:
+                # Formula: risk_amount / (pip_distance * pip_value)
                 lot_size = risk_amount / (pip_distance * pip_value)
                 self.logger.info(f"Calculated raw lot size for {symbol}: {lot_size:.2f} (risk=${risk_amount:.2f}, pip_value=${pip_value:.2f})")
+                
+                # Safety check - verify calculation
+                max_loss = lot_size * pip_distance * pip_value
+                if abs(max_loss - risk_amount) > risk_amount * 0.1:  # 10% tolerance
+                    self.logger.warning(f"Lot size calculation verification failed: {lot_size} lots with {pip_distance} pips SL = ${max_loss:.2f} risk (expected ${risk_amount:.2f})")
+                    
+                    # Re-calculate with explicit formula
+                    lot_size = risk_amount / (pip_distance * pip_value)
+                    self.logger.info(f"Re-calculated lot size: {lot_size:.2f}")
                 
                 # Ensure lot size matches symbol's step size
                 step = symbol_info.volume_step
@@ -560,28 +568,19 @@ class MT5SignalExecutor:
                 if lot_size > max_lot:
                     self.logger.info(f"Reducing lot size to maximum: {max_lot}")
                     lot_size = max_lot
-                    
-                # Double-check lot size is valid
-                if lot_size % step != 0:
-                    # Adjust to nearest valid step
-                    lot_size = round(lot_size / step) * step
-                    self.logger.info(f"Adjusted lot size to match step size: {lot_size}")
-                    
-                # For some brokers/accounts, test if the lot size is valid
-                # by checking if it's between min and max, and a multiple of step
-                is_valid = (min_lot <= lot_size <= max_lot) #and (abs(lot_size % step) < 0.0001)
-                if not is_valid:
-                    self.logger.warning(f"Calculated lot size {lot_size} appears invalid! Falling back to default.")
-                    return self.default_lot_sizes.get(symbol, min_lot)
-                    
+                
+                # Final risk check - calculate actual risk with this lot size
+                actual_risk = lot_size * pip_distance * pip_value
+                self.logger.info(f"Final lot size: {lot_size:.2f}, actual risk: ${actual_risk:.2f} ({(actual_risk/account_balance)*100:.2f}% of balance)")
+                
                 return lot_size
             else:
                 self.logger.warning(f"Invalid stop loss distance or pip value for {symbol}")
-                return self.default_lot_sizes.get(symbol, 0.5)
-                
+                return self.default_lot_sizes.get(symbol, 0.01)
+                    
         except Exception as e:
             self.logger.error(f"Error calculating position size: {e}")
-            return self.default_lot_sizes.get(symbol, 0.5)
+            return self.default_lot_sizes.get(symbol, 0.01)
     
     def set_partial_take_profits(self, order_id, symbol, direction, lot_size, take_profits):
         """

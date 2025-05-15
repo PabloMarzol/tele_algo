@@ -4058,13 +4058,13 @@ def main() -> None:
          Signal Jobs
     ------------------------------------"""
     
-    job_queue.run_once(init_signal_system, 60)
+    job_queue.run_once(init_signal_system, 30)
     
     # Schedule regular signal checks - run every hour
     job_queue.run_repeating(
         check_and_send_signals,
         interval=300,  # 5 Min
-        first=30  # First check 1 minute after bot start
+        first=40  # First check 1 minute after bot start
     )
     
     job_queue.run_repeating(
