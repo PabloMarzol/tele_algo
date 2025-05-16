@@ -105,7 +105,8 @@ def run_async(coroutine):
         try:
              # Get the current event loop - this should be the same one Telethon is using
             # Intentar obtener el loop actual
-            loop = asyncio.get_event_loop()
+            # loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             
             # Verificar si el loop está corriendo
             if loop.is_running():
@@ -935,7 +936,7 @@ class TelegramEntityFinder2:
             last_date = None
             
             while True:
-                result = self.client(GetDialogsRequest(
+                result = await self.client(GetDialogsRequest(
                     offset_date=last_date,
                     offset_id=0,
                     offset_peer=InputPeerEmpty(),
@@ -956,29 +957,41 @@ class TelegramEntityFinder2:
                 last_date = result.messages[-1].date
                 
                 # Pausa para evitar límites
-                time.sleep(1)
+                await asyncio.sleep()
+                # time.sleep(1)
             
             logger.info(f"Encontrados {len(dialogs)} diálogos")
             
             # Filtrar solo canales y grupos
             entities_count = 0
+            existing_count = 0
             entity_types = {"channel": 0, "megagroup": 0, "group": 0, "forum": 0, "unknown": 0}
-            
+            # Para depuración
+            dialog_types = {}
             for dialog in dialogs:
                 if dialog.peer:
                     try:
+                        peer_type = dialog.peer.__class__.__name__
+                        dialog_types[peer_type] = dialog_types.get(peer_type, 0) + 1
                         # Obtener la entidad completa
-                        entity = self.client.get_entity(dialog.peer)
+                        entity = await self.client.get_entity(dialog.peer)
                         
+                         # Verificar si la entidad ya existe
+                        entity_id = str(entity.id)
+                        if entity_id in self.entities:
+                            existing_count += 1
+                            # print(f"Entidad {entity_id} ya existe (saltando)")
+                            continue
                         # Procesar la entidad
-                        entity_data = self.process_entity(entity, "my_dialogs")
+                        entity_data = await self.process_entity_async(entity, "my_dialogs") # self.process_entity(entity, "my_dialogs")
                         if entity_data:
                             entities_count += 1
                             entity_type = entity_data.get('type', 'unknown')
                             entity_types[entity_type] = entity_types.get(entity_type, 0) + 1
                     except Exception as e:
                         logger.warning(f"Error procesando diálogo: {e}")
-            
+            print(f"Entidades existentes (no procesadas): {existing_count}")
+            print(f"Nuevas entidades procesadas: {entities_count}")
             # Mostrar resumen
             print("\n=== RESUMEN DE ESCANEO DE DIÁLOGOS ===")
             print(f"Total de entidades procesadas: {entities_count}")
@@ -1018,7 +1031,7 @@ class TelegramEntityFinder2:
             logger.info("Escaneando diálogos existentes...")
             dialogs = []
             
-            result = self.client(GetDialogsRequest(
+            result = await self.client(GetDialogsRequest(
                 offset_date=None,
                 offset_id=0,
                 offset_peer=InputPeerEmpty(),
@@ -1033,7 +1046,7 @@ class TelegramEntityFinder2:
                 try:
                     if dialog.peer:
                         # Obtener la entidad completa
-                        entity = self.client.get_entity(dialog.peer)
+                        entity = await self.client.get_entity(dialog.peer)
                         
                         # Procesar la entidad
                         entity_data = self.process_entity(entity, "dialog_scan")
@@ -1053,7 +1066,7 @@ class TelegramEntityFinder2:
             for term in general_terms:
                 try:
                     logger.info(f"Buscando término general: {term}")
-                    results = self.client(SearchRequest(
+                    results = await self.client(SearchRequest(
                         q=term,
                         limit=50
                     ))
@@ -1075,7 +1088,7 @@ class TelegramEntityFinder2:
             for term in forum_terms:
                 try:
                     logger.info(f"Buscando foros con término: {term}")
-                    results = self.client(SearchRequest(
+                    results = await self.client(SearchRequest(
                         q=term,
                         limit=30
                     ))
@@ -1233,8 +1246,8 @@ class TelegramEntityFinder2:
     async def explore_messages_async(self, username, limit=10):
         """Versión asíncrona de explore_messages"""
         try:
-            entity = self.client.get_entity(f"@{username}")
-            messages = self.client.get_messages(entity, limit=limit)
+            entity = await self.client.get_entity(f"@{username}")
+            messages = await self.client.get_messages(entity, limit=limit)
             
             if not messages:
                 print("No se encontraron mensajes recientes.")
@@ -1526,12 +1539,12 @@ class TelegramEntityFinder2:
         try:
             # Obtener la entidad
             if username:
-                entity = self.client.get_entity(f"@{username}")
+                entity = await self.client.get_entity(f"@{username}")
             else:
-                entity = self.client.get_entity(int(entity_id))
+                entity = await self.client.get_entity(int(entity_id))
             
             # Obtener mensajes recientes
-            messages = self.client.get_messages(entity, limit=message_limit)
+            messages = await self.client.get_messages(entity, limit=message_limit)
             logger.info(f"Se obtuvieron {len(messages)} mensajes recientes de {title}")
             
             # Recopilar información de los remitentes únicos
@@ -1655,8 +1668,8 @@ class TelegramEntityFinder2:
     async def find_users_from_mentions_async(self, entity_id, message_limit=200):
         """Versión asíncrona de find_users_from_mentions"""
         try:
-            entity = self.client.get_entity(int(entity_id))
-            messages = self.client.get_messages(entity, limit=message_limit)
+            entity = await self.client.get_entity(int(entity_id))
+            messages = await self.client.get_messages(entity, limit=message_limit)
             
             mentioned_users = set()
             
@@ -1666,7 +1679,7 @@ class TelegramEntityFinder2:
                     for entity in msg.entities:
                         if hasattr(entity, 'user_id'):
                             try:
-                                user = self.client.get_entity(entity.user_id)
+                                user = await self.client.get_entity(entity.user_id)
                                 if not user.bot and not hasattr(user, 'admin_rights'):
                                     user_key = f"{user.id}_{entity_id}"
                                     # Procesar y guardar el usuario si aún no existe
@@ -2219,8 +2232,8 @@ class TelegramEntityFinder2:
                                         print(f"Chat reconocido por Pyrogram: {chat.title}")
                                         
                                         # Resolver el peer de manera segura
-                                        from pyrogram.raw.types import InputPeerChannel
-                                        from pyrogram.raw.functions.messages import GetMessageReactionsList
+                                        from pyrogram.raw.types.input_peer_channel import InputPeerChannel
+                                        from pyrogram.raw.functions.messages.get_message_reactions_list import GetMessageReactionsList
                                         
                                         # Intentar obtener access_hash desde la entidad de Telethon
                                         if hasattr(entity, 'access_hash'):
@@ -2682,7 +2695,9 @@ class TelegramEntityFinder2:
                                             
                                             # Si llegamos aquí, el usuario está confirmado en el canal principal
                                             process_user_safely(user, f"participante confirmado ({rel_entity.title})")
-                                        except UserNotParticipantError:
+                                        except Exception as e:
+                                            print("Error al obtener participante:", e)
+                                            traceback.print_exc()
                                             # El usuario no está en el canal original
                                             pass
                                         except Exception:
@@ -3542,19 +3557,15 @@ class TelegramEntityFinder2:
                             # Comprobar si está en el canal mediante un método indirecto
                             try:
                                 # Intentar obtener miembro específico
-                                member_info = await self.client(GetParticipantRequest(
-                                    channel=entity,
-                                    participant=user.id
-                                ))
+                                member_info = await self.client(GetParticipantRequest(channel=entity, participant=user.id))
                                 # Si no hay error, el usuario está en el canal
                                 self.process_member(user, entity_id, entity_title, False)
                                 users_found.append(user)
                                 print(f"Usuario encontrado en canal: {user.first_name} (@{user.username or 'sin username'})")
-                            except UserNotParticipantError:
-                                # El usuario existe pero no está en el canal
-                                pass
-                            except Exception:
+                            
+                            except Exception as e:
                                 # Otro error, ignorar
+                                print(f"Error al obtener información del usuario: {e}")
                                 pass
                 except:
                     pass
@@ -3941,9 +3952,9 @@ class TelegramEntityFinder2:
                             if linked_access_hash > 0:
                                 print("Intentando método de bajo nivel con access_hash...")
                                 
-                                from pyrogram.raw.types import InputPeerChannel
-                                from pyrogram.raw.functions.channels import GetParticipants
-                                from pyrogram.raw.types import ChannelParticipantsRecent
+                                from pyrogram.raw.types.input_peer_channel import InputPeerChannel
+                                from pyrogram.raw.functions.channels.get_participants import GetParticipants
+                                from pyrogram.raw.types.channel_participants_recent import ChannelParticipantsRecent
                                 
                                 try:
                                     peer = InputPeerChannel(
@@ -4463,7 +4474,7 @@ class TelegramEntityFinder2:
             print("\nAnalizando mensajes recientes...")
             message_count = int(input("Número de mensajes a analizar (por defecto 50): ") or 50)
             
-            messages = self.client.get_messages(entity, limit=message_count)
+            messages =  self.client.get_messages(entity, limit=message_count)
             logger.info(f"Se obtuvieron {len(messages)} mensajes recientes")
             
             if not messages:

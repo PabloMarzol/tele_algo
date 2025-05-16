@@ -2263,3 +2263,315 @@ ValueError: Peer id invalid: -1002586937373
 2025-05-16 11:24:20,508 - INFO - Unido exitosamente a @forexmarket0
 2025-05-16 11:24:29,713 - INFO - Iniciando extracción de miembros para Forex market trader (1504886592)
 2025-05-16 11:24:29,784 - ERROR - Error extrayendo miembros: Chat admin privileges are required to do that in the specified chat (for example, to send a message in a channel which is not yours), or invalid permissions used for the channel or group (caused by GetParticipantsRequest)
+2025-05-16 17:12:29,544 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-16 17:12:29,572 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-16 17:12:30,372 - INFO - Conectado como: Bird Bill
+2025-05-16 17:12:30,375 - INFO - Cargadas 254 entidades existentes
+2025-05-16 17:12:30,387 - INFO - Cargados 2685 miembros existentes
+2025-05-16 17:12:30,388 - INFO - Sistema inicializado correctamente
+2025-05-16 17:13:04,795 - INFO - Escaneando diálogos existentes...
+2025-05-16 17:13:04,796 - ERROR - Error escaneando diálogos: 'coroutine' object has no attribute 'dialogs'
+2025-05-16 17:43:04,144 - INFO - Escaneando diálogos existentes...
+2025-05-16 17:43:04,145 - ERROR - Error escaneando diálogos: 'coroutine' object has no attribute 'dialogs'
+2025-05-16 17:43:38,900 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-16 17:43:38,933 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-16 17:43:39,368 - INFO - Conectado como: Bird Bill
+2025-05-16 17:43:39,370 - INFO - Cargadas 254 entidades existentes
+2025-05-16 17:43:39,382 - INFO - Cargados 2685 miembros existentes
+2025-05-16 17:43:39,383 - INFO - Sistema inicializado correctamente
+2025-05-16 17:43:45,723 - INFO - Escaneando diálogos existentes...
+2025-05-16 17:43:46,358 - INFO - Encontrados 100 diálogos
+2025-05-16 17:43:46,358 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,360 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,361 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,362 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,363 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,364 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,364 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,365 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,366 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,366 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,367 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,367 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,368 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,368 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,369 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,369 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,370 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,370 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,371 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,371 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,372 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,372 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,373 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,373 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,374 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,374 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,375 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,375 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,375 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,376 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,376 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,377 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,377 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,378 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,378 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,379 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,379 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,380 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,380 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,381 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,382 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,383 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,383 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,387 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,389 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,390 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,391 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,391 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,392 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,393 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,395 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,396 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,397 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,398 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,398 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,400 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,401 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,402 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,403 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,403 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,405 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,405 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,406 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,407 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,407 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,408 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,409 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,410 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,411 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,411 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,412 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,412 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,413 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,414 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,414 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,415 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,416 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,418 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,418 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,419 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,420 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,421 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,422 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,423 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,424 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,425 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,425 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,426 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,427 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,428 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,429 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,430 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,431 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,431 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,432 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,434 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,435 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,436 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,437 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,437 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:43:46,438 - INFO - Se procesaron 0 entidades de tus diálogos
+2025-05-16 17:47:57,943 - INFO - Escaneando diálogos existentes...
+2025-05-16 17:47:58,476 - INFO - Encontrados 100 diálogos
+2025-05-16 17:47:58,477 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,487 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,488 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,489 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,490 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,490 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,492 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,492 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,493 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,493 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,494 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,494 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,494 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,495 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,495 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,496 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,496 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,497 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,497 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,498 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,498 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,499 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,500 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,500 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,500 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,501 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,502 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,502 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,503 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,503 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,504 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,504 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,505 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,505 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,506 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,506 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,507 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,507 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,508 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,509 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,509 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,510 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,510 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,511 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,511 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,512 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,512 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,512 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,513 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,514 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,514 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,515 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,515 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,516 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,516 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,517 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,517 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,519 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,519 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,519 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,519 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,520 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,520 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,521 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,522 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,522 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,523 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,523 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,524 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,524 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,525 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,525 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,525 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,526 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,526 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,527 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,527 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,528 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,528 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,529 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,529 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,530 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,530 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,531 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,531 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,532 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,532 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,533 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,533 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,534 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,534 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,534 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,535 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,535 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,536 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,536 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,537 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,537 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,538 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,539 - ERROR - Error procesando entidad: 'coroutine' object has no attribute 'id'
+2025-05-16 17:47:58,539 - INFO - Se procesaron 0 entidades de tus diálogos
+2025-05-16 17:48:03,316 - INFO - Disconnecting from 149.154.167.91:443/TcpFull...
+2025-05-16 17:48:03,318 - INFO - Disconnection from 149.154.167.91:443/TcpFull complete!
+2025-05-16 17:48:03,325 - INFO - Recursos cerrados correctamente
+2025-05-16 17:48:14,994 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-16 17:48:15,023 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-16 17:48:15,542 - INFO - Conectado como: Bird Bill
+2025-05-16 17:48:15,545 - INFO - Cargadas 254 entidades existentes
+2025-05-16 17:48:15,557 - INFO - Cargados 2685 miembros existentes
+2025-05-16 17:48:15,557 - INFO - Sistema inicializado correctamente
+2025-05-16 17:48:31,039 - INFO - Escaneando diálogos existentes...
+2025-05-16 17:48:31,601 - INFO - Encontrados 100 diálogos
+2025-05-16 17:48:32,708 - WARNING - No se pudieron obtener detalles completos para entidad 2184522753: 'coroutine' object has no attribute 'full_chat'
+2025-05-16 17:48:32,709 - INFO - Entidad guardada: Call Analyser (ETH Only) (2184522753) - channel, 0 miembros
+2025-05-16 17:48:33,023 - WARNING - No se pudieron obtener detalles completos para entidad 2321076452: 'coroutine' object has no attribute 'full_chat'
+2025-05-16 17:48:33,023 - INFO - Entidad guardada: Call Analyser (SUI only) (2321076452) - channel, 0 miembros
+2025-05-16 17:48:33,135 - WARNING - No se pudieron obtener detalles completos para entidad 7823596188: object of type 'coroutine' has no len()
+2025-05-16 17:48:33,136 - INFO - Entidad guardada: Unknown (7823596188) - unknown, 0 miembros
+2025-05-16 17:48:33,177 - WARNING - No se pudieron obtener detalles completos para entidad 1948900072: 'coroutine' object has no attribute 'full_chat'
+2025-05-16 17:48:33,177 - INFO - Entidad guardada: Call Analyser (BASE only) (1948900072) - channel, 0 miembros
+2025-05-16 17:48:33,250 - WARNING - No se pudieron obtener detalles completos para entidad 2294881792: 'coroutine' object has no attribute 'full_chat'
+2025-05-16 17:48:33,251 - INFO - Entidad guardada: Call Analyser (BSC Only) (2294881792) - channel, 0 miembros
+2025-05-16 17:48:33,446 - WARNING - No se pudieron obtener detalles completos para entidad 2065116198: 'coroutine' object has no attribute 'full_chat'
+2025-05-16 17:48:33,448 - INFO - Entidad guardada: Call Analyser (TON only) (2065116198) - channel, 0 miembros
+2025-05-16 17:48:34,040 - WARNING - No se pudieron obtener detalles completos para entidad 1917344113: 'coroutine' object has no attribute 'full_chat'
+2025-05-16 17:48:34,041 - INFO - Entidad guardada: Call Analyser Announcement (1917344113) - channel, 0 miembros
+2025-05-16 17:48:34,091 - WARNING - No se pudieron obtener detalles completos para entidad 2210899309: 'coroutine' object has no attribute 'full_chat'
+2025-05-16 17:48:34,092 - INFO - Entidad guardada: Call Analyser (TRX only) (2210899309) - channel, 0 miembros
+2025-05-16 17:48:36,043 - INFO - Se procesaron 8 entidades de tus diálogos
+2025-05-16 17:55:45,392 - INFO - Disconnecting from 149.154.167.91:443/TcpFull...
+2025-05-16 17:55:45,398 - WARNING - Server sent a very old message with ID 7505071490113361929, ignoring (see FAQ for details)
+2025-05-16 17:55:45,399 - INFO - Disconnection from 149.154.167.91:443/TcpFull complete!
+2025-05-16 17:55:45,406 - INFO - Recursos cerrados correctamente
+2025-05-16 19:31:16,702 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-16 19:31:16,730 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-16 19:31:17,087 - INFO - Conectado como: Bird Bill
+2025-05-16 19:31:17,091 - INFO - Cargadas 262 entidades existentes
+2025-05-16 19:31:17,103 - INFO - Cargados 2685 miembros existentes
+2025-05-16 19:31:17,104 - INFO - Sistema inicializado correctamente
+2025-05-16 19:31:24,674 - INFO - Escaneando diálogos existentes...
+2025-05-16 19:31:25,235 - INFO - Encontrados 100 diálogos
+2025-05-16 19:31:30,735 - INFO - Se procesaron 0 entidades de tus diálogos
+2025-05-16 19:39:44,978 - INFO - Disconnecting from 149.154.167.91:443/TcpFull...
+2025-05-16 19:39:44,979 - WARNING - Server sent a very old message with ID 7505097651679045633, ignoring (see FAQ for details)
+2025-05-16 19:39:44,980 - INFO - Disconnection from 149.154.167.91:443/TcpFull complete!
+2025-05-16 19:39:44,995 - INFO - Recursos cerrados correctamente
+2025-05-16 19:39:54,169 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-16 19:39:54,198 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-16 19:39:54,476 - INFO - Conectado como: Bird Bill
+2025-05-16 19:39:54,478 - INFO - Cargadas 262 entidades existentes
+2025-05-16 19:39:54,490 - INFO - Cargados 2685 miembros existentes
+2025-05-16 19:39:54,490 - INFO - Sistema inicializado correctamente
+2025-05-16 19:40:20,094 - INFO - Escaneando diálogos existentes...
+2025-05-16 19:40:20,611 - INFO - Encontrados 100 diálogos
+2025-05-16 19:40:24,913 - INFO - Se procesaron 0 entidades de tus diálogos
+2025-05-16 19:44:52,002 - INFO - Disconnecting from 149.154.167.91:443/TcpFull...
+2025-05-16 19:44:52,003 - INFO - Disconnection from 149.154.167.91:443/TcpFull complete!
+2025-05-16 19:44:52,019 - INFO - Recursos cerrados correctamente
+2025-05-16 19:44:57,586 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-16 19:44:57,617 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-16 19:44:58,017 - INFO - Conectado como: Bird Bill
+2025-05-16 19:44:58,019 - INFO - Cargadas 262 entidades existentes
+2025-05-16 19:44:58,031 - INFO - Cargados 2685 miembros existentes
+2025-05-16 19:44:58,032 - INFO - Sistema inicializado correctamente
+2025-05-16 19:45:13,269 - INFO - Escaneando diálogos existentes...
+2025-05-16 19:45:13,768 - INFO - Encontrados 100 diálogos
+2025-05-16 19:45:18,581 - INFO - Se procesaron 0 entidades de tus diálogos
+2025-05-16 23:00:10,912 - INFO - Disconnecting from 149.154.167.91:443/TcpFull...
+2025-05-16 23:00:10,917 - WARNING - Server sent a very old message with ID 7505101101258564609, ignoring (see FAQ for details)
+2025-05-16 23:00:10,918 - INFO - Disconnection from 149.154.167.91:443/TcpFull complete!
+2025-05-16 23:00:10,933 - INFO - Recursos cerrados correctamente
+2025-05-16 23:01:24,220 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-16 23:01:24,255 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-16 23:01:24,562 - INFO - Conectado como: Bird Bill
+2025-05-16 23:01:24,564 - INFO - Cargadas 262 entidades existentes
+2025-05-16 23:01:24,576 - INFO - Cargados 2685 miembros existentes
+2025-05-16 23:01:24,576 - INFO - Sistema inicializado correctamente
+2025-05-16 23:11:20,561 - WARNING - Server sent a very old message with ID 7505152615814243329, ignoring (see FAQ for details)
+2025-05-16 23:11:20,580 - WARNING - Server sent a very old message with ID 7505152628704375809, ignoring (see FAQ for details)
+2025-05-16 23:11:20,581 - WARNING - Server sent a very old message with ID 7505152668969245697, ignoring (see FAQ for details)
+2025-05-16 23:11:20,582 - WARNING - Server sent a very old message with ID 7505152668973566977, ignoring (see FAQ for details)
+2025-05-16 23:11:20,584 - WARNING - Server sent a very old message with ID 7505152670201954305, ignoring (see FAQ for details)
+2025-05-16 23:11:20,586 - WARNING - Server sent a very old message with ID 7505152671200594945, ignoring (see FAQ for details)
+2025-05-16 23:11:20,589 - WARNING - Server sent a very old message with ID 7505152745005853697, ignoring (see FAQ for details)
+2025-05-16 23:12:01,090 - INFO - Iniciando extracción de miembros para VFX - VIP PROP CAPITAL TRADING (2675985847)
+2025-05-16 23:12:01,146 - INFO - Got difference for channel 2164413689 updates
+2025-05-16 23:12:01,164 - ERROR - Error extrayendo miembros: Chat admin privileges are required to do that in the specified chat (for example, to send a message in a channel which is not yours), or invalid permissions used for the channel or group (caused by GetParticipantsRequest)
+2025-05-16 23:24:27,538 - INFO - Disconnecting from 149.154.167.91:443/TcpFull...
+2025-05-16 23:24:27,552 - WARNING - Server sent a very old message with ID 7505154363867641857, ignoring (see FAQ for details)
+2025-05-16 23:24:27,553 - INFO - Disconnection from 149.154.167.91:443/TcpFull complete!
+2025-05-16 23:24:27,568 - INFO - Recursos cerrados correctamente
