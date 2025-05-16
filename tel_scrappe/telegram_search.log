@@ -1,0 +1,779 @@
+2025-05-14 19:20:11,605 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-14 19:20:11,636 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-14 19:21:57,179 - INFO - Buscando canales similares a @VFX_FX...
+2025-05-14 19:21:57,245 - WARNING - Error buscando por descripción: Cannot cast InputPeerUser to any kind of InputChannel.
+2025-05-14 19:21:57,245 - WARNING - Error buscando por título: 'User' object has no attribute 'title'
+2025-05-14 19:21:57,245 - WARNING - No hay canales para guardar
+2025-05-14 19:22:08,611 - INFO - Buscando canales con el término: bitcoin
+2025-05-14 19:22:08,662 - INFO - Got difference for channel 2164413689 updates
+2025-05-14 19:22:08,828 - INFO - Encontrados 9 resultados para 'bitcoin'
+2025-05-14 19:22:08,885 - INFO - Canal encontrado: Bitcoin.com News (@www_Bitcoin_com)
+2025-05-14 19:22:08,947 - INFO - Canal encontrado: Bitcoin (@bitcoin)
+2025-05-14 19:22:09,034 - INFO - Canal encontrado: Signals - Bitcoin and Ethereum (@signalsbitcoinandethereum)
+2025-05-14 19:22:09,113 - INFO - Canal encontrado: INDODAX - Indonesia Bitcoin & Crypto Exchange (@indodax)
+2025-05-14 19:22:09,207 - INFO - Canal encontrado: Coinvestasi - Belajar Investasi Bitcoin💰🇮🇩 (@komunitascoinvestasi)
+2025-05-14 19:22:09,208 - INFO - Se añadieron 5 nuevos canales a telegram_channels.csv
+2025-05-14 19:22:12,810 - INFO - Buscando canales con el término: btc
+2025-05-14 19:22:12,854 - INFO - Encontrados 0 resultados para 'btc'
+2025-05-14 19:22:12,855 - WARNING - No hay canales para guardar
+2025-05-14 19:22:12,855 - ERROR - Error en el menú principal: unsupported operand type(s) for +=: 'int' and 'NoneType'
+2025-05-14 19:29:11,577 - INFO - Connecting to 149.154.167.91:443/TcpFull...
+2025-05-14 19:29:11,606 - INFO - Connection to 149.154.167.91:443/TcpFull complete!
+2025-05-14 19:30:08,553 - INFO - Buscando canales similares a @0...
+2025-05-14 19:30:08,563 - ERROR - Error buscando canales similares a @0: Cannot find any entity corresponding to "@0"
+2025-05-14 19:34:32,546 - INFO - Buscando canales con el término: bitcoin
+2025-05-14 19:34:32,843 - INFO - Encontrados 9 resultados para 'bitcoin'
+2025-05-14 19:34:32,922 - INFO - Canal encontrado: Bitcoin.com News (@www_Bitcoin_com)
+2025-05-14 19:34:33,007 - INFO - Canal encontrado: Bitcoin (@bitcoin)
+2025-05-14 19:34:33,081 - INFO - Canal encontrado: Signals - Bitcoin and Ethereum (@signalsbitcoinandethereum)
+2025-05-14 19:34:33,224 - INFO - Canal encontrado: INDODAX - Indonesia Bitcoin & Crypto Exchange (@indodax)
+2025-05-14 19:34:33,284 - INFO - Got difference for channel 2164413689 updates
+2025-05-14 19:34:33,376 - INFO - Canal encontrado: Coinvestasi - Belajar Investasi Bitcoin💰🇮🇩 (@komunitascoinvestasi)
+2025-05-14 19:34:33,377 - INFO - No hay nuevos canales para añadir
+2025-05-14 19:34:35,759 - INFO - Buscando canales con el término: btc
+2025-05-14 19:34:35,908 - INFO - Encontrados 0 resultados para 'btc'
+2025-05-14 19:34:38,880 - INFO - Buscando canales con el término: ethereum
+2025-05-14 19:34:39,100 - INFO - Encontrados 9 resultados para 'ethereum'
+2025-05-14 19:34:39,161 - INFO - Canal encontrado: iToken - Ethereum (@iTokenEthereum)
+2025-05-14 19:34:39,240 - INFO - Canal encontrado: Signals - Bitcoin and Ethereum (@signalsbitcoinandethereum)
+2025-05-14 19:34:39,295 - INFO - Canal encontrado: Ethereum New Pairs | DexKoala (@ETHNewPairs)
+2025-05-14 19:34:39,341 - INFO - Canal encontrado: iToken Locked - Ethereum (@iTokenLockedEthereum)
+2025-05-14 19:34:39,407 - INFO - Canal encontrado: Ethereum Community Events (@ethccweek)
+2025-05-14 19:34:39,479 - INFO - Canal encontrado: گروه اتریوم / آموزش فیوچرز (@Ethereumy)
+2025-05-14 19:34:39,562 - INFO - Canal encontrado: ССenter – Blockchain and Bitcoin (@Ethereumt)
+2025-05-14 19:34:39,566 - INFO - Se añadieron 6 nuevos canales a telegram_channels.csv
+2025-05-14 19:34:43,201 - INFO - Buscando canales con el término: eth
+2025-05-14 19:34:43,334 - INFO - Encontrados 0 resultados para 'eth'
+2025-05-14 19:34:47,436 - INFO - Buscando canales con el término: crypto
+2025-05-14 19:34:47,686 - INFO - Encontrados 14 resultados para 'crypto'
+2025-05-14 19:34:47,805 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:34:47,922 - INFO - Canal encontrado: CryptoMetavers (@CanalDePing)
+2025-05-14 19:34:47,984 - INFO - Canal encontrado: CRYPTO WINSTON ™ (@crypto_Winston)
+2025-05-14 19:34:48,074 - INFO - Canal encontrado: CryptoDeus Gems 💎🦍 (@CryptoDeusGems)
+2025-05-14 19:34:48,170 - INFO - Canal encontrado: Crypto Launch Search (@CLS_channel)
+2025-05-14 19:34:48,281 - INFO - Canal encontrado: Crypto Malik Mumbai (@Crypto_Malik_Prediction_IPL)
+2025-05-14 19:34:48,411 - INFO - Canal encontrado: DAMAN 🚀🚀 TASHAN CRYPTO (@diuwin_wingos_ok)
+2025-05-14 19:34:48,528 - INFO - Canal encontrado: Crypto | Azam (@crypto_azam)
+2025-05-14 19:34:48,625 - INFO - Canal encontrado: Diamond exchange crypto (@Diamond_exchange_tiger)
+2025-05-14 19:34:48,716 - INFO - Canal encontrado: Lottery 7 Official 🏅Crypto (@crypto_Lottery7official)
+2025-05-14 19:34:48,786 - INFO - Canal encontrado: CryptoCapo TG (@CryptoCapoTG)
+2025-05-14 19:34:48,855 - INFO - Canal encontrado: Cryptoz (@Cryptoz)
+2025-05-14 19:34:48,857 - INFO - Se añadieron 12 nuevos canales a telegram_channels.csv
+2025-05-14 19:34:52,599 - INFO - Buscando canales con el término: cryptocurrency
+2025-05-14 19:34:52,892 - INFO - Encontrados 10 resultados para 'cryptocurrency'
+2025-05-14 19:34:53,033 - INFO - Canal encontrado: CRYPTO NEWS (@cryptocurrency_media)
+2025-05-14 19:34:53,186 - INFO - Canal encontrado: TTcoin | Cryptocurrency (@ttcoinofficial)
+2025-05-14 19:34:53,337 - INFO - Canal encontrado: Cryptocurrencies Channel (@cryptocurrency)
+2025-05-14 19:34:53,475 - INFO - Canal encontrado: Cryptomaniac’s guide to cryptocurrency (@guidetocryptocurrency)
+2025-05-14 19:34:53,591 - INFO - Canal encontrado: Intelligent Cryptocurrency (@intelligentcryptocurrencypublic)
+2025-05-14 19:34:53,725 - INFO - Canal encontrado: ST Investment Group Cryptocurrency News (@ST_Investment_Channel_09)
+2025-05-14 19:34:53,849 - INFO - Sleeping for 10s (0:00:10) on GetFullChannelRequest flood wait
+2025-05-14 19:35:03,971 - INFO - Canal encontrado: Crypto | Bitcoin | Ethereum | Altcoin | News (@Cryptocurrency_Inside)
+2025-05-14 19:35:04,137 - INFO - Canal encontrado: Coinlegs Cryptocurrency Signals (@coinlegs)
+2025-05-14 19:35:04,354 - INFO - Canal encontrado: Crypto (@cryptocurrencyj)
+2025-05-14 19:35:04,569 - INFO - Canal encontrado: crypto (@cryptocurrency8)
+2025-05-14 19:35:04,570 - INFO - Se añadieron 10 nuevos canales a telegram_channels.csv
+2025-05-14 19:35:09,484 - INFO - Buscando canales con el término: altcoin
+2025-05-14 19:35:09,704 - INFO - Encontrados 9 resultados para 'altcoin'
+2025-05-14 19:35:09,774 - INFO - Canal encontrado: Cryptostream's Altcoin Research (@cryptostream_research)
+2025-05-14 19:35:09,825 - INFO - Canal encontrado: Altcoins Channel (@altcoin)
+2025-05-14 19:35:09,880 - INFO - Canal encontrado: Altcoin Sensei | PRINT HOUSE 🖨️🏠 (@altcoinsenseigems)
+2025-05-14 19:35:09,937 - INFO - Canal encontrado: Crypto | Bitcoin | Ethereum | Altcoin | News (@Cryptocurrency_Inside)
+2025-05-14 19:35:10,015 - INFO - Canal encontrado: Altcoinpost (@altcoinpost1)
+2025-05-14 19:35:10,122 - INFO - Canal encontrado: Altcoins OGs (@Altcoins)
+2025-05-14 19:35:10,172 - INFO - Canal encontrado: ALTCOIN (@altcoin8)
+2025-05-14 19:35:10,228 - INFO - Canal encontrado: Altcoin (@altcoino)
+2025-05-14 19:35:10,230 - INFO - Se añadieron 7 nuevos canales a telegram_channels.csv
+2025-05-14 19:35:14,385 - INFO - Buscando canales con el término: binance
+2025-05-14 19:35:14,659 - INFO - Encontrados 9 resultados para 'binance'
+2025-05-14 19:35:14,730 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:35:14,835 - INFO - Canal encontrado: Binance Ukrainian (@BinanceUkrainian)
+2025-05-14 19:35:14,935 - INFO - Canal encontrado: Binance Futures & Options Official [EN] (@BinanceFutures_Official)
+2025-05-14 19:35:14,984 - INFO - Canal encontrado: Binance Announcements (@binance_announcements)
+2025-05-14 19:35:15,046 - INFO - Canal encontrado: Binance Moonbix Announcements (@Binance_Moonbix_Announcements)
+2025-05-14 19:35:15,147 - INFO - Canal encontrado: Binance (@binancek)
+2025-05-14 19:35:15,149 - INFO - Se añadieron 5 nuevos canales a telegram_channels.csv
+2025-05-14 19:35:17,501 - INFO - Buscando canales con el término: trading
+2025-05-14 19:35:17,849 - INFO - Encontrados 10 resultados para 'trading'
+2025-05-14 19:35:17,933 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:35:17,986 - INFO - Canal encontrado: ♻️BTCUSD TRADING SIGNALS (@BTCUSDTRADINGSIGNAL1)
+2025-05-14 19:35:18,065 - INFO - Canal encontrado: Equity Swing Positional Trading Calls (@Positional_Calls_Swing_Trading)
+2025-05-14 19:35:18,162 - INFO - Canal encontrado: PRO CRYPTO TRADING (@PROBTRADING)
+2025-05-14 19:35:18,294 - INFO - Canal encontrado: The trading femme (@the_trading_femme_neha_jareda_g)
+2025-05-14 19:35:18,430 - INFO - Canal encontrado: SpiderCrypto Trading Journal (@spidersjournal)
+2025-05-14 19:35:18,564 - INFO - Canal encontrado: Investimenti Trading e Crypto (@tradingo)
+2025-05-14 19:35:18,565 - INFO - Se añadieron 6 nuevos canales a telegram_channels.csv
+2025-05-14 19:35:23,364 - INFO - Buscando canales con el término: tradingcrypto
+2025-05-14 19:35:23,592 - INFO - Encontrados 9 resultados para 'tradingcrypto'
+2025-05-14 19:35:23,688 - INFO - Canal encontrado: CryptoZone (@TradingCryptoZone)
+2025-05-14 19:35:23,769 - INFO - Canal encontrado: Happy Trading (@TradingCryptoBi)
+2025-05-14 19:35:23,831 - INFO - Canal encontrado: BEYOND ELITE TRADERS COMMUNITY 💬 ️️ (@tradingcrypto121212)
+2025-05-14 19:35:23,901 - INFO - Canal encontrado: 📈 Crypto Trading Chat (@tradingcrypto2026)
+2025-05-14 19:35:23,966 - INFO - Canal encontrado: ابو عبدالله ( روبوت التداول الآلي ) (@TradingCryptoBOT_KSA)
+2025-05-14 19:35:24,035 - INFO - Sleeping for 11s (0:00:11) on GetFullChannelRequest flood wait
+2025-05-14 19:35:27,197 - INFO - Got difference for channel 2164413689 updates
+2025-05-14 19:35:35,134 - INFO - Canal encontrado: Trading crypto (@tradingcrypto90)
+2025-05-14 19:35:35,279 - INFO - Canal encontrado: 🐺 SEÑALES CRYPTO WOLVES 🐺 (@tradingcryptowolves)
+2025-05-14 19:35:35,358 - INFO - Canal encontrado: Trading Crypto (@TradingCrypton)
+2025-05-14 19:35:35,424 - INFO - Canal encontrado: Trading NFT Cryptos y sinteticos (@tradingcryptox)
+2025-05-14 19:35:35,426 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:35:40,301 - INFO - Buscando canales con el término: blockchain
+2025-05-14 19:35:40,532 - INFO - Encontrados 10 resultados para 'blockchain'
+2025-05-14 19:35:40,599 - INFO - Canal encontrado: Pro Blockchain (@Pro_Blockchain)
+2025-05-14 19:35:40,654 - INFO - Canal encontrado: PRO BLOCKCHAIN SQUAD (@PROBLOCKCHAINSQUAD)
+2025-05-14 19:35:40,719 - INFO - Canal encontrado: Blockchain.com (@blockchain)
+2025-05-14 19:35:40,822 - INFO - Canal encontrado: TECTUM 🔗 Fastest Blockchain & SoftNote (@tectumglobal)
+2025-05-14 19:35:40,887 - INFO - Canal encontrado: European Blockchain Convention Official (@EuropeanBlockchainConvention)
+2025-05-14 19:35:41,007 - INFO - Canal encontrado: Inery Official Community (@inery_blockchain)
+2025-05-14 19:35:41,136 - INFO - Canal encontrado: Blockchain Malaysia (@blockchainm)
+2025-05-14 19:35:41,256 - INFO - Canal encontrado: Blockchain Tech (@blockchains)
+2025-05-14 19:35:41,353 - INFO - Canal encontrado: Blockchainr announcements (@blockchainr)
+2025-05-14 19:35:41,358 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:35:45,781 - INFO - Buscando canales con el término: criptomonedas
+2025-05-14 19:35:46,005 - INFO - Encontrados 9 resultados para 'criptomonedas'
+2025-05-14 19:35:46,076 - INFO - Canal encontrado: Criptomonedas Ecuador - Canal (@CryptoEcChanel)
+2025-05-14 19:35:46,136 - INFO - Canal encontrado: Noticias Criptomonedas (@bitcoinycriptomonedasoficial)
+2025-05-14 19:35:46,231 - INFO - Canal encontrado: El Comercio: Criptomonedas Group (@elcomerciogroup)
+2025-05-14 19:35:46,341 - INFO - Canal encontrado: Criptomonedas Colombia 🇨🇴📈📉 (@criptomonedas_colombia)
+2025-05-14 19:35:46,398 - INFO - Canal encontrado: Senales Criptomonedas Trabajo Online (@senales_cripto_trabajo_online)
+2025-05-14 19:35:46,464 - INFO - Canal encontrado: Gratis Criptomonedas Señales (AI) (@Libre_Indicadores)
+2025-05-14 19:35:46,545 - INFO - Canal encontrado: Criptomonedas para novatos (@criptomonedasparanovatos)
+2025-05-14 19:35:46,632 - INFO - Canal encontrado: Inverarg: invertir en Bolsa Y criptomonedas (@criptomonedasp)
+2025-05-14 19:35:46,693 - INFO - Canal encontrado: CRIPTOMONEDAS 18+ (@CRIPTOMONEDAS4)
+2025-05-14 19:35:46,694 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:35:51,184 - INFO - Buscando canales con el término: coinbase
+2025-05-14 19:35:51,506 - INFO - Encontrados 4 resultados para 'coinbase'
+2025-05-14 19:35:51,582 - INFO - Canal encontrado: Coinbase Italia Official 🇮🇹 (@CoinbaseItaliaOfficial)
+2025-05-14 19:35:51,684 - INFO - Canal encontrado: Coinbase English (@English_Coinbase)
+2025-05-14 19:35:51,686 - INFO - Se añadieron 2 nuevos canales a telegram_channels.csv
+2025-05-14 19:35:54,072 - INFO - Buscando canales con el término: dogecoin
+2025-05-14 19:35:54,324 - INFO - Encontrados 9 resultados para 'dogecoin'
+2025-05-14 19:35:54,390 - INFO - Canal encontrado: Pre-screen for ShibaSwap: $SHIB $LEASH $BONE (@ShibaInu_Dogecoinkiller)
+2025-05-14 19:35:54,474 - INFO - Canal encontrado: Shiba Inu: The Dogecoin Killer (@shibainuthedogecoinkiller)
+2025-05-14 19:35:54,559 - INFO - Canal encontrado: Dogecoin (@TheDogeHouse)
+2025-05-14 19:35:54,697 - INFO - Canal encontrado: Nano DogeCoin | INDC (@NanoDogecoin)
+2025-05-14 19:35:54,814 - INFO - Canal encontrado: КРИПТОВАЛЮТА l ТОРГОВЛЯ l ИНВЕСТИЦИИ (@dogecoinpumppp)
+2025-05-14 19:35:54,889 - INFO - Canal encontrado: Dogecoin to the moon 🚀 (@cryptoeats)
+2025-05-14 19:35:54,940 - INFO - Sleeping for 12s (0:00:12) on GetFullChannelRequest flood wait
+2025-05-14 19:36:07,197 - INFO - Canal encontrado: Dogecoin Tipbot Group (@dogetipbotgroup)
+2025-05-14 19:36:07,495 - INFO - Canal encontrado: Dogecoin (@dogecoin6)
+2025-05-14 19:36:07,720 - INFO - Canal encontrado: Pre-screen for ShibaSwap: $SHIB $LEASH $BONE (@DogeCoinl)
+2025-05-14 19:36:07,722 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:11,476 - INFO - Buscando canales con el término: defi
+2025-05-14 19:36:11,728 - INFO - Encontrados 6 resultados para 'defi'
+2025-05-14 19:36:11,820 - INFO - Canal encontrado: Scopuly - Stellar DeFi Platform (@scopuly)
+2025-05-14 19:36:11,885 - INFO - Canal encontrado: unfolded. DeFi (@unfolded_defi)
+2025-05-14 19:36:11,962 - INFO - Canal encontrado: The Tribunal Court of Defi (@TheTribunalCourt)
+2025-05-14 19:36:12,052 - INFO - Canal encontrado: DeFi (@de_fi)
+2025-05-14 19:36:12,055 - INFO - Se añadieron 4 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:16,936 - INFO - Buscando canales con el término: nft
+2025-05-14 19:36:16,979 - INFO - Encontrados 0 resultados para 'nft'
+2025-05-14 19:36:19,085 - INFO - Buscando canales con el término: criptodivisas
+2025-05-14 19:36:19,355 - INFO - Encontrados 8 resultados para 'criptodivisas'
+2025-05-14 19:36:19,475 - INFO - Canal encontrado: Recargas Y CriptoDivisasVE (@RecargasyCriptoDivisasVE)
+2025-05-14 19:36:19,567 - INFO - Canal encontrado: Scalping CriptoDivisas FREE (@ScalpingCriptoDivisas)
+2025-05-14 19:36:19,665 - INFO - Canal encontrado: Criptodivisas (@criptodivisas)
+2025-05-14 19:36:19,778 - INFO - Canal encontrado: Actualidad Criptodivisas (@actualidadcriptodivisas)
+2025-05-14 19:36:19,907 - INFO - Canal encontrado: 🇪🇸 Chatear ● Ganar ● Ganar ● Comprar ● Criptodivisas ● (@crypto_ton_airdrop_es_chat)
+2025-05-14 19:36:20,067 - INFO - Canal encontrado: {STS} Canal oficial de Criptodivisas (@STScanalcriptodivisas)
+2025-05-14 19:36:20,280 - INFO - Canal encontrado: CriptodivisasChile Trading (@CriptoDivisasChileTrading)
+2025-05-14 19:36:20,442 - INFO - Canal encontrado: USDT Inversions Y Compra y Ventas Presenciales💱🥇📶🌍 (@CriptoDivisasUsdt)
+2025-05-14 19:36:20,444 - INFO - Se añadieron 8 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:24,742 - INFO - Buscando canales con el término: forex
+2025-05-14 19:36:25,128 - INFO - Encontrados 10 resultados para 'forex'
+2025-05-14 19:36:25,195 - INFO - Canal encontrado: Elliott Wave forex (@Elliott_Wave_Forex)
+2025-05-14 19:36:25,254 - INFO - Canal encontrado: Gold Pro Trader 📈 (@Forex_Signal_Gold_Pro_Trader)
+2025-05-14 19:36:25,310 - INFO - Canal encontrado: Forex Signals premium news (@forex_signals_premium_index_news)
+2025-05-14 19:36:25,360 - INFO - Canal encontrado: GBP/JPY FOREX SIGNALS (@Gbpjpyforex_signals)
+2025-05-14 19:36:25,428 - INFO - Canal encontrado: Forex Gold Sinyal (@forex_new)
+2025-05-14 19:36:25,479 - INFO - Canal encontrado: Forexsignal.io🇬🇧🇺🇸 (@forexsignals01_trade)
+2025-05-14 19:36:25,539 - INFO - Canal encontrado: Trade with DD (@forexl)
+2025-05-14 19:36:25,541 - INFO - Se añadieron 7 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:30,193 - INFO - Buscando canales con el término: fx
+2025-05-14 19:36:30,239 - INFO - Encontrados 1 resultados para 'fx'
+2025-05-14 19:36:30,297 - INFO - Canal encontrado: VFX MAIN CHANNEL (@vfx_fxx)
+2025-05-14 19:36:30,299 - INFO - Se añadieron 1 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:34,503 - INFO - Buscando canales con el término: forextrading
+2025-05-14 19:36:34,771 - INFO - Encontrados 8 resultados para 'forextrading'
+2025-05-14 19:36:34,837 - INFO - Canal encontrado: Forex Trading (@forextrading_az)
+2025-05-14 19:36:34,901 - INFO - Canal encontrado: forex trading with abdalhady (@forextradingwithabdalhady)
+2025-05-14 19:36:34,983 - INFO - Canal encontrado: 🏆𝐅𝐎𝐑𝐄𝐗 𝐓𝐑𝐀𝐃𝐈𝐍𝐆 𝐌𝐀𝐒𝐓𝐄𝐑🏆 (@forextradingmastersi)
+2025-05-14 19:36:35,075 - INFO - Canal encontrado: 𝑭𝒐𝒓𝒆𝒙 𝑻𝒓𝒂𝒅𝒊𝒏𝒈 𝑪𝒚𝒑𝒓𝒖𝒔📈💱📉 (@ForexTradingCyprus)
+2025-05-14 19:36:35,193 - INFO - Canal encontrado: GOLD VIP SIGNALS (@forextradingMaster2230)
+2025-05-14 19:36:35,267 - INFO - Canal encontrado: ⚠️Discontinued ⚠️ (@ForexTradingHQ)
+2025-05-14 19:36:35,325 - INFO - Canal encontrado: Forex trading 5 (@Forextrading5)
+2025-05-14 19:36:35,364 - INFO - Sleeping for 3s (0:00:03) on GetFullChannelRequest flood wait
+2025-05-14 19:36:38,444 - INFO - Canal encontrado: Forex Trading Signals JS (@ForexTradingJ)
+2025-05-14 19:36:38,448 - INFO - Se añadieron 8 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:41,124 - INFO - Buscando canales con el término: forexsignals
+2025-05-14 19:36:41,428 - INFO - Encontrados 10 resultados para 'forexsignals'
+2025-05-14 19:36:41,610 - INFO - Canal encontrado: Forexsignal.io🇬🇧🇺🇸 (@forexsignals01_trade)
+2025-05-14 19:36:41,754 - INFO - Canal encontrado: ForexSignals.Com📊 ®️ (@Forexsignal_comm)
+2025-05-14 19:36:41,865 - INFO - Canal encontrado: ForexSignals (@ForexSignals)
+2025-05-14 19:36:41,939 - INFO - Canal encontrado: FOREX SIGNALS BLUE PIPS (@ForexSignalsBluePips_official)
+2025-05-14 19:36:41,993 - INFO - Canal encontrado: Forex Signals 🔥💰 XAUUSD (@forexsignalsxauusdl)
+2025-05-14 19:36:42,046 - INFO - Canal encontrado: Forex Signals🔥💰 XAUUSD (@forexsignalsxauusd)
+2025-05-14 19:36:42,119 - INFO - Canal encontrado: ForexSignals.io 🇬🇧 (@Official_ForexSignals)
+2025-05-14 19:36:42,167 - INFO - Canal encontrado: Forex Trading Spot - FREE (@forexsignalsspot)
+2025-05-14 19:36:42,225 - INFO - Canal encontrado: Forex_Signalsz (@forexsignalsz)
+2025-05-14 19:36:42,297 - INFO - Canal encontrado: Synthetic Indices Signals 24/7 📈 (@forexsignalsr)
+2025-05-14 19:36:42,299 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:44,830 - INFO - Buscando canales con el término: forexmarket
+2025-05-14 19:36:45,148 - INFO - Encontrados 10 resultados para 'forexmarket'
+2025-05-14 19:36:45,338 - INFO - Canal encontrado: Forex Market Seasonal Patterns (@ForexMarketSeasonalPatterns)
+2025-05-14 19:36:45,498 - INFO - Canal encontrado: FOREX MARKET KILLER 📊🔥👌 (@forexmarketkillerfreechannel)
+2025-05-14 19:36:45,637 - INFO - Canal encontrado: Forex Binary trader (@forexmarketkiller729)
+2025-05-14 19:36:45,725 - INFO - Canal encontrado: أسواق الفوركس| Forex Markets (@ForexMarketsHub)
+2025-05-14 19:36:45,842 - INFO - Canal encontrado: Forex gold vip (@forexmarketmaste)
+2025-05-14 19:36:45,927 - INFO - Canal encontrado: Learn trading | Forex! (@Forexmarketsss)
+2025-05-14 19:36:45,996 - INFO - Canal encontrado: Forex market trader (@forexmarket0)
+2025-05-14 19:36:46,060 - INFO - Canal encontrado: Forex Market (@forexmarketf)
+2025-05-14 19:36:46,143 - INFO - Canal encontrado: Forex Academy (@forexmarketq)
+2025-05-14 19:36:46,148 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:49,893 - INFO - Buscando canales con el término: trader
+2025-05-14 19:36:50,280 - INFO - Encontrados 7 resultados para 'trader'
+2025-05-14 19:36:50,330 - INFO - Canal encontrado: headlines (@headlines_for_traders)
+2025-05-14 19:36:50,382 - INFO - Canal encontrado: Gold Pro Trader 📈 (@Forex_Signal_Gold_Pro_Trader)
+2025-05-14 19:36:50,442 - INFO - Canal encontrado: Gold Trader Mo 🤴🏽(PREMIUM ) (@GaryGoldTradermoves)
+2025-05-14 19:36:50,505 - INFO - Canal encontrado: HINDUSTAN TRADER (@hindustan_trader_7)
+2025-05-14 19:36:50,563 - INFO - Canal encontrado: GARY GOLD TRADER (@Gary_TheTrader)
+2025-05-14 19:36:50,633 - INFO - Canal encontrado: HINDUSTAN TRADER 🔥🔥 (@hindustantrader_0)
+2025-05-14 19:36:50,697 - INFO - Canal encontrado: Bybit Bayanihan Traders Annc (@Bybit_Bayanihan_ann)
+2025-05-14 19:36:50,699 - INFO - Se añadieron 6 nuevos canales a telegram_channels.csv
+2025-05-14 19:36:54,700 - INFO - Buscando canales con el término: trading
+2025-05-14 19:36:54,920 - INFO - Encontrados 10 resultados para 'trading'
+2025-05-14 19:36:55,031 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:36:55,112 - INFO - Canal encontrado: ♻️BTCUSD TRADING SIGNALS (@BTCUSDTRADINGSIGNAL1)
+2025-05-14 19:36:55,184 - INFO - Canal encontrado: Equity Swing Positional Trading Calls (@Positional_Calls_Swing_Trading)
+2025-05-14 19:36:55,227 - INFO - Sleeping for 14s (0:00:14) on GetFullChannelRequest flood wait
+2025-05-14 19:37:09,322 - INFO - Canal encontrado: PRO CRYPTO TRADING (@PROBTRADING)
+2025-05-14 19:37:09,405 - INFO - Canal encontrado: The trading femme (@the_trading_femme_neha_jareda_g)
+2025-05-14 19:37:09,459 - INFO - Canal encontrado: SpiderCrypto Trading Journal (@spidersjournal)
+2025-05-14 19:37:09,510 - INFO - Canal encontrado: Investimenti Trading e Crypto (@tradingo)
+2025-05-14 19:37:09,512 - INFO - No hay nuevos canales para añadir
+2025-05-14 19:37:12,286 - INFO - Buscando canales con el término: daytrading
+2025-05-14 19:37:12,523 - INFO - Encontrados 9 resultados para 'daytrading'
+2025-05-14 19:37:12,614 - INFO - Canal encontrado: Day Trading (@daytradingIG)
+2025-05-14 19:37:12,684 - INFO - Canal encontrado: Day Trading Rauf’s Group (@DayTradingRauf)
+2025-05-14 19:37:12,782 - INFO - Canal encontrado: XRP Daytrading (@XRPTraders)
+2025-05-14 19:37:12,900 - INFO - Canal encontrado: DayTradingTürkiye - HEKATRADER (@daytradingturkiye)
+2025-05-14 19:37:13,007 - INFO - Canal encontrado: Daytradingltd ENURI platform (@DayTradingLtd1)
+2025-05-14 19:37:13,062 - INFO - Canal encontrado: WIELAND TRADES (@wieland_trades_daytrading)
+2025-05-14 19:37:13,140 - INFO - Canal encontrado: Trading2ez: Daytrading-Signals (@trading2ez_Signals)
+2025-05-14 19:37:13,201 - INFO - Canal encontrado: day trading institution official™ (@daytradingi)
+2025-05-14 19:37:13,271 - INFO - Canal encontrado: DAY TRADING INVESTMENT LTD (@daytradingn)
+2025-05-14 19:37:13,274 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:37:17,081 - INFO - Buscando canales con el término: currencytrading
+2025-05-14 19:37:17,783 - INFO - Encontrados 6 resultados para 'currencytrading'
+2025-05-14 19:37:17,837 - INFO - Canal encontrado: CURRENCY TRADING USDINR,GBPINR, EURINR, JPYINR (@currencytradingcalls)
+2025-05-14 19:37:17,900 - INFO - Canal encontrado: Financial Focus (@currencytradinginr)
+2025-05-14 19:37:17,957 - INFO - Canal encontrado: TREAD WITH VISHAL (@Currencytradingusdinr)
+2025-05-14 19:37:18,035 - INFO - Canal encontrado: 外汇交易24小时交流群📈📊📉 (@CurrencyTradingXHS)
+2025-05-14 19:37:18,099 - INFO - Canal encontrado: Currency trading (@currencytradingskill)
+2025-05-14 19:37:18,149 - INFO - Canal encontrado: Currency Trading (@Currencytrading1)
+2025-05-14 19:37:18,152 - INFO - Se añadieron 6 nuevos canales a telegram_channels.csv
+2025-05-14 19:37:22,875 - INFO - Buscando canales con el término: pips
+2025-05-14 19:37:23,122 - INFO - Encontrados 7 resultados para 'pips'
+2025-05-14 19:37:23,184 - INFO - Canal encontrado: Forex Gold Signals (@Gold_pips_signals)
+2025-05-14 19:37:23,276 - INFO - Canal encontrado: 1000pips Builder official (@pips_1000_Builder_official)
+2025-05-14 19:37:23,334 - INFO - Canal encontrado: FOREX SIGNALS BLUE PIPS (@ForexSignalsBluePips_official)
+2025-05-14 19:37:23,421 - INFO - Canal encontrado: PipscallsDegens (@Pipscalldegens)
+2025-05-14 19:37:23,521 - INFO - Canal encontrado: 1000PIPS BUILDER (FOREX_MARKET) (@PIPS_1000000)
+2025-05-14 19:37:23,524 - INFO - Se añadieron 4 nuevos canales a telegram_channels.csv
+2025-05-14 19:37:25,705 - INFO - Buscando canales con el término: scalping
+2025-05-14 19:37:25,961 - INFO - Encontrados 7 resultados para 'scalping'
+2025-05-14 19:37:26,015 - INFO - Canal encontrado: crypto scalping (@crypto_scalping_live)
+2025-05-14 19:37:26,071 - INFO - Canal encontrado: XAUUSD/GOLD SCALPER (@XAUUSD_SCALPING_SIGNAL_S)
+2025-05-14 19:37:26,145 - INFO - Canal encontrado: FOREX SIGNALS SCALPING (@Forex_Signals_Scalping)
+2025-05-14 19:37:26,209 - INFO - Canal encontrado: 💯 99 FX SCALPING - FOREX & GOLD SCALPING (@Fx99Scalping)
+2025-05-14 19:37:26,262 - INFO - Canal encontrado: Gold Scalping Signals (@hmdgoldsignals)
+2025-05-14 19:37:26,316 - INFO - Canal encontrado: Mr Scalping (@mrscalping0)
+2025-05-14 19:37:26,319 - INFO - Se añadieron 6 nuevos canales a telegram_channels.csv
+2025-05-14 19:37:28,837 - INFO - Buscando canales con el término: investing
+2025-05-14 19:37:29,225 - INFO - Encontrados 9 resultados para 'investing'
+2025-05-14 19:37:29,263 - INFO - Sleeping for 11s (0:00:11) on GetFullChannelRequest flood wait
+2025-05-14 19:37:40,413 - INFO - Canal encontrado: Dhan - Stock Trading & Investing (@JoinDhan)
+2025-05-14 19:37:40,537 - INFO - Canal encontrado: Investing.com Türkiye (@InvestingTR)
+2025-05-14 19:37:40,617 - INFO - Canal encontrado: investing (@investing)
+2025-05-14 19:37:40,737 - INFO - Canal encontrado: Investing Beanstock DAO (@investingbeanstockdao)
+2025-05-14 19:37:40,792 - INFO - Canal encontrado: Easy Investing (@undervaluedshares)
+2025-05-14 19:37:40,858 - INFO - Canal encontrado: InvestFund (@investingfund)
+2025-05-14 19:37:40,915 - INFO - Canal encontrado: investing (@investingj)
+2025-05-14 19:37:40,976 - INFO - Canal encontrado: Investingz ipo (@investingz)
+2025-05-14 19:37:41,047 - INFO - Canal encontrado: INVESTING LONG TERM (@investingl)
+2025-05-14 19:37:41,049 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:37:44,062 - INFO - Buscando canales con el término: investment
+2025-05-14 19:37:44,364 - INFO - Encontrados 9 resultados para 'investment'
+2025-05-14 19:37:44,477 - INFO - Canal encontrado: Альфа-Инвестиции (@alfa_investments)
+2025-05-14 19:37:44,554 - INFO - Canal encontrado: Газпромбанк Инвестиции (@gpb_investments)
+2025-05-14 19:37:44,617 - INFO - Canal encontrado: БКС Мир инвестиций (@bcs_world_of_investments)
+2025-05-14 19:37:44,661 - INFO - Canal encontrado: Dubai Investment Fund (@DIF_Worldwide)
+2025-05-14 19:37:44,718 - INFO - Canal encontrado: LifeTime Investments Hub (@LFTai)
+2025-05-14 19:37:44,768 - INFO - Canal encontrado: ST Investment Group Cryptocurrency News (@ST_Investment_Channel_09)
+2025-05-14 19:37:44,840 - INFO - Canal encontrado: Alex Web3投资备忘 (@Alex_xu_investment)
+2025-05-14 19:37:44,911 - INFO - Canal encontrado: ОБЩИЙ ЧАТ. Investment X🏛 (@investmentX)
+2025-05-14 19:37:44,961 - INFO - Canal encontrado: İnvestment2 (@investment2)
+2025-05-14 19:37:44,965 - INFO - Se añadieron 8 nuevos canales a telegram_channels.csv
+2025-05-14 19:37:49,923 - INFO - Buscando canales con el término: stocks
+2025-05-14 19:37:50,310 - INFO - Encontrados 10 resultados para 'stocks'
+2025-05-14 19:37:50,391 - INFO - Canal encontrado: Fi - US Stocks (@FiUSStocks)
+2025-05-14 19:37:50,460 - INFO - Canal encontrado: IF Stocks (@if_stocks)
+2025-05-14 19:37:50,527 - INFO - Canal encontrado: CapitalVia - Stocks | Nifty | Sensex | Commodity | NSE | BSE (@CapitalVia)
+2025-05-14 19:37:50,578 - INFO - Canal encontrado: Rochit Singh stocks (@rochit_singh_official)
+2025-05-14 19:37:50,647 - INFO - Canal encontrado: US30 DOW JONES SIGNALS🇺🇲 (@us30_stocks)
+2025-05-14 19:37:50,717 - INFO - Canal encontrado: intraday_stocks_banknifty_Equity (@GrowX_Freecalls)
+2025-05-14 19:37:50,800 - INFO - Canal encontrado: Swing Trading Club (@stocksf)
+2025-05-14 19:37:50,900 - INFO - Canal encontrado: 🔥SG Stocks & Stonks 🇸🇬🧧🔥 (@stocksg)
+2025-05-14 19:37:50,965 - INFO - Canal encontrado: STOCK MARKET NEWS (@stocksU)
+2025-05-14 19:37:50,968 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:37:53,985 - INFO - Buscando canales con el término: stockmarket
+2025-05-14 19:37:54,280 - INFO - Encontrados 10 resultados para 'stockmarket'
+2025-05-14 19:37:54,405 - INFO - Canal encontrado: Stockmarket.et (@stockmarket_et)
+2025-05-14 19:37:54,543 - INFO - Canal encontrado: Stock Market Unlimited (@stockmarketunlimited)
+2025-05-14 19:37:54,669 - INFO - Canal encontrado: Дилер (@StockMarketManipulator)
+2025-05-14 19:37:54,780 - INFO - Sleeping for 17s (0:00:17) on GetFullChannelRequest flood wait
+2025-05-14 19:38:11,881 - INFO - Canal encontrado: FII Data 📔 Guide 2 Stockmarket (@guide2stockmarket)
+2025-05-14 19:38:11,958 - INFO - Canal encontrado: જોવો અને શીખો (𝙎𝙏𝙊𝘾𝙆𝙈𝘼𝙍𝙆𝙀𝙏)™ (@jovoaneshikho)
+2025-05-14 19:38:12,041 - INFO - Canal encontrado: STOCK MARKET LIVE (@STOCKMARKETLIVEHNI)
+2025-05-14 19:38:12,144 - INFO - Canal encontrado: Indian StockMarket Talks (@sharemarket4444)
+2025-05-14 19:38:12,225 - INFO - Canal encontrado: Options nifty bank nifty (@stockmarketz)
+2025-05-14 19:38:12,290 - INFO - Canal encontrado: Stock Market Money (@stockmarketv)
+2025-05-14 19:38:12,291 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:38:15,509 - INFO - Buscando canales con el término: wallstreet
+2025-05-14 19:38:15,735 - INFO - Encontrados 9 resultados para 'wallstreet'
+2025-05-14 19:38:15,791 - INFO - Canal encontrado: The Kenyan Wallstreet (@kenyanwallstreet)
+2025-05-14 19:38:15,847 - INFO - Canal encontrado: Wall Street Queen OFFICIAL (@WallStreetqueens_Official)
+2025-05-14 19:38:15,907 - INFO - Canal encontrado: WallStreetBets - Pumps (@wallstreetevents)
+2025-05-14 19:38:15,976 - INFO - Canal encontrado: Wall Street Pepe (@wallstreetpepe_REAL)
+2025-05-14 19:38:16,044 - INFO - Canal encontrado: Wall Street Gems (@wallstreetgems)
+2025-05-14 19:38:16,140 - INFO - Canal encontrado: WallStreetBets 💎🙌 (@WallStreetBets6)
+2025-05-14 19:38:16,231 - INFO - Canal encontrado: وال استریت (@WallStreetH)
+2025-05-14 19:38:16,330 - INFO - Canal encontrado: WALLSTREET QUEEN FOREX SIGNALS (Free) official®️ (@WallstreetQ)
+2025-05-14 19:38:16,381 - INFO - Canal encontrado: WALLSTREET BONUS (@WALLSTREET8)
+2025-05-14 19:38:16,384 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:38:18,617 - INFO - Buscando canales con el término: dividends
+2025-05-14 19:38:18,839 - INFO - Encontrados 7 resultados para 'dividends'
+2025-05-14 19:38:18,916 - INFO - Canal encontrado: ЗакрытияРеестров.рф (@Dividends_Russia)
+2025-05-14 19:38:18,988 - INFO - Canal encontrado: Дивиденды LIVE - Все о дивидендах (@Dividends_Live)
+2025-05-14 19:38:19,070 - INFO - Canal encontrado: Liquidity Dividends Protocol (@LIDProtocol)
+2025-05-14 19:38:19,143 - INFO - Canal encontrado: Investment Dividends (@Laffront_dividends)
+2025-05-14 19:38:19,209 - INFO - Canal encontrado: NSE Dividends : Current & Upcoming (@dividends9)
+2025-05-14 19:38:19,281 - INFO - Canal encontrado: Путь Работяги (@dividendsi)
+2025-05-14 19:38:19,334 - INFO - Canal encontrado: Dividends (@dividendsss)
+2025-05-14 19:38:19,337 - INFO - Se añadieron 7 nuevos canales a telegram_channels.csv
+2025-05-14 19:38:22,919 - INFO - Buscando canales con el término: investor
+2025-05-14 19:38:23,146 - INFO - Encontrados 9 resultados para 'investor'
+2025-05-14 19:38:23,274 - INFO - Canal encontrado: Stock Burner | Investor Kazi Tips (@Stock_Burner_Investor_Kazi)
+2025-05-14 19:38:23,379 - INFO - Canal encontrado: Главный инвестор (@investor_hamster)
+2025-05-14 19:38:23,505 - INFO - Canal encontrado: Лабиринт инвестора: новостройки Москвы. (@labirint_investora)
+2025-05-14 19:38:23,625 - INFO - Canal encontrado: W3X >< Founders & Investors (@w3xnetwork)
+2025-05-14 19:38:23,744 - INFO - Canal encontrado: Civillian Investors Talk (@civiliantalk)
+2025-05-14 19:38:23,842 - INFO - Canal encontrado: investor1992 (@investor1992rok)
+2025-05-14 19:38:23,931 - INFO - Canal encontrado: Современный инвестор (@actual_investor)
+2025-05-14 19:38:23,990 - INFO - Canal encontrado: INVESTORO (@investoro)
+2025-05-14 19:38:24,025 - INFO - Sleeping for 19s (0:00:19) on GetFullChannelRequest flood wait
+2025-05-14 19:38:43,159 - INFO - Canal encontrado: .ҳ̸Ҳ̸Ҳ̸ҳ تراوشات ذهنے یک בیوانـہ (@investorm)
+2025-05-14 19:38:43,162 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:38:46,752 - INFO - Buscando canales con el término: broker
+2025-05-14 19:38:47,024 - INFO - Encontrados 9 resultados para 'broker'
+2025-05-14 19:38:47,094 - INFO - Canal encontrado: ВТБ Мои Инвестиции (@brokervtb)
+2025-05-14 19:38:47,198 - INFO - Canal encontrado: 🐯Tiger Brokers Official (@tigerbrokersofficial)
+2025-05-14 19:38:47,254 - INFO - Canal encontrado: Tiger Brokers SG (@TigerBrokersSG)
+2025-05-14 19:38:47,327 - INFO - Canal encontrado: AFI brokers (@afibrokers)
+2025-05-14 19:38:47,413 - INFO - Canal encontrado: Ingrad brokers (@ingradbrokers)
+2025-05-14 19:38:47,473 - INFO - Canal encontrado: SPIKE BROKERS (@spike_brokers)
+2025-05-14 19:38:47,582 - INFO - Canal encontrado: РКС brokers (@rksbrokers)
+2025-05-14 19:38:47,656 - INFO - Canal encontrado: BROKE RUSSIAN KIDS (@brokerk)
+2025-05-14 19:38:47,658 - INFO - Se añadieron 8 nuevos canales a telegram_channels.csv
+2025-05-14 19:38:51,159 - INFO - Buscando canales con el término: bolsa
+2025-05-14 19:38:51,378 - INFO - Encontrados 9 resultados para 'bolsa'
+2025-05-14 19:38:51,440 - INFO - Canal encontrado: Bolsas Extraordinarias Docentes (@bolsasdocentes)
+2025-05-14 19:38:51,521 - INFO - Canal encontrado: Bolsa C2 Auxiliares Adtvos CM (@BolsaAuxiliarAdministrativoCM)
+2025-05-14 19:38:51,569 - INFO - Canal encontrado: Bolsas Docentes (@bolsas_docentes)
+2025-05-14 19:38:51,632 - INFO - Canal encontrado: Bolsa de Empleo Correos España (@GrupoBolsadeEmpleoCorreos)
+2025-05-14 19:38:51,703 - INFO - Canal encontrado: BOLSA 💰 acciones y cfd's (@Bolsasvalores)
+2025-05-14 19:38:51,759 - INFO - Canal encontrado: Inverarg: Invertir En Bolsa Y Criptomonedas (@inverarginvertir)
+2025-05-14 19:38:51,820 - INFO - Canal encontrado: Inversión en Bolsa con Mary (@marydaytrader)
+2025-05-14 19:38:51,866 - INFO - Canal encontrado: Curso Bolsas de Valores (@bolsav)
+2025-05-14 19:38:51,920 - INFO - Canal encontrado: የሠ.ማ.ጉ.ሴ. የ2017 ለኦሞ ስኳር ፋብሪካዎች የወቅት ሠራተኛ ምልመላ አፈጻጸም መረጃ መለዋወጫ (@Bolsa9)
+2025-05-14 19:38:51,923 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:38:55,607 - INFO - Buscando canales con el término: inversiones
+2025-05-14 19:38:55,923 - INFO - Encontrados 10 resultados para 'inversiones'
+2025-05-14 19:38:55,975 - INFO - Canal encontrado: Las Inversiones de Javi Linares (@LasInversionesDeJavi)
+2025-05-14 19:38:56,079 - INFO - Canal encontrado: Inversiones en el Mundo (@inversionesenelmundo)
+2025-05-14 19:38:56,148 - INFO - Canal encontrado: 🤑High Profits🤑 (@inversionesaro)
+2025-05-14 19:38:56,243 - INFO - Canal encontrado: ALIANZA. GRUPO DE INVERSIONES (@cryptoinversorsv)
+2025-05-14 19:38:56,311 - INFO - Canal encontrado: in.Capitales | Noticias (@InversionesCapitales_Canal)
+2025-05-14 19:38:56,391 - INFO - Canal encontrado: Actitud inversiones (@rubitcoinmining1)
+2025-05-14 19:38:56,440 - INFO - Canal encontrado: 🏘️ ASSET1 INVEST | INVERSIONES EN INMUEBLES (@asset1invest_spain)
+2025-05-14 19:38:56,491 - INFO - Canal encontrado: INVERSIONES 📊 (@InversionesQ)
+2025-05-14 19:38:56,540 - INFO - Canal encontrado: Inversiones W & A (@Inversionesw)
+2025-05-14 19:38:56,543 - INFO - Se añadieron 9 nuevos canales a telegram_channels.csv
+2025-05-14 19:39:01,124 - INFO - Buscando canales con el término: finanzas
+2025-05-14 19:39:01,466 - INFO - Encontrados 9 resultados para 'finanzas'
+2025-05-14 19:39:01,632 - INFO - Canal encontrado: Finanzas Argy 🇦🇷 (@FinanzasArgy)
+2025-05-14 19:39:01,792 - INFO - Canal encontrado: Tropykus 🌴 Finanzas sobre Bitcoin (@tropykus)
+2025-05-14 19:39:01,938 - INFO - Canal encontrado: Lautaro Finanzas - Telegram 🔥 (@lautarofinanzas)
+2025-05-14 19:39:02,058 - INFO - Sleeping for 13s (0:00:13) on GetFullChannelRequest flood wait
+2025-05-14 19:39:15,157 - INFO - Canal encontrado: Marciano Finanzas subs (@marcianofinanza)
+2025-05-14 19:39:15,212 - INFO - Canal encontrado: Finanzas al límite (@Finanzasallimite)
+2025-05-14 19:39:15,269 - INFO - Canal encontrado: Wealth Piemonte (@FinanzaSerena)
+2025-05-14 19:39:15,324 - INFO - Canal encontrado: Finanzas Positivas (@FinanzasP)
+2025-05-14 19:39:15,380 - INFO - Canal encontrado: 🥸FINANZAS bonus (@FINANZAS0)
+2025-05-14 19:39:15,383 - INFO - Se añadieron 8 nuevos canales a telegram_channels.csv
+2025-05-14 19:45:29,176 - INFO - Buscando canales similares a @dogecoinpumppp...
+2025-05-14 19:45:29,180 - WARNING - Server sent a very old message with ID 7504357673930462209, ignoring (see FAQ for details)
+2025-05-14 19:45:29,192 - WARNING - Server sent a very old message with ID 7504357673930427401, ignoring (see FAQ for details)
+2025-05-14 19:45:29,193 - WARNING - Server sent a very old message with ID 7504357673939336193, ignoring (see FAQ for details)
+2025-05-14 19:45:29,197 - WARNING - Server sent a very old message with ID 7504357674827840513, ignoring (see FAQ for details)
+2025-05-14 19:45:29,200 - WARNING - Server sent a very old message with ID 7504357676367086593, ignoring (see FAQ for details)
+2025-05-14 19:45:29,255 - INFO - Got difference for account updates
+2025-05-14 19:45:29,278 - INFO - Buscando canales con el término: (trader)
+2025-05-14 19:45:29,307 - INFO - Got difference for channel 2086003521 updates
+2025-05-14 19:45:29,379 - INFO - Got difference for channel 2164413689 updates
+2025-05-14 19:45:29,503 - INFO - Got difference for channel 1867934972 updates
+2025-05-14 19:45:29,535 - INFO - Encontrados 7 resultados para '(trader)'
+2025-05-14 19:45:29,590 - INFO - Canal encontrado: headlines (@headlines_for_traders)
+2025-05-14 19:45:29,656 - INFO - Canal encontrado: Gold Pro Trader 📈 (@Forex_Signal_Gold_Pro_Trader)
+2025-05-14 19:45:29,717 - INFO - Canal encontrado: Gold Trader Mo 🤴🏽(PREMIUM ) (@GaryGoldTradermoves)
+2025-05-14 19:45:29,767 - INFO - Canal encontrado: HINDUSTAN TRADER (@hindustan_trader_7)
+2025-05-14 19:45:29,817 - INFO - Canal encontrado: GARY GOLD TRADER (@Gary_TheTrader)
+2025-05-14 19:45:29,867 - INFO - Canal encontrado: HINDUSTAN TRADER 🔥🔥 (@hindustantrader_0)
+2025-05-14 19:45:29,920 - INFO - Canal encontrado: Bybit Bayanihan Traders Annc (@Bybit_Bayanihan_ann)
+2025-05-14 19:45:32,079 - INFO - Buscando canales con el término: https://t.me/dogecoinchat7
+2025-05-14 19:45:32,212 - INFO - Encontrados 1 resultados para 'https://t.me/dogecoinchat7'
+2025-05-14 19:45:32,356 - INFO - Canal encontrado: Крипто - чат (@dogecoinchat7)
+2025-05-14 19:45:34,026 - INFO - Buscando canales con el término: криптовалюта
+2025-05-14 19:45:34,305 - INFO - Encontrados 5 resultados para 'криптовалюта'
+2025-05-14 19:45:34,356 - INFO - Canal encontrado: Связки | Арбитраж | Криптовалюта | Инвестиции | Трейдинг (@svyazkizarabotokp2p)
+2025-05-14 19:45:34,409 - INFO - Canal encontrado: Метаформат – Криптовалюта, новости, биткоин (@metaformat)
+2025-05-14 19:45:34,470 - INFO - Canal encontrado: Криптоша (@kriptovalyuta)
+2025-05-14 19:45:34,530 - INFO - Canal encontrado: Криптовалюта VIP (@kriptovalyutam)
+2025-05-14 19:45:34,586 - INFO - Canal encontrado: КРИПТОВАЛЮТА (@kriptovalyutap)
+2025-05-14 19:45:36,877 - INFO - Buscando canales con el término: торговля
+2025-05-14 19:45:37,432 - INFO - Encontrados 8 resultados para 'торговля'
+2025-05-14 19:45:37,518 - INFO - Canal encontrado: ТОРГОВЛЯ ФЬЮЧЕРСЫ КРИПТА 💹💹💹 (@p2p_svyazka)
+2025-05-14 19:45:37,608 - INFO - Canal encontrado: Криптаны | Обменники | Трейдинг (@torgovlya_kriptovalyutoy)
+2025-05-14 19:45:37,668 - INFO - Canal encontrado: КРИПТОВАЛЮТА l ТОРГОВЛЯ l ИНВЕСТИЦИИ (@dogecoinpumppp)
+2025-05-14 19:45:37,735 - INFO - Canal encontrado: InvestGroupBusiness | Инвестиции и крипто торговля 💰 (@InvestGroupBusiness)
+2025-05-14 19:45:37,838 - INFO - Canal encontrado: Фьючерсы | Торговля (@features_trade)
+2025-05-14 19:45:37,913 - INFO - Canal encontrado: Инвестируй с умом (@Torgovlya8)
+2025-05-14 19:45:37,970 - INFO - Canal encontrado: 6 (@torgovlya2)
+2025-05-14 19:45:38,045 - INFO - Canal encontrado: Заработок на маркетплейсах (@TorgovlyaT)
+2025-05-14 19:45:40,744 - INFO - Buscando canales con el término: инвестиции
+2025-05-14 19:45:40,995 - INFO - Encontrados 10 resultados para 'инвестиции'
+2025-05-14 19:45:41,049 - INFO - Canal encontrado: Инвестиции на диване (@div_invest)
+2025-05-14 19:45:41,127 - INFO - Canal encontrado: Т-Инвестиции (@tb_invest_official)
+2025-05-14 19:45:41,188 - INFO - Canal encontrado: Альфа-Инвестиции (@alfa_investments)
+2025-05-14 19:45:41,249 - INFO - Canal encontrado: Coin Post – Деньги, инвестиции, биткоин (@Coin_Post)
+2025-05-14 19:45:41,299 - INFO - Canal encontrado: DeCenter — блокчейн, биткоин, инвестиции (@DeCenter)
+2025-05-14 19:45:41,353 - INFO - Canal encontrado: ВТБ Мои Инвестиции (@brokervtb)
+2025-05-14 19:45:41,409 - INFO - Canal encontrado: Газпромбанк Инвестиции (@gpb_investments)
+2025-05-14 19:45:41,497 - INFO - Canal encontrado: Деньги Акции Биткоины (@investitsiy)
+2025-05-14 19:45:41,569 - INFO - Sleeping for 19s (0:00:19) on GetFullChannelRequest flood wait
+2025-05-14 19:46:00,645 - INFO - Canal encontrado: NeuralPost: инвестиции / трейдинг (@investitsii8)
+2025-05-14 19:46:03,129 - INFO - Se añadieron 19 nuevos canales a telegram_channels.csv
+2025-05-14 19:46:10,053 - INFO - Buscando canales similares a @Cryptocurrency_Inside...
+2025-05-14 19:46:10,182 - INFO - Buscando canales con el término: cryptocurrency
+2025-05-14 19:46:10,424 - INFO - Encontrados 10 resultados para 'cryptocurrency'
+2025-05-14 19:46:10,493 - INFO - Canal encontrado: CRYPTO NEWS (@cryptocurrency_media)
+2025-05-14 19:46:10,556 - INFO - Canal encontrado: TTcoin | Cryptocurrency (@ttcoinofficial)
+2025-05-14 19:46:10,608 - INFO - Canal encontrado: Cryptocurrencies Channel (@cryptocurrency)
+2025-05-14 19:46:10,683 - INFO - Canal encontrado: Cryptomaniac’s guide to cryptocurrency (@guidetocryptocurrency)
+2025-05-14 19:46:10,757 - INFO - Canal encontrado: Intelligent Cryptocurrency (@intelligentcryptocurrencypublic)
+2025-05-14 19:46:10,828 - INFO - Canal encontrado: ST Investment Group Cryptocurrency News (@ST_Investment_Channel_09)
+2025-05-14 19:46:10,883 - INFO - Canal encontrado: Crypto | Bitcoin | Ethereum | Altcoin | News (@Cryptocurrency_Inside)
+2025-05-14 19:46:10,939 - INFO - Canal encontrado: Coinlegs Cryptocurrency Signals (@coinlegs)
+2025-05-14 19:46:11,009 - INFO - Canal encontrado: Crypto (@cryptocurrencyj)
+2025-05-14 19:46:11,099 - INFO - Canal encontrado: crypto (@cryptocurrency8)
+2025-05-14 19:46:13,021 - INFO - Buscando canales con el término: inside
+2025-05-14 19:46:13,563 - INFO - Encontrados 9 resultados para 'inside'
+2025-05-14 19:46:13,617 - INFO - Canal encontrado: Coin Bureau Insider (@cbinsider)
+2025-05-14 19:46:13,698 - INFO - Canal encontrado: Campaign Insider | Павел Дубравский (@electionsquad)
+2025-05-14 19:46:13,755 - INFO - Canal encontrado: Business Insider India (@businessinsiderindia)
+2025-05-14 19:46:13,811 - INFO - Canal encontrado: Ethiopia Insider (@EthiopiaInsiderNews)
+2025-05-14 19:46:13,871 - INFO - Canal encontrado: Бизнес Insider (@InsiderBz)
+2025-05-14 19:46:13,927 - INFO - Canal encontrado: HARD INSIDE (@hplegion)
+2025-05-14 19:46:14,010 - INFO - Canal encontrado: The Insider (@theinsider)
+2025-05-14 19:46:14,072 - INFO - Canal encontrado: Insider News (@Insider)
+2025-05-14 19:46:14,162 - INFO - Canal encontrado: NFT | Crypto Stone (@InsideC)
+2025-05-14 19:46:16,713 - INFO - Buscando canales con el término: crypto
+2025-05-14 19:46:16,972 - INFO - Encontrados 14 resultados para 'crypto'
+2025-05-14 19:46:17,055 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:46:17,156 - INFO - Canal encontrado: CryptoMetavers (@CanalDePing)
+2025-05-14 19:46:17,242 - INFO - Canal encontrado: CRYPTO WINSTON ™ (@crypto_Winston)
+2025-05-14 19:46:17,327 - INFO - Canal encontrado: CryptoDeus Gems 💎🦍 (@CryptoDeusGems)
+2025-05-14 19:46:17,403 - INFO - Canal encontrado: Crypto Launch Search (@CLS_channel)
+2025-05-14 19:46:17,494 - INFO - Canal encontrado: Crypto Malik Mumbai (@Crypto_Malik_Prediction_IPL)
+2025-05-14 19:46:17,561 - INFO - Canal encontrado: DAMAN 🚀🚀 TASHAN CRYPTO (@diuwin_wingos_ok)
+2025-05-14 19:46:17,616 - INFO - Canal encontrado: Crypto | Azam (@crypto_azam)
+2025-05-14 19:46:17,692 - INFO - Canal encontrado: Diamond exchange crypto (@Diamond_exchange_tiger)
+2025-05-14 19:46:17,733 - INFO - Sleeping for 14s (0:00:14) on GetFullChannelRequest flood wait
+2025-05-14 19:46:31,803 - INFO - Canal encontrado: Lottery 7 Official 🏅Crypto (@crypto_Lottery7official)
+2025-05-14 19:46:31,852 - INFO - Canal encontrado: CryptoCapo TG (@CryptoCapoTG)
+2025-05-14 19:46:31,906 - INFO - Canal encontrado: Cryptoz (@Cryptoz)
+2025-05-14 19:46:34,727 - INFO - Buscando canales con el término: onchain
+2025-05-14 19:46:34,936 - INFO - Encontrados 7 resultados para 'onchain'
+2025-05-14 19:46:35,028 - INFO - Canal encontrado: onchain gaias (@onchainGAIA)
+2025-05-14 19:46:35,103 - INFO - Canal encontrado: Mlm onchain (@mlmonchain)
+2025-05-14 19:46:35,170 - INFO - Canal encontrado: Z OnChain 🧧 (@TwoZCalls)
+2025-05-14 19:46:35,275 - INFO - Canal encontrado: Crypto.com Onchain (@Cryptocom_onchain)
+2025-05-14 19:46:35,348 - INFO - Canal encontrado: Onchain-VIP (@onchain2)
+2025-05-14 19:46:35,561 - INFO - Canal encontrado: ончейн кипиш (@onchaink)
+2025-05-14 19:46:38,433 - INFO - Buscando canales con el término: analytics
+2025-05-14 19:46:38,634 - INFO - Encontrados 7 resultados para 'analytics'
+2025-05-14 19:46:38,757 - INFO - Canal encontrado: Octa Analytics (@octa_analytics)
+2025-05-14 19:46:38,881 - INFO - Canal encontrado: Coin98 Analytics (@Coin98Analytics)
+2025-05-14 19:46:38,964 - INFO - Canal encontrado: Аналітичний Батон (@analytics_baton)
+2025-05-14 19:46:39,071 - INFO - Canal encontrado: ICO Analytics NewsRoom EN (@ICO_Analytics_EN)
+2025-05-14 19:46:39,159 - INFO - Canal encontrado: FTM Analytics (@robo_analytic)
+2025-05-14 19:46:39,265 - INFO - Canal encontrado: Analytics (@Analyticse)
+2025-05-14 19:46:39,377 - INFO - Canal encontrado: المختبرات الطبية | المرحلة الرابعة (@analytics9)
+2025-05-14 19:46:41,030 - INFO - Buscando canales con el término: crypto
+2025-05-14 19:46:41,563 - INFO - Encontrados 14 resultados para 'crypto'
+2025-05-14 19:46:41,636 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:46:41,699 - INFO - Canal encontrado: CryptoMetavers (@CanalDePing)
+2025-05-14 19:46:41,762 - INFO - Canal encontrado: CRYPTO WINSTON ™ (@crypto_Winston)
+2025-05-14 19:46:41,815 - INFO - Canal encontrado: CryptoDeus Gems 💎🦍 (@CryptoDeusGems)
+2025-05-14 19:46:41,878 - INFO - Canal encontrado: Crypto Launch Search (@CLS_channel)
+2025-05-14 19:46:41,952 - INFO - Canal encontrado: Crypto Malik Mumbai (@Crypto_Malik_Prediction_IPL)
+2025-05-14 19:46:42,032 - INFO - Canal encontrado: DAMAN 🚀🚀 TASHAN CRYPTO (@diuwin_wingos_ok)
+2025-05-14 19:46:42,121 - INFO - Canal encontrado: Crypto | Azam (@crypto_azam)
+2025-05-14 19:46:42,188 - INFO - Canal encontrado: Diamond exchange crypto (@Diamond_exchange_tiger)
+2025-05-14 19:46:42,239 - INFO - Canal encontrado: Lottery 7 Official 🏅Crypto (@crypto_Lottery7official)
+2025-05-14 19:46:42,292 - INFO - Canal encontrado: CryptoCapo TG (@CryptoCapoTG)
+2025-05-14 19:46:42,350 - INFO - Canal encontrado: Cryptoz (@Cryptoz)
+2025-05-14 19:46:43,979 - INFO - Buscando canales con el término: bitcoin
+2025-05-14 19:46:44,268 - INFO - Encontrados 9 resultados para 'bitcoin'
+2025-05-14 19:46:44,352 - INFO - Canal encontrado: Bitcoin.com News (@www_Bitcoin_com)
+2025-05-14 19:46:44,450 - INFO - Canal encontrado: Bitcoin (@bitcoin)
+2025-05-14 19:46:44,491 - INFO - Sleeping for 18s (0:00:18) on GetFullChannelRequest flood wait
+2025-05-14 19:47:02,563 - INFO - Canal encontrado: Signals - Bitcoin and Ethereum (@signalsbitcoinandethereum)
+2025-05-14 19:47:02,619 - INFO - Canal encontrado: INDODAX - Indonesia Bitcoin & Crypto Exchange (@indodax)
+2025-05-14 19:47:02,708 - INFO - Canal encontrado: Coinvestasi - Belajar Investasi Bitcoin💰🇮🇩 (@komunitascoinvestasi)
+2025-05-14 19:47:03,994 - INFO - Buscando canales con el término: ethereum
+2025-05-14 19:47:04,248 - INFO - Encontrados 9 resultados para 'ethereum'
+2025-05-14 19:47:04,308 - INFO - Canal encontrado: iToken - Ethereum (@iTokenEthereum)
+2025-05-14 19:47:04,374 - INFO - Canal encontrado: Signals - Bitcoin and Ethereum (@signalsbitcoinandethereum)
+2025-05-14 19:47:04,437 - INFO - Canal encontrado: Ethereum New Pairs | DexKoala (@ETHNewPairs)
+2025-05-14 19:47:04,488 - INFO - Canal encontrado: iToken Locked - Ethereum (@iTokenLockedEthereum)
+2025-05-14 19:47:04,548 - INFO - Canal encontrado: Ethereum Community Events (@ethccweek)
+2025-05-14 19:47:04,604 - INFO - Canal encontrado: گروه اتریوم / آموزش فیوچرز (@Ethereumy)
+2025-05-14 19:47:04,659 - INFO - Canal encontrado: ССenter – Blockchain and Bitcoin (@Ethereumt)
+2025-05-14 19:47:06,983 - INFO - Buscando canales con el término: altcoin
+2025-05-14 19:47:07,179 - INFO - Encontrados 9 resultados para 'altcoin'
+2025-05-14 19:47:07,300 - INFO - Canal encontrado: Cryptostream's Altcoin Research (@cryptostream_research)
+2025-05-14 19:47:07,360 - INFO - Canal encontrado: Altcoins Channel (@altcoin)
+2025-05-14 19:47:07,430 - INFO - Canal encontrado: Altcoin Sensei | PRINT HOUSE 🖨️🏠 (@altcoinsenseigems)
+2025-05-14 19:47:07,523 - INFO - Canal encontrado: Crypto | Bitcoin | Ethereum | Altcoin | News (@Cryptocurrency_Inside)
+2025-05-14 19:47:07,606 - INFO - Canal encontrado: Altcoinpost (@altcoinpost1)
+2025-05-14 19:47:07,685 - INFO - Canal encontrado: Altcoins OGs (@Altcoins)
+2025-05-14 19:47:07,769 - INFO - Canal encontrado: ALTCOIN (@altcoin8)
+2025-05-14 19:47:07,855 - INFO - Canal encontrado: Altcoin (@altcoino)
+2025-05-14 19:47:09,356 - INFO - Se añadieron 22 nuevos canales a telegram_channels.csv
+2025-05-14 19:47:14,526 - INFO - Buscando canales similares a @Gary_TheTrader...
+2025-05-14 19:47:14,657 - INFO - Buscando canales con el término: education
+2025-05-14 19:47:14,938 - INFO - Encontrados 9 resultados para 'education'
+2025-05-14 19:47:15,017 - INFO - Canal encontrado: Яндекс Образование (@Education_Yandex)
+2025-05-14 19:47:15,112 - INFO - Canal encontrado: SETTERS EDUCATION (@setterseducation)
+2025-05-14 19:47:15,198 - INFO - Canal encontrado: وزارة التربية العراقية (@Educationiq)
+2025-05-14 19:47:15,287 - INFO - Canal encontrado: VK Education (@vkeducation_about)
+2025-05-14 19:47:15,364 - INFO - Canal encontrado: Crimson Education | Образование в США и Европе (@crimsoneurasia)
+2025-05-14 19:47:15,477 - INFO - Canal encontrado: StudyIQ Education (@Studyiqeducation)
+2025-05-14 19:47:15,576 - INFO - Canal encontrado: التربية الخاصة (@education0)
+2025-05-14 19:47:15,707 - INFO - Canal encontrado: Education Update (@educationu)
+2025-05-14 19:47:17,689 - INFO - Buscando canales con el término: signal
+2025-05-14 19:47:18,023 - INFO - Encontrados 13 resultados para 'signal'
+2025-05-14 19:47:18,126 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:47:18,229 - INFO - Canal encontrado: Forex Gold Signals (@Gold_pips_signals)
+2025-05-14 19:47:18,315 - INFO - Canal encontrado: ♻️BTCUSD TRADING SIGNALS (@BTCUSDTRADINGSIGNAL1)
+2025-05-14 19:47:18,375 - INFO - Sleeping for 15s (0:00:15) on GetFullChannelRequest flood wait
+2025-05-14 19:47:33,440 - INFO - Canal encontrado: Gold Pro Trader 📈 (@Forex_Signal_Gold_Pro_Trader)
+2025-05-14 19:47:33,514 - INFO - Canal encontrado: Forex Signals premium news (@forex_signals_premium_index_news)
+2025-05-14 19:47:33,615 - INFO - Canal encontrado: 1000pips Builder (Free signals) (@ThousandPipBuilder)
+2025-05-14 19:47:33,728 - INFO - Canal encontrado: GOLD SIGNALS VIP (@GoldSignalsVipOfficials)
+2025-05-14 19:47:33,841 - INFO - Canal encontrado: GBP/JPY FOREX SIGNALS (@Gbpjpyforex_signals)
+2025-05-14 19:47:33,943 - INFO - Canal encontrado: Signal (@Signal2)
+2025-05-14 19:47:36,692 - INFO - Buscando canales con el término: gold/xauusd
+2025-05-14 19:47:37,076 - INFO - Encontrados 10 resultados para 'gold/xauusd'
+2025-05-14 19:47:37,190 - INFO - Canal encontrado: GOLD XAUUSD ANALYSIS (@GOLDXAUUSDANALYSISTIPS)
+2025-05-14 19:47:37,274 - INFO - Canal encontrado: XAUUSAD (GOLD) FOREX SIGNAL📈 (@XAUUSD_SIGNAL_XAUDGBP0)
+2025-05-14 19:47:37,384 - INFO - Canal encontrado: XAUUSD/GOLD SCALPER (@XAUUSD_SCALPING_SIGNAL_S)
+2025-05-14 19:47:37,512 - INFO - Canal encontrado: Gold Trading XAUUSD (@xauusdanalysistrading)
+2025-05-14 19:47:37,671 - INFO - Canal encontrado: 🤑. 🫶 𝙓𝘼𝙐𝙐𝙎𝘿 PIPS FAMILY CLUB 💰. 🤑 (@GOLDXAUUSDPIPSHUNTERCLUB)
+2025-05-14 19:47:37,796 - INFO - Canal encontrado: BDARIJA GOLD TRADER 🔱 (@GOLD_XAUUSDx)
+2025-05-14 19:47:37,885 - INFO - Canal encontrado: XAUUSD GOLD (@XAUUSD_GOLD0)
+2025-05-14 19:47:37,952 - INFO - Canal encontrado: XAUUSD(GOLD) FOREX (@Xauusd_Goldx)
+2025-05-14 19:47:40,151 - INFO - Buscando canales con el término: experience
+2025-05-14 19:47:40,615 - INFO - Encontrados 9 resultados para 'experience'
+2025-05-14 19:47:40,674 - INFO - Canal encontrado: EXPERIENCE CRYPTO 24/7 TEAM (@ExperienceCrypto247_DailyUpdates)
+2025-05-14 19:47:40,754 - INFO - Canal encontrado: Brothers' Hijrah Experience (@BrothersHijrahExperience)
+2025-05-14 19:47:40,813 - INFO - Canal encontrado: Altin's FWA (and AO) experience~ (@cattracker)
+2025-05-14 19:47:40,875 - INFO - Canal encontrado: Exclusive signal experience channel (@jakeggjffdddd)
+2025-05-14 19:47:40,943 - INFO - Canal encontrado: Joe Rogan (@JoeRogan_Experience)
+2025-05-14 19:47:41,018 - INFO - Canal encontrado: CoinMarketCap - Experience Exchange (@CoinMarketCapExp)
+2025-05-14 19:47:41,103 - INFO - Canal encontrado: Employee experience (@employee_experience)
+2025-05-14 19:47:41,199 - INFO - Canal encontrado: အတွေ့အကြုံ (@experiencet)
+2025-05-14 19:47:41,266 - INFO - Canal encontrado: صناع الخبرة (@experienceM)
+2025-05-14 19:47:43,116 - INFO - Buscando canales con el término: global
+2025-05-14 19:47:43,393 - INFO - Encontrados 9 resultados para 'global'
+2025-05-14 19:47:43,595 - INFO - Canal encontrado: Forbes Russia | The Globals (@forbesglobalrus)
+2025-05-14 19:47:43,771 - INFO - Canal encontrado: Treasure_Nft_hahm_Global (@Treasure_Nft_Global_07)
+2025-05-14 19:47:43,929 - INFO - Canal encontrado: @ForexWeb3 (@Global)
+2025-05-14 19:47:44,072 - INFO - Canal encontrado: Shido Global | $SHIDO - Official Chat (@ShidoGlobal)
+2025-05-14 19:47:44,173 - INFO - Canal encontrado: Battle Infinity Global 🌎 (@battleinfinity)
+2025-05-14 19:47:44,273 - INFO - Canal encontrado: ONUS Announcements (English) (@onus_globalchannel)
+2025-05-14 19:47:44,343 - INFO - Canal encontrado: Greenway Global (@greenwayglobalofficial)
+2025-05-14 19:47:44,382 - INFO - Sleeping for 20s (0:00:20) on GetFullChannelRequest flood wait
+2025-05-14 19:48:04,480 - INFO - Canal encontrado: GlobalCheck (@globalcheck)
+2025-05-14 19:48:04,583 - INFO - Canal encontrado: Global Community 🌎 (@GlobalC)
+2025-05-14 19:48:05,801 - INFO - Buscando canales con el término: trader
+2025-05-14 19:48:06,149 - INFO - Encontrados 7 resultados para 'trader'
+2025-05-14 19:48:06,302 - INFO - Canal encontrado: headlines (@headlines_for_traders)
+2025-05-14 19:48:06,442 - INFO - Canal encontrado: Gold Pro Trader 📈 (@Forex_Signal_Gold_Pro_Trader)
+2025-05-14 19:48:06,564 - INFO - Canal encontrado: Gold Trader Mo 🤴🏽(PREMIUM ) (@GaryGoldTradermoves)
+2025-05-14 19:48:06,658 - INFO - Canal encontrado: HINDUSTAN TRADER (@hindustan_trader_7)
+2025-05-14 19:48:06,732 - INFO - Canal encontrado: GARY GOLD TRADER (@Gary_TheTrader)
+2025-05-14 19:48:06,789 - INFO - Canal encontrado: HINDUSTAN TRADER 🔥🔥 (@hindustantrader_0)
+2025-05-14 19:48:06,840 - INFO - Canal encontrado: Bybit Bayanihan Traders Annc (@Bybit_Bayanihan_ann)
+2025-05-14 19:48:09,736 - INFO - Se añadieron 36 nuevos canales a telegram_channels.csv
+2025-05-14 19:48:16,315 - INFO - Buscando canales similares a @daytradingIG...
+2025-05-14 19:48:16,406 - INFO - Buscando canales con el término: realtime
+2025-05-14 19:48:16,885 - INFO - Encontrados 8 resultados para 'realtime'
+2025-05-14 19:48:16,973 - INFO - Canal encontrado: Real-Time Daily News (@RealTimeDailyNews)
+2025-05-14 19:48:17,088 - INFO - Canal encontrado: Mantra - Shibarium Realtime Marketplace (@Mantra_Shibarium_Realtime)
+2025-05-14 19:48:17,227 - INFO - Canal encontrado: PT(SD)BNK in realtime. (@PTBNKtrenches)
+2025-05-14 19:48:17,374 - INFO - Canal encontrado: Realtime School (@realtime_school)
+2025-05-14 19:48:17,527 - INFO - Canal encontrado: REALTIME TRADING 🔒 247-OPTION (@GRPtradefamily)
+2025-05-14 19:48:17,632 - INFO - Canal encontrado: Realtime Stock Screener(Help Chat) (@RealtimeScreen)
+2025-05-14 19:48:17,713 - INFO - Canal encontrado: ʀᴇᴀʟᴛɪᴍᴇ • ᴀɴᴀʀᴄʜʏ ⚡ (@RealTimea)
+2025-05-14 19:48:17,784 - INFO - Canal encontrado: Real Madrid CF || Новости 🤍🏆 (@realtime8)
+2025-05-14 19:48:20,005 - INFO - Buscando canales con el término: alerts
+2025-05-14 19:48:20,367 - INFO - Encontrados 7 resultados para 'alerts'
+2025-05-14 19:48:20,528 - INFO - Canal encontrado: ⚡️KRALOW ALERTS (@kralowalerts)
+2025-05-14 19:48:20,676 - INFO - Canal encontrado: ICO Drops - ICO News & Alerts (@icodrops)
+2025-05-14 19:48:20,797 - INFO - Canal encontrado: 🚨 The Moon Alerts (@TheMoonOfficial)
+2025-05-14 19:48:20,915 - INFO - Canal encontrado: MMCrypto 📣ALERTS 📣 (@MMCryptoAlerts)
+2025-05-14 19:48:21,051 - INFO - Canal encontrado: Token Metrics - Alerts Channel (@tokenmetrics)
+2025-05-14 19:48:21,193 - INFO - Canal encontrado: DustyBC Alerts 🚨 (@DustybcAlerts)
+2025-05-14 19:48:23,756 - INFO - Buscando canales con el término: stocks,
+2025-05-14 19:48:24,001 - INFO - Encontrados 10 resultados para 'stocks,'
+2025-05-14 19:48:24,103 - INFO - Canal encontrado: Fi - US Stocks (@FiUSStocks)
+2025-05-14 19:48:24,189 - INFO - Canal encontrado: IF Stocks (@if_stocks)
+2025-05-14 19:48:24,285 - INFO - Canal encontrado: CapitalVia - Stocks | Nifty | Sensex | Commodity | NSE | BSE (@CapitalVia)
+2025-05-14 19:48:24,426 - INFO - Canal encontrado: Rochit Singh stocks (@rochit_singh_official)
+2025-05-14 19:48:24,507 - INFO - Canal encontrado: US30 DOW JONES SIGNALS🇺🇲 (@us30_stocks)
+2025-05-14 19:48:24,591 - INFO - Canal encontrado: intraday_stocks_banknifty_Equity (@GrowX_Freecalls)
+2025-05-14 19:48:24,642 - INFO - Sleeping for 11s (0:00:11) on GetFullChannelRequest flood wait
+2025-05-14 19:48:35,704 - INFO - Canal encontrado: Swing Trading Club (@stocksf)
+2025-05-14 19:48:35,779 - INFO - Canal encontrado: 🔥SG Stocks & Stonks 🇸🇬🧧🔥 (@stocksg)
+2025-05-14 19:48:35,833 - INFO - Canal encontrado: STOCK MARKET NEWS (@stocksU)
+2025-05-14 19:48:37,494 - INFO - Buscando canales con el término: crypto,
+2025-05-14 19:48:37,731 - INFO - Encontrados 14 resultados para 'crypto,'
+2025-05-14 19:48:37,807 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:48:37,871 - INFO - Canal encontrado: CryptoMetavers (@CanalDePing)
+2025-05-14 19:48:37,926 - INFO - Canal encontrado: CRYPTO WINSTON ™ (@crypto_Winston)
+2025-05-14 19:48:37,977 - INFO - Canal encontrado: CryptoDeus Gems 💎🦍 (@CryptoDeusGems)
+2025-05-14 19:48:38,043 - INFO - Canal encontrado: Crypto Launch Search (@CLS_channel)
+2025-05-14 19:48:38,131 - INFO - Canal encontrado: Crypto Malik Mumbai (@Crypto_Malik_Prediction_IPL)
+2025-05-14 19:48:38,205 - INFO - Canal encontrado: DAMAN 🚀🚀 TASHAN CRYPTO (@diuwin_wingos_ok)
+2025-05-14 19:48:38,272 - INFO - Canal encontrado: Crypto | Azam (@crypto_azam)
+2025-05-14 19:48:38,338 - INFO - Canal encontrado: Diamond exchange crypto (@Diamond_exchange_tiger)
+2025-05-14 19:48:38,389 - INFO - Canal encontrado: Lottery 7 Official 🏅Crypto (@crypto_Lottery7official)
+2025-05-14 19:48:38,442 - INFO - Canal encontrado: CryptoCapo TG (@CryptoCapoTG)
+2025-05-14 19:48:38,501 - INFO - Canal encontrado: Cryptoz (@Cryptoz)
+2025-05-14 19:48:39,563 - INFO - Buscando canales con el término: technology
+2025-05-14 19:48:39,769 - INFO - Encontrados 10 resultados para 'technology'
+2025-05-14 19:48:39,831 - INFO - Canal encontrado: Хмурчик Technology (@khmrchk)
+2025-05-14 19:48:39,887 - INFO - Canal encontrado: Maharishi University of Information Technology (@maharishiuniversity)
+2025-05-14 19:48:39,941 - INFO - Canal encontrado: Hidden Technology (@hiddenTechnology)
+2025-05-14 19:48:40,018 - INFO - Canal encontrado: 科学上网的小木屋/技术交流/线路交流 (@technologyshare)
+2025-05-14 19:48:40,132 - INFO - Canal encontrado: Miku Network Technology Limited (@miku_network)
+2025-05-14 19:48:40,199 - INFO - Canal encontrado: Hemi-sync_technology & Meditation (@hemisync_technology)
+2025-05-14 19:48:40,252 - INFO - Canal encontrado: شبكة العلوم والتكنولوجيا (@Technologyy)
+2025-05-14 19:48:40,312 - INFO - Canal encontrado: Technology (@technologyk)
+2025-05-14 19:48:40,398 - INFO - Canal encontrado: @Technologyi (@Technologyi)
+2025-05-14 19:48:42,882 - INFO - Buscando canales con el término: trading
+2025-05-14 19:48:43,076 - INFO - Encontrados 10 resultados para 'trading'
+2025-05-14 19:48:43,245 - INFO - Canal encontrado: signals trading futures (@signals_binance_trading_crypto)
+2025-05-14 19:48:43,324 - INFO - Canal encontrado: ♻️BTCUSD TRADING SIGNALS (@BTCUSDTRADINGSIGNAL1)
+2025-05-14 19:48:43,409 - INFO - Canal encontrado: Equity Swing Positional Trading Calls (@Positional_Calls_Swing_Trading)
+2025-05-14 19:48:43,468 - INFO - Canal encontrado: PRO CRYPTO TRADING (@PROBTRADING)
+2025-05-14 19:48:43,723 - INFO - Canal encontrado: The trading femme (@the_trading_femme_neha_jareda_g)
+2025-05-14 19:48:43,841 - INFO - Canal encontrado: SpiderCrypto Trading Journal (@spidersjournal)
+2025-05-14 19:48:43,877 - INFO - Sleeping for 23s (0:00:23) on GetFullChannelRequest flood wait
+2025-05-14 19:49:06,948 - INFO - Canal encontrado: Investimenti Trading e Crypto (@tradingo)
+2025-05-14 19:49:08,666 - INFO - Se añadieron 23 nuevos canales a telegram_channels.csv
+2025-05-14 19:49:15,152 - INFO - Buscando canales similares a @stocksU...
+2025-05-14 19:49:15,281 - INFO - Buscando canales con el término: channel
+2025-05-14 19:49:15,524 - INFO - Encontrados 11 resultados para 'channel'
+2025-05-14 19:49:15,580 - INFO - Canal encontrado: VFX MAIN CHANNEL (@vfx_fxx)
+2025-05-14 19:49:15,640 - INFO - Canal encontrado: Crypto Launch Search (@CLS_channel)
+2025-05-14 19:49:15,690 - INFO - Canal encontrado: TON Dating Channel (@tondatingchannel)
+2025-05-14 19:49:15,776 - INFO - Canal encontrado: Midnight Rider Channel 🇺🇸 (@realKarliBonne)
+2025-05-14 19:49:15,827 - INFO - Canal encontrado: Master Channel (@channel)
+2025-05-14 19:49:15,885 - INFO - Canal encontrado: Pentagon Channel | DYOR (@PentagonChannel)
+2025-05-14 19:49:15,937 - INFO - Canal encontrado: Token Metrics - Alerts Channel (@tokenmetrics)
+2025-05-14 19:49:16,032 - INFO - Canal encontrado: Psychological Channel (@psychological_channel)
+2025-05-14 19:49:16,099 - INFO - Canal encontrado: تبلیغ درکانال رفاقت (@channel1)
+2025-05-14 19:49:16,192 - INFO - Canal encontrado: CHANNELR (@CHANNELR)
+2025-05-14 19:49:18,178 - INFO - Buscando canales con el término: manages
+2025-05-14 19:49:18,857 - INFO - Encontrados 3 resultados para 'manages'
+2025-05-14 19:49:18,917 - INFO - Canal encontrado: IBA Official Channel(4 th course) (@managesuccess)
+2025-05-14 19:49:18,998 - INFO - Canal encontrado: Руслан | PM Эксперт ⚡️ (@Ruslan_Manages_IT)
+2025-05-14 19:49:19,049 - INFO - Canal encontrado: Manage Solar (@managesolar)
+2025-05-14 19:49:21,526 - INFO - Buscando canales con el término: clients
+2025-05-14 19:49:21,823 - INFO - Encontrados 8 resultados para 'clients'
+2025-05-14 19:49:21,960 - INFO - Canal encontrado: Клиенты по недвижимости Москва (@clientsMsk)
+2025-05-14 19:49:22,057 - INFO - Canal encontrado: ️ (@clientsettings)
+2025-05-14 19:49:22,185 - INFO - Canal encontrado: 浪迹-胡志明帝王团-信任问题 (@hcm_clients)
+2025-05-14 19:49:22,318 - INFO - Canal encontrado: Clients With Money (@clients_with_money)
+2025-05-14 19:49:22,441 - INFO - Canal encontrado: How to answer to ur t'nerb clients questions (@howtoanswertoyourstupidclients)
+2025-05-14 19:49:22,537 - INFO - Canal encontrado: CLIENTS OF ZEN🥶 (@andresquadbbc)
+2025-05-14 19:49:22,638 - INFO - Canal encontrado: Клиенты в Телеграм (@Clients5)
+2025-05-14 19:49:22,721 - INFO - Canal encontrado: ppsspp games (@clientsd)
+2025-05-14 19:49:24,246 - INFO - Buscando canales con el término: premium
+2025-05-14 19:49:24,477 - INFO - Encontrados 8 resultados para 'premium'
+2025-05-14 19:49:24,534 - INFO - Canal encontrado: Forex Signals premium news (@forex_signals_premium_index_news)
+2025-05-14 19:49:24,594 - INFO - Canal encontrado: Telegram Premium (@premium)
+2025-05-14 19:49:24,664 - INFO - Canal encontrado: Gold Trader Mo 🤴🏽(PREMIUM ) (@GaryGoldTradermoves)
+2025-05-14 19:49:24,812 - INFO - Canal encontrado: Telegram Premium (@PremiumRussia)
+2025-05-14 19:49:24,921 - INFO - Canal encontrado: Telegram Premium (@PremiumSpanish)
+2025-05-14 19:49:25,001 - INFO - Canal encontrado: Telegram Premium (@PremiumUkraine)
+2025-05-14 19:49:25,101 - INFO - Canal encontrado: PREMIUM CRYPTO (@premiumj)
+2025-05-14 19:49:25,174 - INFO - Sleeping for 12s (0:00:12) on GetFullChannelRequest flood wait
+2025-05-14 19:49:37,245 - INFO - Canal encontrado: Premium (@premium1)
+2025-05-14 19:49:39,132 - INFO - Buscando canales con el término: group.
+2025-05-14 19:49:39,375 - INFO - Encontrados 7 resultados para 'group.'
+2025-05-14 19:49:39,481 - INFO - Canal encontrado: Solana Whales Group 🐳 (@Solanawhalesgroup)
+2025-05-14 19:49:39,577 - INFO - Canal encontrado: Solidus AI Chat Group (@solidusaichat)
+2025-05-14 19:49:39,659 - INFO - Canal encontrado: TronLink Official Group (@TronLink)
+2025-05-14 19:49:39,754 - INFO - Canal encontrado: The Moon Group (@TheMoonGroup)
+2025-05-14 19:49:39,902 - INFO - Canal encontrado: Coinfest Asia Official Group (@coinfestasiaofficial)
+2025-05-14 19:49:39,987 - INFO - Canal encontrado: Tenset (10set) - Official chat group ENG (@tenset_io_eng)
+2025-05-14 19:49:40,042 - INFO - Canal encontrado: لینکدونی |کانال،گپ،تلگرام،گروهکده،لینک،کده،یاب،دونی،لینگ،link4you,لینکی،تبلیغ،لینگدونی،اصلیlinkdooni💎LINKKADEH💎لینکدونی |همستر (@groupp)
+2025-05-14 19:49:43,026 - INFO - Buscando canales con el término: stock
+2025-05-14 19:49:43,266 - INFO - Encontrados 10 resultados para 'stock'
+2025-05-14 19:49:43,354 - INFO - Canal encontrado: Stock Burner | Investor Kazi Tips (@Stock_Burner_Investor_Kazi)
+2025-05-14 19:49:43,411 - INFO - Canal encontrado: Fi - US Stocks (@FiUSStocks)
+2025-05-14 19:49:43,495 - INFO - Canal encontrado: IF Stocks (@if_stocks)
+2025-05-14 19:49:43,551 - INFO - Canal encontrado: NK StockTalk™ (@NKsingh100)
+2025-05-14 19:49:43,600 - INFO - Canal encontrado: Dhan - Stock Trading & Investing (@JoinDhan)
+2025-05-14 19:49:43,665 - INFO - Canal encontrado: Stocktwits India 🇮🇳 (@stocktwitsindia)
+2025-05-14 19:49:43,720 - INFO - Canal encontrado: CapitalVia - Stocks | Nifty | Sensex | Commodity | NSE | BSE (@CapitalVia)
+2025-05-14 19:49:43,777 - INFO - Canal encontrado: Stock Market News (@stockl)
+2025-05-14 19:49:43,826 - INFO - Canal encontrado: Stock1 (@stock1)
+2025-05-14 19:49:45,244 - INFO - Buscando canales con el término: market
+2025-05-14 19:49:45,783 - INFO - Encontrados 9 resultados para 'market'
+2025-05-14 19:49:45,836 - INFO - Canal encontrado: Onion (@bot_market_onion)
+2025-05-14 19:49:45,887 - INFO - Canal encontrado: Market (@Market)
+2025-05-14 19:49:45,945 - INFO - Canal encontrado: Gutnik Oleg · Digital Marketing (@websstudio)
+2025-05-14 19:49:45,999 - INFO - Canal encontrado: FP Markets (@fpmarketsroom)
+2025-05-14 19:49:46,070 - INFO - Canal encontrado: Яндекс Маркет (@yndx_market)
+2025-05-14 19:49:46,145 - INFO - Canal encontrado: MMPro Group & BUMP (@marketmakingpro)
+2025-05-14 19:49:46,206 - INFO - Canal encontrado: Скидки на Маркете (@marketbenefit)
+2025-05-14 19:49:46,285 - INFO - Canal encontrado: 𝓔léanor 𝓜arket (@MARKETq)
+2025-05-14 19:49:47,629 - INFO - Se añadieron 43 nuevos canales a telegram_channels.csv
+2025-05-14 20:21:50,598 - INFO - Disconnecting from 149.154.167.91:443/TcpFull...
+2025-05-14 20:21:50,609 - WARNING - Server sent a very old message with ID 7504360247054337033, ignoring (see FAQ for details)
+2025-05-14 20:21:50,612 - INFO - Disconnection from 149.154.167.91:443/TcpFull complete!
