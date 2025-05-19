@@ -1,0 +1,20 @@
+[
+    {
+        "name": "VFX_Algo_Terminal_1",
+        "username": "295277",
+        "password": "Abcdefg@1",
+        "server": "VortexFX-Servers",
+        "risk_percent": 1.0,
+        "terminal_path": "C:\\Program Files\\MetaTrader 5\\terminal64.exe",
+        "enabled": false
+    },
+    {
+        "name": "VFX_Algo_Terminal_2",
+        "username": "300740",
+        "password": "Abcdefg@1",
+        "server": "VortexFX-Servers",
+        "risk_percent": 1.0,
+        "terminal_path": "C:\\Program Files\\Vortex FX MT5 Terminal\\terminal64.exe",
+        "enabled": true
+    }
+]

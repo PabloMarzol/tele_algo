@@ -15,7 +15,7 @@ class Config:
         
         # Load config file if exists
         if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
+            with open(config_path, 'r', encoding='utf-8') as f: 
                 self.config = json.load(f)
         else:
             # Create default config
@@ -42,7 +42,7 @@ class Config:
     
     def save(self):
         """Save current config to file."""
-        with open(self.config_path, 'w') as f:
+        with open(self.config_path, 'w', encoding='utf-8') as f:  
             json.dump(self.config, f, indent=4)
     
     def get(self, key, default=None):

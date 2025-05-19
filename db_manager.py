@@ -45,7 +45,14 @@ class TradingBotDatabase:
             "vip_channels": pl.Utf8,
             "vip_added_date": pl.Utf8,
             "copier_forwarded": pl.Boolean,
-            "copier_forwarded_date": pl.Utf8
+            "copier_forwarded_date": pl.Utf8,
+            "source_channel": pl.Utf8,           
+            "first_contact_date": pl.Utf8,       
+            "auto_welcomed": pl.Boolean,        
+            "auto_welcome_date": pl.Utf8,        
+            "risk_profile_text": pl.Utf8,       
+            "last_response": pl.Utf8,           
+            "last_response_time": pl.Utf8
         }
         
         group_members_schema = {
@@ -289,9 +296,10 @@ class TradingBotDatabase:
         return self.settings.get(key, default)
     
     def add_user(self, user_data):
-        """Add a new user to the database."""
+        """Add a new user to the database with schema enforcement."""
         # Ensure we have user_id
         if 'user_id' not in user_data:
+            print("Missing user_id in data")
             return False
         
         try:
@@ -326,7 +334,7 @@ class TradingBotDatabase:
                                     value = 0
                             else:
                                 value = 0
-                        elif key == "is_verified" or key == "banned":
+                        elif key == "is_verified" or key == "banned" or key == "copier_forwarded" or key == "auto_welcomed" or key == "registration_confirmed":
                             # Convert to boolean
                             if isinstance(value, str):
                                 value = value.lower() in ('true', 'yes', '1', 't', 'y')
@@ -342,74 +350,68 @@ class TradingBotDatabase:
                         ])
                     except Exception as e:
                         print(f"Error updating {key} with value {value}: {e}")
+            
+            # Save changes
+            self.users_df.write_csv(self.users_path)
+            return True
         else:
             # New user, add row with proper type handling
-            # Set defaults for missing fields
-            defaults = {
-                "user_id": user_data['user_id'],
-                "username": None,
-                "first_name": None,
-                "last_name": None,
-                "risk_appetite": 0,
-                "deposit_amount": 0,
-                "trading_account": None,
-                "is_verified": False,
-                "join_date": now,
-                "last_active": now,
-                "banned": False,
-                "notes": None
-            }
+            # First, build a complete user record with all schema columns
+            complete_user = {}
             
-            # Create new user dict with defaults
-            new_user = {**defaults, **user_data}
+            # Get all columns from the schema and set defaults
+            for col in self.users_df.columns:
+                if col == "user_id":
+                    complete_user[col] = user_data.get('user_id', 0)
+                elif col in ["risk_appetite", "deposit_amount"]:
+                    complete_user[col] = user_data.get(col, 0)
+                elif col in ["is_verified", "banned", "copier_forwarded", "auto_welcomed", "registration_confirmed"]:
+                    complete_user[col] = user_data.get(col, False)
+                elif col == "join_date":
+                    complete_user[col] = user_data.get(col, now)
+                elif col == "last_active":
+                    complete_user[col] = user_data.get(col, now)
+                else:
+                    # For string columns, use empty string as default
+                    complete_user[col] = user_data.get(col, "")
             
-            # Type conversion for new user
-            for key, value in new_user.items():
-                if key == "user_id" or key == "risk_appetite" or key == "deposit_amount":
-                    # Convert to int
-                    if value is not None:
-                        try:
-                            new_user[key] = int(value)
-                        except (ValueError, TypeError):
-                            new_user[key] = 0
-                    else:
-                        new_user[key] = 0
-                elif key == "is_verified" or key == "banned":
-                    # Convert to boolean
-                    if isinstance(value, str):
-                        new_user[key] = value.lower() in ('true', 'yes', '1', 't', 'y')
-                    else:
-                        new_user[key] = bool(value)
-                elif value is None:
-                    # Convert None to empty string for text fields
-                    if key not in ("risk_appetite", "deposit_amount", "is_verified", "banned"):
-                        new_user[key] = ""
-            
-            # Add to dataframe
+            # Now add the record
             try:
                 # Create a new dataframe with just this user
-                user_df = pl.DataFrame([new_user])
+                user_df = pl.DataFrame([complete_user])
                 
                 # Ensure types match
                 for col in self.users_df.columns:
                     if col in user_df.columns:
-                        user_df = user_df.with_columns([
-                            pl.col(col).cast(self.users_df.schema[col])
-                        ])
+                        try:
+                            user_df = user_df.with_columns([
+                                pl.col(col).cast(self.users_df.schema[col])
+                            ])
+                        except Exception as e:
+                            print(f"Error casting column {col}: {e}")
+                            # If casting fails, use a safe default
+                            if self.users_df.schema[col] == pl.Int64:
+                                user_df = user_df.with_columns([
+                                    pl.lit(0).cast(pl.Int64).alias(col)
+                                ])
+                            elif self.users_df.schema[col] == pl.Boolean:
+                                user_df = user_df.with_columns([
+                                    pl.lit(False).cast(pl.Boolean).alias(col)
+                                ])
+                            else:
+                                user_df = user_df.with_columns([
+                                    pl.lit("").cast(pl.Utf8).alias(col)
+                                ])
                 
                 # Concatenate with main dataframe
                 self.users_df = pl.concat([self.users_df, user_df])
+                
+                # Save changes
+                self.users_df.write_csv(self.users_path)
+                return True
             except Exception as e:
                 print(f"Error adding new user: {e}")
                 return False
-        
-        # Save changes
-        try:
-            self.users_df.write_csv(self.users_path)
-            return True
-        except Exception as e:
-            print(f"Error saving users CSV: {e}")
-            return False
     
     def get_user(self, user_id):
         """Get user information by user_id."""

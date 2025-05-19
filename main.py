@@ -1,8 +1,9 @@
 import logging
 import polars as pl
-from datetime import datetime, time, timedelta
 import asyncio
 import os
+
+from datetime import datetime, time, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -19,17 +20,16 @@ from auth_system import TradingAccountAuth
 from db_manager import TradingBotDatabase
 from telegram.ext.filters import MessageFilter
 from vfx_Scheduler import VFXMessageScheduler
-from mt5_signal_generator import MT5SignalGenerator
 from signal_dispatcher import SignalDispatcher
-
+from config import Config
 
 # Global instance of the VFX message scheduler
+config = Config()
 vfx_scheduler = VFXMessageScheduler()
 strategyChannel_scheduler = VFXMessageScheduler("./bot_data/strategy_messages.json")
 propChannel_scheduler = VFXMessageScheduler("./bot_data/prop_messages.json")
 signalsChannel_scheduler = VFXMessageScheduler("./bot_data/signals_messages.json")
 educationChannel_scheduler = VFXMessageScheduler("./bot_data/ed_messages.json")
-
 
 # Add this class definition before your handler functions
 class ForwardedMessageFilter(MessageFilter):
@@ -428,12 +428,24 @@ async def trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         print(f"Stored account in user_data: {context.user_data}")
         
-        # Update in database
-        db_result = db.add_user({
-            "user_id": user_id,
-            "trading_account": account_number,
-            "is_verified": account_verified
-        })
+        # Update in database with proper error handling
+        try:
+            db_result = db.add_user({
+                "user_id": user_id,
+                "trading_account": account_number,
+                "is_verified": account_verified,
+                "account_owner": account_owner if account_owner else "Unknown",
+                "last_response": account_number,
+                "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            print(f"Database update result: {db_result}")
+            
+            # If account is verified, also mark it verified in the database
+            if account_verified:
+                mark_result = db.mark_user_verified(user_id)
+                print(f"Mark verified result: {mark_result}")
+        except Exception as e:
+            print(f"ERROR updating database: {e}")
         
         # Set verification message based on result
         if account_verified:
@@ -443,6 +455,9 @@ async def trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 f"Thank you for completing your registration. Our team will now process your information "
                 f"and add you to the appropriate VIP channels based on your selected interests."
             )
+            
+            # Send profile summary to admins (add this function if not already defined)
+            asyncio.create_task(send_profile_summary_to_admins(context, user_id))
         else:
             verification_message = (
                 f"⚠️ Account {account_number} could not be verified automatically.\n\n"
@@ -621,20 +636,19 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
     """Handle messages forwarded by the admin from users."""
     # Debug output
     print(f"Received message in chat {update.effective_chat.id} from user {update.effective_user.id}")
-    print(f"Admin ID is {ADMIN_USER_ID}")
-    print(f"Message properties: {update.message}")
     
     # Check if this is the admin's chat
     if update.effective_user.id not in ADMIN_USER_ID:
         print("Not from admin, skipping admin forward handler")
         return
     
-    # Check for forwarded message using multiple methods
+    # Check for forwarded message
     is_forwarded = False
     original_sender_id = None
     original_sender_name = "Unknown User"
+    forwarded_from_channel = None
     
-    # Method 1: Check for forward_origin (newer Telegram API)
+    # Method 1: Check for forward_origin 
     if hasattr(update.message, 'forward_origin'):
         print("Message has forward_origin property")
         is_forwarded = True
@@ -662,59 +676,123 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
         original_sender_name = update.message.forward_sender_name
         print(f"Hidden sender from forward_sender_name: {original_sender_name}")
     
+    
+    message_text = update.message.text if update.message.text else ""
+    # Try to determine source channel
+    if hasattr(update.message, 'forward_from_chat') and update.message.forward_from_chat:
+        # If we have direct information about the source chat
+        forward_chat_id = str(update.message.forward_from_chat.id)
+        if forward_chat_id == MAIN_CHANNEL_ID:
+            forwarded_from_channel = "main_channel"
+            print(f"Message identified as forwarded from main channel")
+        elif forward_chat_id == SIGNALS_CHANNEL_ID:
+            forwarded_from_channel = "signals_channel"
+            print(f"Message identified as forwarded from signals channel")
+    else:
+        # Try to infer source from content
+        if any(keyword in message_text.lower() for keyword in ["signal", "trade", "buy", "sell", "entry", "exit", "tp", "sl"]):
+            # Message likely related to trading signals
+            forwarded_from_channel = "signals_channel"
+            print(f"Message content suggests it's from signals channel")
+        else:
+            # Default to main channel if can't determine
+            forwarded_from_channel = "main_channel"
+            print(f"Defaulting to main channel as source")
     # If it's a forwarded message
     if is_forwarded:
         print(f"This is a forwarded message from {original_sender_name}")
         
         # Handle user with visible info
         if original_sender_id:
-            # Store original sender ID for future communication
+            # Store original sender ID for future communication with source channel info
             user_data = {
                 "user_id": original_sender_id,
                 "first_name": original_sender_name,
                 "last_name": "" if not hasattr(update.message.forward_origin.sender_user, 'last_name') else update.message.forward_origin.sender_user.last_name,
-                "username": "" if not hasattr(update.message.forward_origin.sender_user, 'username') else update.message.forward_origin.sender_user.username
+                "username": "" if not hasattr(update.message.forward_origin.sender_user, 'username') else update.message.forward_origin.sender_user.username,
+                "source_channel": forwarded_from_channel,  # Set source channel
+                "first_contact_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             db.add_user(user_data)
             
-            # Ask admin if they want to start conversation with this user
+            # AUTOMATICALLY SEND WELCOME MESSAGE TO USER - CUSTOMIZE BASED ON SOURCE CHANNEL
+            try:
+                # Get the appropriate welcome message based on source channel
+                if forwarded_from_channel == "signals_channel":
+                    welcome_msg = db.get_setting("signals_auto_welcome", 
+                                               config.get("messages.signals_auto_welcome", 
+                                                        db.get_setting("admin_auto_welcome", 
+                                                                     "Welcome to VFX Trading Signals!")))
+                else:
+                    welcome_msg = db.get_setting("admin_auto_welcome", 
+                                               config.get("messages.admin_auto_welcome", 
+                                                        "Welcome to VFX Trading!"))
+                
+                # Send the welcome message directly to the user
+                # Create buttons for welcome message
+                keyboard = [
+                    [
+                        InlineKeyboardButton("Low Risk", callback_data="risk_low"),
+                        InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
+                        InlineKeyboardButton("High Risk", callback_data="risk_high")
+                    ],
+                    [InlineKeyboardButton("Start Guided Setup", callback_data="start_guided")],
+                    [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
+                # Format same text with HTML
+                formatted_msg = welcome_msg  # Keep original message text
+
+                # Send the welcome message with HTML parsing and buttons
+                await context.bot.send_message(
+                    chat_id=original_sender_id,
+                    text=formatted_msg,
+                    parse_mode='HTML',  # Enable HTML parsing
+                    reply_markup=reply_markup  # Add buttons
+                )
+                
+                # Mark this user as having received the auto-welcome
+                db.add_user({
+                    "user_id": original_sender_id,
+                    "auto_welcomed": True,
+                    "auto_welcome_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+                
+                # Notify admin that automated welcome was sent
+                source_text = "signals channel" if forwarded_from_channel == "signals_channel" else "main channel"
+                await update.message.reply_text(
+                    f"✅ Automated welcome message sent to {original_sender_name} (ID: {original_sender_id}).\n\n"
+                    f"User identified as coming from the {source_text}.\n\n"
+                    f"The message includes questions about their risk profile, capital, and account number.\n\n"
+                    f"Their responses will be tracked in the database."
+                )
+                
+                # Store this user in admin's active conversations with source info
+                context.bot_data.setdefault("auto_welcoming_users", {})
+                context.bot_data["auto_welcoming_users"][original_sender_id] = {
+                    "name": original_sender_name,
+                    "status": "awaiting_response",
+                    "welcome_sent": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "source_channel": forwarded_from_channel
+                }
+                
+            except Exception as e:
+                print(f"Error sending automated welcome: {e}")
+                await update.message.reply_text(
+                    f"⚠️ Failed to send automated welcome to {original_sender_name}: {e}\n\n"
+                    f"Would you like to start a conversation manually?"
+                )
+            
+            # Ask admin if they want to start conversation (keep this as a backup)
             keyboard = [
-                [InlineKeyboardButton("Start Conversation", callback_data=f"start_conv_{original_sender_id}")]
+                [InlineKeyboardButton("View User Profile", callback_data=f"view_profile_{original_sender_id}")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
-                f"Message forwarded from {original_sender_name} (ID: {original_sender_id}). Would you like to start a conversation with this user?",
-                reply_markup=reply_markup
-            )
-        else:
-            # For hidden users, generate a session ID
-            timestamp = int(datetime.now().timestamp())
-            session_id = f"hidden_{hash(original_sender_name)}_{timestamp}"
-            
-            # Store this session for later reference
-            if "hidden_users" not in context.bot_data:
-                context.bot_data["hidden_users"] = {}
-            
-            context.bot_data["hidden_users"][session_id] = {
-                "name": original_sender_name,
-                "first_seen": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "last_message": update.message.text
-            }
-            
-            # Ask admin if they want to send instructions to this user
-            keyboard = [
-                [InlineKeyboardButton("Send Instructions", callback_data=f"instr_{session_id}")],
-                [InlineKeyboardButton("Record Info Manually", callback_data=f"manual_{session_id}")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await update.message.reply_text(
-                f"Message forwarded from {original_sender_name} who has privacy settings enabled.\n\n"
-                f"Options:\n"
-                f"1) Send Instructions: Send a message asking them to contact the bot\n"
-                f"2) Record Info Manually: You can manually input their information\n\n"
-                f"Message content: \"{update.message.text}\"",
+                f"Message forwarded from {original_sender_name} (ID: {original_sender_id}).\n"
+                f"Automated welcome message has been sent.",
                 reply_markup=reply_markup
             )
     
@@ -730,7 +808,8 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
             try:
                 await context.bot.send_message(
                     chat_id=user_id,
-                    text=f"Admin: {update.message.text}"
+                    text=f"Admin: {update.message.text}",
+                    parse_mode="HTML"
                 )
                 await update.message.reply_text(f"Message sent to user {user_id}")
             except Exception as e:
@@ -1028,7 +1107,251 @@ async def send_daily_signup_report(context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         print(f"Error generating daily signup report: {e}")
 
+async def send_daily_response_report(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a daily report of user responses to the admin team."""
+    try:
+        # Get today's date
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Get users who responded today (based on last_response_time)
+        today_responders = db.users_df.filter(pl.col("last_response_time").str.contains(today))
+        
+        if today_responders.height == 0:
+            # No responses today
+            report = f"📊 DAILY USER RESPONSE REPORT - {today} 📊\n\nNo user responses recorded today."
+        else:
+            # Format report
+            report = f"📊 DAILY USER RESPONSE REPORT - {today} 📊\n\n"
+            report += f"Total User Responses: {today_responders.height}\n\n"
+            
+            # Add details for each user
+            report += "USER RESPONSE DETAILS:\n\n"
+            
+            for i in range(min(today_responders.height, 10)):  # Limit to 10 users
+                user_id = today_responders["user_id"][i]
+                first_name = today_responders["first_name"][i] if today_responders["first_name"][i] else "Unknown"
+                last_name = today_responders["last_name"][i] if today_responders["last_name"][i] else ""
+                risk = today_responders["risk_appetite"][i]
+                risk_text = today_responders["risk_profile_text"][i] if "risk_profile_text" in today_responders.columns and today_responders["risk_profile_text"][i] else "Not specified"
+                deposit = today_responders["deposit_amount"][i]
+                account = today_responders["trading_account"][i] if today_responders["trading_account"][i] else "Not provided"
+                verified = "✅" if today_responders["is_verified"][i] else "❌"
+                last_response = today_responders["last_response"][i] if "last_response" in today_responders.columns and today_responders["last_response"][i] else "No response"
+                source_channel = today_responders["source_channel"][i] if "source_channel" in today_responders.columns and today_responders["source_channel"][i] else "Unknown"
+                source_emoji = "📊" if source_channel == "signals_channel" else "📢" if source_channel == "main_channel" else "❓"
+                
+                report += (
+                    f"{i+1}. {first_name} {last_name} (ID: {user_id}) {source_emoji}\n"
+                    f"   Source: {source_channel}\n"
+                    f"   Risk: {risk}/10 ({risk_text}) | Deposit: ${deposit}\n"
+                    f"   Account: {account} | Verified: {verified}\n"
+                    f"   Last Response: \"{last_response[:50]}...\"\n\n"
+                )
+            
+            if today_responders.height > 10:
+                report += f"... and {today_responders.height - 10} more users"
+        
+        # Send report to all admins
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=report
+                )
+                print(f"Successfully sent daily response report to admin {admin_id}")
+            except Exception as e:
+                print(f"Failed to send report to admin {admin_id}: {e}")
+                
+    except Exception as e:
+        print(f"Error generating daily response report: {e}")
 
+async def show_summary(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> None:
+    """Show summary of collected information and completion options."""
+    # Get user data from database
+    user_info = db.get_user(user_id)
+    
+    if not user_info:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="⚠️ Error retrieving your information. Please contact an admin for assistance."
+        )
+        return
+    
+    # Format summary
+    summary = f"""<b>📋 Your Registration Summary</b>
+
+Thank you for providing your information! Here's what we've got:
+
+<b>Risk Profile:</b> {user_info.get('risk_profile_text', 'Not specified').capitalize()}
+<b>Deposit Amount:</b> ${user_info.get('deposit_amount', 'Not specified')}
+<b>Previous Experience:</b> {user_info.get('previous_experience', 'Not specified')}
+<b>MT5 Account:</b> {user_info.get('trading_account', 'Not specified')} {' ✅' if user_info.get('is_verified') else ''}
+
+<b>What's Next?</b>
+Our team will review your information and set up your account for our signals service. You should receive confirmation within the next 24 hours.
+
+If you need to make any changes or have questions, please let us know!"""
+
+    # Add buttons for edit or confirm
+    keyboard = [
+        [InlineKeyboardButton("✅ Confirm Information", callback_data="confirm_registration")],
+        [InlineKeyboardButton("✏️ Edit Information", callback_data="edit_registration")],
+        [InlineKeyboardButton("👨‍💼 Speak to an Advisor", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=summary,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # Update conversation state
+    context.user_data["response_step"] = "summary_shown"
+    
+    # Notify admin of completion
+    for admin_id in ADMIN_USER_ID:
+        try:
+            admin_summary = f"""📋 <b>USER REGISTRATION COMPLETED</b>
+
+User: {user_info.get('first_name', 'Unknown')} {user_info.get('last_name', '')}
+ID: {user_id}
+Source: {user_info.get('source_channel', 'Unknown')}
+
+<b>Collected Information:</b>
+- Risk Profile: {user_info.get('risk_profile_text', 'Not specified').capitalize()}
+- Deposit Amount: ${user_info.get('deposit_amount', 'Not specified')}
+- Previous Experience: {user_info.get('previous_experience', 'Not specified')}
+- MT5 Account: {user_info.get('trading_account', 'Not specified')} {' ✅' if user_info.get('is_verified') else ''}
+
+Registration completed at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}"""
+
+            # Add action buttons for admin
+            admin_keyboard = [
+                [InlineKeyboardButton("View Full Profile", callback_data=f"view_profile_{user_id}")],
+                [InlineKeyboardButton("Add to VIP Signals", callback_data=f"add_vip_signals_{user_id}")],
+                [InlineKeyboardButton("Forward to Copier Team", callback_data=f"forward_copier_{user_id}")]
+            ]
+            admin_reply_markup = InlineKeyboardMarkup(admin_keyboard)
+            
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=admin_summary,
+                parse_mode='HTML',
+                reply_markup=admin_reply_markup
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+async def send_profile_summary_to_admins(context, user_id):
+    """Send a summary of the user's profile to all admins."""
+    print(f"Attempting to send profile summary for user {user_id} to admins")
+    
+    # Try multiple methods to get user info
+    user_info = None
+    error_messages = []
+    
+    # Method 1: Try db.get_user
+    try:
+        print("Attempting to retrieve user via db.get_user")
+        user_info = db.get_user(user_id)
+        if user_info:
+            print(f"Successfully retrieved user via db.get_user: {user_info}")
+    except Exception as e:
+        error_msg = f"db.get_user error: {e}"
+        print(error_msg)
+        error_messages.append(error_msg)
+    
+    # Method 2: Try direct dataframe access if db.get_user failed
+    if not user_info:
+        try:
+            print("Attempting to retrieve user via direct dataframe access")
+            user_df = db.users_df.filter(pl.col("user_id") == user_id)
+            if user_df.height > 0:
+                print(f"Found user in dataframe, creating dict")
+                user_info = {}
+                for col in user_df.columns:
+                    user_info[col] = user_df[col][0]
+                print(f"Created user_info dict: {user_info}")
+        except Exception as e:
+            error_msg = f"Dataframe access error: {e}"
+            print(error_msg)
+            error_messages.append(error_msg)
+    
+    # Method 3: Try to use auto_welcoming_users dict if available
+    if not user_info:
+        try:
+            print("Attempting to retrieve from auto_welcoming_users")
+            auto_welcoming_users = context.bot_data.get("auto_welcoming_users", {})
+            if user_id in auto_welcoming_users:
+                print(f"User found in auto_welcoming_users")
+                # Create a basic info dict
+                user_info = {
+                    "user_id": user_id,
+                    "first_name": auto_welcoming_users[user_id].get("name", "Unknown"),
+                    "source_channel": auto_welcoming_users[user_id].get("source_channel", "Unknown")
+                }
+                # Add any conversation state info
+                user_states = context.bot_data.get("user_states", {})
+                if user_id in user_states:
+                    user_info["current_state"] = user_states[user_id]
+        except Exception as e:
+            error_msg = f"Auto_welcoming access error: {e}"
+            print(error_msg)
+            error_messages.append(error_msg)
+    
+    if not user_info:
+        # User could not be found - notify admins of the issue
+        error_details = "\n".join(error_messages) if error_messages else "No detailed error information"
+        
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=f"⚠️ Could not generate summary for user {user_id}:\n\n{error_details}\n\n"
+                         f"The user may need to be manually processed."
+                )
+                print(f"Sent error report to admin {admin_id}")
+            except Exception as e:
+                print(f"Error sending error report to admin {admin_id}: {e}")
+        return
+    
+    # We have some user info - generate summary
+    summary = f"""📋 <b>USER REGISTRATION COMPLETED</b>
+
+User: {user_info.get('first_name', 'Unknown')} {user_info.get('last_name', '')}
+ID: {user_id}
+Source: {user_info.get('source_channel', 'Unknown')}
+
+<b>Collected Information:</b>
+- Risk Profile: {user_info.get('risk_profile_text', 'Not specified').capitalize() if user_info.get('risk_profile_text') else f"{user_info.get('risk_appetite', 0)}/10"}
+- Deposit Amount: ${user_info.get('deposit_amount', 'Not specified')}
+- Previous Experience: {user_info.get('previous_experience', 'Not specified').capitalize() if user_info.get('previous_experience') else 'Not specified'}
+- MT5 Account: {user_info.get('trading_account', 'Not specified')} {' ✅' if user_info.get('is_verified') else ''}
+
+Registration completed at: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}"""
+    
+    # Add action buttons for admin
+    keyboard = [
+        [InlineKeyboardButton("View Full Profile", callback_data=f"view_profile_{user_id}")],
+        [InlineKeyboardButton("Add to VIP Signals", callback_data=f"add_vip_signals_{user_id}")],
+        [InlineKeyboardButton("Forward to Copier Team", callback_data=f"forward_copier_{user_id}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Send to all admins
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=summary,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+            print(f"Sent profile summary to admin {admin_id}")
+        except Exception as e:
+            print(f"Error sending profile summary to admin {admin_id}: {e}")
 
 # -------------------------------------- COMMANDS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -1374,6 +1697,57 @@ async def test_account_command(update: Update, context: ContextTypes.DEFAULT_TYP
     
     await update.message.reply_text("Test completed.")
 
+async def debug_db_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check database status and user entries."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    # List all users in database
+    try:
+        all_users = db.users_df
+        user_count = all_users.height if hasattr(all_users, 'height') else "Unknown"
+        
+        # Check specific user if ID provided
+        if context.args and len(context.args) > 0:
+            user_id = int(context.args[0])
+            user_info = db.get_user(user_id)
+            
+            if user_info:
+                await update.message.reply_text(
+                    f"✅ User ID {user_id} found in database:\n\n{user_info}"
+                )
+            else:
+                # Try alternate methods to find user
+                await update.message.reply_text(
+                    f"⚠️ User ID {user_id} not found with db.get_user\n\n"
+                    f"Checking raw dataframe..."
+                )
+                
+                # Try direct dataframe filter
+                try:
+                    user_rows = all_users.filter(pl.col("user_id") == user_id)
+                    if user_rows.height > 0:
+                        await update.message.reply_text(
+                            f"Found user in raw dataframe:\n\n{user_rows.row(0)}"
+                        )
+                    else:
+                        await update.message.reply_text(
+                            f"User {user_id} not found in raw dataframe"
+                        )
+                except Exception as e:
+                    await update.message.reply_text(f"Error filtering dataframe: {e}")
+        else:
+            # Show database stats
+            await update.message.reply_text(
+                f"📊 Database Status 📊\n\n"
+                f"Total users: {user_count}\n"
+                f"Column count: {len(all_users.columns) if hasattr(all_users, 'columns') else 'Unknown'}\n\n"
+                f"Use /debugdb <user_id> to check a specific user"
+            )
+    except Exception as e:
+        await update.message.reply_text(f"⚠️ Database check failed: {e}")
+
 # -------------------------------------- MANUAL FUNCTIONS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 
@@ -1569,7 +1943,7 @@ async def send_giveaway_message(context: ContextTypes.DEFAULT_TYPE) -> None:
     elif current_hour == 18:
         message = vfx_scheduler.get_welcome_message(18)
         message_type = "Giveaway Countdown"
-    elif current_hour == 23:
+    elif current_hour == 19:
         message = vfx_scheduler.get_welcome_message(19)
         message_type = "Giveaway Winner Announcement"
     else:
@@ -2122,23 +2496,873 @@ async def copy_template_callback(update: Update, context: ContextTypes.DEFAULT_T
                  f"you'll be notified and can communicate with them through the bot."
         )
 
+async def handle_auto_welcome_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle responses to the automated welcome message."""
+    user_id = update.effective_user.id
+    message_text = update.message.text
+    print(f"AUTO WELCOME RESPONSE: User ID {user_id}, Message: {message_text}")
+    
+    # Check if this user is in our auto_welcoming_users dict
+    auto_welcoming_users = context.bot_data.get("auto_welcoming_users", {})
+    if user_id in auto_welcoming_users:
+        user_name = auto_welcoming_users[user_id]["name"]
+        
+        # Get the current step from bot_data
+        user_states = context.bot_data.get("user_states", {})
+        current_step = user_states.get(str(user_id), None)
+        if not current_step:
+            current_step = user_states.get(user_id, None)  # Try with int key as well
+            
+        print(f"User {user_id} is at step: {current_step}")
+        print(f"User states: {user_states}")
+        
+        # CRITICAL: State-based processing must be strictly enforced
+        if current_step == "deposit_amount":
+            # Processing deposit amount after risk profile selection
+            import re
+            amount_match = re.search(r'(\d+(?:,\d+)*(?:\.\d+)?)', message_text)
+            if amount_match:
+                amount_str = amount_match.group(1).replace(',', '')
+                try:
+                    amount = int(float(amount_str))
+                    
+                    # Store deposit amount
+                    db.add_user({
+                        "user_id": user_id,
+                        "deposit_amount": amount,
+                        "last_response": message_text,
+                        "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                    
+                    # Show experience buttons
+                    keyboard = [
+                        [
+                            InlineKeyboardButton("Yes", callback_data="experience_yes"),
+                            InlineKeyboardButton("No", callback_data="experience_no")
+                        ],
+                        [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    
+                    await update.message.reply_text(
+                        f"<b>Deposit Amount:</b> ${amount} ✅\n\nHave you used a trading signals service before?",
+                        parse_mode='HTML',
+                        reply_markup=reply_markup
+                    )
+                    
+                    # Update state to previous_experience
+                    context.bot_data.setdefault("user_states", {})
+                    context.bot_data["user_states"][user_id] = "previous_experience"
+                    
+                    # Notify admin
+                    for admin_id in ADMIN_USER_ID:
+                        try:
+                            await context.bot.send_message(
+                                chat_id=admin_id,
+                                text=f"💰 User {user_name} (ID: {user_id}) indicated deposit amount: ${amount}"
+                            )
+                        except Exception as e:
+                            print(f"Error notifying admin {admin_id}: {e}")
+                except ValueError:
+                    # Not a valid number
+                    await update.message.reply_text(
+                        "Sorry, I couldn't understand that amount. Please enter a numeric value, for example: 1000"
+                    )
+            else:
+                # No number found
+                await update.message.reply_text(
+                    "Please provide a valid deposit amount. For example: 1000"
+                )
+            
+            # Exit function after handling this state
+            return
+                
+        elif current_step == "account_number" or current_step == "previous_experience":
+            # Process as account number (after experience or explicitly in account_number state)
+            print(f"Processing as account number: {message_text}")
+            
+            # Check if it looks like an account number
+            if message_text.isdigit() and len(message_text) == 6:
+                # Process account number
+                db.add_user({
+                    "user_id": user_id,
+                    "trading_account": message_text,
+                    "last_response": message_text,
+                    "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+                
+                # Attempt to verify the account
+                is_valid = auth.validate_account_format(message_text)
+                print(f"Account validation for {message_text}: {is_valid}")
+                
+                if is_valid:
+                    account_verified = auth.verify_account(message_text, user_id)
+                    print(f"Account verification for {message_text}: {account_verified}")
+                    
+                    if account_verified:
+                        db.mark_user_verified(user_id)
+                        
+                        # Show summary button
+                        keyboard = [
+                            [InlineKeyboardButton("📋 View Profile Summary", callback_data="view_summary")],
+                            [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        
+                        await update.message.reply_text(
+                            "<b>Account Verified:</b> ✅\n\n"
+                            "Thank you! Your MT5 account has been verified.\n\n"
+                            "Our team will set up your strategy based on your risk profile. "
+                            "You'll receive confirmation once everything is ready.",
+                            parse_mode='HTML',
+                            reply_markup=reply_markup
+                        )
+                        
+                        # Reset state after completion
+                        context.bot_data.setdefault("user_states", {})
+                        context.bot_data["user_states"][user_id] = "completed"
+                        
+                        # Send profile summary to admins
+                        await send_profile_summary_to_admins(context, user_id)
+                        
+                    else:
+                        # Account not verified
+                        keyboard = [
+                            [InlineKeyboardButton("Try Another Account", callback_data="edit_account")],
+                            [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        
+                        await update.message.reply_text(
+                            "<b>Account Not Found:</b> ⚠️\n\n"
+                            "We couldn't verify this account number in our system. "
+                            "Our team will review it manually, or you can try entering a different account number.",
+                            parse_mode='HTML',
+                            reply_markup=reply_markup
+                        )
+                        
+                        # Stay in same state
+                        context.bot_data.setdefault("user_states", {})
+                        context.bot_data["user_states"][user_id] = "account_pending"
+                
+                # Notify admin
+                for admin_id in ADMIN_USER_ID:
+                    try:
+                        await context.bot.send_message(
+                            chat_id=admin_id,
+                            text=f"🔢 User {user_name} (ID: {user_id}) provided account: {message_text}\n"
+                                 f"Verified: {'✅' if is_valid and account_verified else '❌'}"
+                        )
+                    except Exception as e:
+                        print(f"Error notifying admin {admin_id}: {e}")
+            else:
+                # Not a valid account format
+                await update.message.reply_text(
+                    "That doesn't look like a valid account number. Please provide a 6-digit MT5 account number."
+                )
+            
+            # Exit function after handling this state
+            return
+                
+        # Handle other specific conversation commands/states
+        
+        # If we get here, we're not in a defined state or we're handling generic text
+        # First, check for known commands
+        if message_text and message_text.startswith("/guided"):
+            # Start guided flow with buttons for risk profile
+            keyboard = [
+                [
+                    InlineKeyboardButton("Low Risk", callback_data="risk_low"),
+                    InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
+                    InlineKeyboardButton("High Risk", callback_data="risk_high")
+                ],
+                [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                "<b>Let's get started with your profile setup!</b>\n\nWhat risk profile would you like on your account?",
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+            
+            # Store current step in user data
+            context.bot_data.setdefault("user_states", {})
+            context.bot_data["user_states"][user_id] = "risk_profile"
+            return
+                
+        # If we don't have a specific state yet, try to interpret the message
+        # But only do this if we're not already in a structured flow
+        if not current_step or current_step == "initial":
+            # Check for risk profile keywords
+            if any(keyword in message_text.lower() for keyword in ["low", "medium", "high", "risk"]):
+                # Extract risk level (low/medium/high)
+                risk_level = None
+                if "low" in message_text.lower():
+                    risk_level = "low"
+                elif "medium" in message_text.lower():
+                    risk_level = "medium" 
+                elif "high" in message_text.lower():
+                    risk_level = "high"
+                
+                if risk_level:
+                    # Convert to numeric risk appetite (1-3 for low, 4-7 for medium, 8-10 for high)
+                    risk_appetite = {"low": 2, "medium": 5, "high": 8}.get(risk_level, 5)
+                    
+                    db.add_user({
+                        "user_id": user_id,
+                        "risk_appetite": risk_appetite,
+                        "risk_profile_text": risk_level,
+                        "last_response": message_text,
+                        "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                    
+                    # Add button option for deposit amount
+                    keyboard = [
+                        [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    
+                    await update.message.reply_text(
+                        f"<b>Risk Profile:</b> {risk_level.capitalize()} ✅\n\n"
+                        f"Thank you! This will help us configure your trading strategy appropriately.\n\n"
+                        f"How much capital are you planning to fund your account with?",
+                        parse_mode='HTML',
+                        reply_markup=reply_markup
+                    )
+                    
+                    # CRITICAL: Set the next step to get deposit amount
+                    context.bot_data.setdefault("user_states", {})
+                    context.bot_data["user_states"][user_id] = "deposit_amount"
+                    return
+            
+            # Check for capital/deposit amount (only if not already in a flow)
+            elif any(keyword in message_text.lower() for keyword in ["$", "usd", "eur", "gbp", "deposit", "fund"]) or (message_text.strip().isdigit() and not (message_text.isdigit() and len(message_text) == 6)):
+                # Avoid interpreting 6-digit numbers as amounts if they could be account numbers
+                # Try to extract a number from the message
+                import re
+                amount_match = re.search(r'(\d+(?:,\d+)*(?:\.\d+)?)', message_text)
+                if amount_match:
+                    amount_str = amount_match.group(1).replace(',', '')
+                    try:
+                        amount = int(float(amount_str))
+                        
+                        db.add_user({
+                            "user_id": user_id,
+                            "deposit_amount": amount,
+                            "last_response": message_text,
+                            "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        })
+                        
+                        # Show experience buttons
+                        keyboard = [
+                            [
+                                InlineKeyboardButton("Yes", callback_data="experience_yes"),
+                                InlineKeyboardButton("No", callback_data="experience_no")
+                            ],
+                            [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        
+                        await update.message.reply_text(
+                            f"<b>Deposit Amount:</b> ${amount} ✅\n\n"
+                            f"Thank you! This will help us tailor the strategy to your capital.\n\n"
+                            f"Have you used a trading signals service before?",
+                            parse_mode='HTML',
+                            reply_markup=reply_markup
+                        )
+                        
+                        # CRITICAL: Set the next step for experience
+                        context.bot_data.setdefault("user_states", {})
+                        context.bot_data["user_states"][user_id] = "previous_experience"
+                        return
+                    except ValueError:
+                        # Not a valid number, store as is
+                        db.add_user({
+                            "user_id": user_id,
+                            "notes": f"Possible deposit amount: {message_text}",
+                            "last_response": message_text,
+                            "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        })
+                else:
+                    # No number found, store as is
+                    db.add_user({
+                        "user_id": user_id,
+                        "notes": f"Possible deposit amount: {message_text}",
+                        "last_response": message_text,
+                        "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+        
+        # General response - store it anyway
+        db.add_user({
+            "user_id": user_id,
+            "notes": f"Response: {message_text}",
+            "last_response": message_text,
+            "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        # Send a generic acknowledgment with guidance if we haven't determined a specific flow
+        keyboard = [
+            [InlineKeyboardButton("Start Guided Setup", callback_data="start_guided")],
+            [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            "Thank you for your response. Our team will review your information.\n\n"
+            "Would you like to use our guided setup with buttons instead? This makes the process easier.",
+            parse_mode='HTML',
+            reply_markup=reply_markup
+        )
+        
+        # Forward this message to the admin
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=f"📨 Message from {user_name} (ID: {user_id}):\n\n{message_text}"
+                )
+            except Exception as e:
+                print(f"Error forwarding message to admin {admin_id}: {e}")
+
+async def view_profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'View User Profile' button callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    
+    if callback_data.startswith("view_profile_"):
+        try:
+            user_id = int(callback_data.split("_")[2])
+            print(f"Viewing profile for user ID: {user_id}")
+            
+            # Get user info from database with error handling
+            try:
+                user_info = db.get_user(user_id)
+                print(f"Retrieved user info: {user_info}")
+            except Exception as e:
+                print(f"Error getting user from database: {e}")
+                user_info = None
+                
+            # If user not found in our db, check if they're in auto_welcoming_users
+            if not user_info:
+                print(f"User {user_id} not found in database, checking auto_welcoming_users")
+                auto_welcoming_users = context.bot_data.get("auto_welcoming_users", {})
+                
+                if user_id in auto_welcoming_users:
+                    user_name = auto_welcoming_users[user_id].get("name", "Unknown User")
+                    
+                    # Create a basic profile with the info we have
+                    profile = f"👤 USER PROFILE (Partial Info): {user_name}\n\n"
+                    profile += f"User ID: {user_id}\n"
+                    profile += f"Source: {auto_welcoming_users[user_id].get('source_channel', 'Unknown')}\n"
+                    profile += f"WARNING: Complete profile not found in database\n\n"
+                    
+                    # Add action buttons
+                    keyboard = [
+                        [InlineKeyboardButton("Start Conversation", callback_data=f"start_conv_{user_id}")],
+                        [InlineKeyboardButton("View Auto Welcoming Info", callback_data=f"view_welcoming_{user_id}")]
+                    ]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    
+                    await query.edit_message_text(
+                        text=profile,
+                        reply_markup=reply_markup
+                    )
+                    return
+                else:
+                    await query.edit_message_text(
+                        text=f"⚠️ User {user_id} not found in database or auto-welcoming lists"
+                    )
+                    return
+            
+            # Now format user profile with available info
+            profile = f"👤 USER PROFILE: {user_info.get('first_name', 'Unknown')} {user_info.get('last_name', '')}\n\n"
+            profile += f"User ID: {user_id}\n"
+            profile += f"Username: @{user_info.get('username', 'None')}\n"
+            profile += f"Risk Appetite: {user_info.get('risk_appetite', 'Not specified')}/10\n"
+            profile += f"Risk Profile: {user_info.get('risk_profile_text', 'Not specified')}\n"
+            profile += f"Deposit Amount: ${user_info.get('deposit_amount', 'Not specified')}\n"
+            profile += f"Trading Account: {user_info.get('trading_account', 'Not provided')}\n"
+            profile += f"Account Verified: {'✅ Yes' if user_info.get('is_verified') else '❌ No'}\n"
+            profile += f"Join Date: {user_info.get('join_date', 'Unknown')}\n"
+            profile += f"Last Active: {user_info.get('last_active', 'Unknown')}\n"
+            profile += f"Last Response: {user_info.get('last_response', 'None')}\n\n"
+            
+            # Add action buttons
+            keyboard = [
+                [InlineKeyboardButton("Start Conversation", callback_data=f"start_conv_{user_id}")],
+                [InlineKeyboardButton("Add to VIP Signals", callback_data=f"add_vip_signals_{user_id}")],
+                [InlineKeyboardButton("Add to VIP Strategy", callback_data=f"add_vip_strategy_{user_id}")],
+                [InlineKeyboardButton("Forward to Copier Team", callback_data=f"forward_copier_{user_id}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text(
+                text=profile,
+                reply_markup=reply_markup
+            )
+            
+        except Exception as e:
+            print(f"Error viewing user profile: {e}")
+            await query.edit_message_text(
+                text=f"⚠️ Error viewing user profile: {e}"
+            )
+
+async def risk_profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle risk profile button selection."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    risk_option = query.data.replace("risk_", "")
+    
+    # Map text options to numeric values
+    risk_values = {"low": 2, "medium": 5, "high": 8}
+    risk_appetite = risk_values.get(risk_option, 5)
+    
+    # Store in database
+    db.add_user({
+        "user_id": user_id,
+        "risk_appetite": risk_appetite,
+        "risk_profile_text": risk_option,
+        "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    # Ask for deposit amount next
+    keyboard = [
+        [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"<b>Risk Profile:</b> {risk_option.capitalize()} ✅\n\nHow much capital are you planning to fund your account with?",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # CRITICAL: Store state in bot_data, not user_data
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "deposit_amount"
+    print(f"Set state for user {user_id} to deposit_amount in bot_data")
+    
+    # Also notify admin of the selection
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=f"📊 User {user_id} selected risk profile: {risk_option.capitalize()}"
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+async def restart_process_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle restart process button."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    
+    # Clear conversation state
+    if "user_states" in context.bot_data and user_id in context.bot_data["user_states"]:
+        del context.bot_data["user_states"][user_id]
+    
+    # Start over with risk profile buttons
+    keyboard = [
+        [
+            InlineKeyboardButton("Low Risk", callback_data="risk_low"),
+            InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
+            InlineKeyboardButton("High Risk", callback_data="risk_high")
+        ],
+        [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        "<b>Process restarted!</b>\n\nWhat risk profile would you like on your account?",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # Set state to risk_profile
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "risk_profile"
+    
+    # Notify admin of restart
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=f"🔄 User {user_id} has restarted the registration process"
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+async def experience_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle previous experience button selection."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    experience = query.data.replace("experience_", "")
+    
+    # Store in database
+    db.add_user({
+        "user_id": user_id,
+        "previous_experience": experience,
+        "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    # Ask for account number next
+    keyboard = [
+        [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"<b>Previous Experience:</b> {experience.capitalize()} ✅\n\nPlease provide your MT5 account number to continue.",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # IMPORTANT: Make sure we're setting the state in bot_data
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "account_number"
+    print(f"Set state for user {user_id} to account_number in bot_data")
+    
+    # Notify admin of the selection
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=f"📊 User {user_id} previous experience: {experience.capitalize()}"
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+async def start_guided_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle start guided setup button."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    
+    # Start guided flow with buttons for risk profile
+    keyboard = [
+        [
+            InlineKeyboardButton("Low Risk", callback_data="risk_low"),
+            InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
+            InlineKeyboardButton("High Risk", callback_data="risk_high")
+        ],
+        [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        "<b>Let's get started with your profile setup!</b>\n\nWhat risk profile would you like on your account?",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # Store current step in user data
+    context.user_data["response_step"] = "risk_profile"
+
+async def view_summary_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle view profile summary button."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    print(f"View summary requested by user ID: {user_id}")
+    
+    # Try multiple methods to get user info
+    user_info = None
+    error_messages = []
+    
+    # Method 1: Try db.get_user
+    try:
+        print("Attempting to retrieve user via db.get_user")
+        user_info = db.get_user(user_id)
+        if user_info:
+            print(f"Successfully retrieved user via db.get_user: {user_info}")
+    except Exception as e:
+        error_msg = f"db.get_user error: {e}"
+        print(error_msg)
+        error_messages.append(error_msg)
+    
+    # Method 2: Try auto_welcoming_users dict
+    if not user_info:
+        try:
+            print("Attempting to retrieve from auto_welcoming_users")
+            auto_welcoming_users = context.bot_data.get("auto_welcoming_users", {})
+            if user_id in auto_welcoming_users:
+                print(f"User found in auto_welcoming_users")
+                # Create a basic info dict
+                user_info = {
+                    "user_id": user_id,
+                    "first_name": auto_welcoming_users[user_id].get("name", "Unknown"),
+                    "source_channel": auto_welcoming_users[user_id].get("source_channel", "Unknown")
+                }
+                
+                # Check if we have risk profile and deposit amount in our state tracking
+                user_states = context.bot_data.get("user_states", {})
+                if user_id in user_states:
+                    user_info["current_state"] = user_states[user_id]
+                
+                # Add trading account info if we have it
+                if hasattr(auth, 'verified_users') and user_id in auth.verified_users:
+                    print(f"Found user in auth.verified_users")
+                    user_info["trading_account"] = auth.verified_users[user_id].get("account_number", "")
+                    user_info["is_verified"] = True
+                    user_info["account_owner"] = auth.verified_users[user_id].get("account_owner", "")
+        except Exception as e:
+            error_msg = f"Auto_welcoming access error: {e}"
+            print(error_msg)
+            error_messages.append(error_msg)
+    
+    # Collect profile information from multiple sources if needed
+    if user_info:
+        # Try to get risk profile from context if not in user_info
+        if ("risk_appetite" not in user_info or not user_info["risk_appetite"]) and "risk_profile" in context.user_data:
+            user_info["risk_profile_text"] = context.user_data["risk_profile"]
+            
+        # Try to get trading account from auth system if not in user_info
+        if "trading_account" not in user_info and hasattr(auth, 'verified_users'):
+            if user_id in auth.verified_users:
+                user_info["trading_account"] = auth.verified_users[user_id].get("account_number", "")
+                user_info["is_verified"] = True
+    
+    if not user_info:
+        # If we still don't have user_info, create a minimal one
+        user_info = {
+            "user_id": user_id,
+            "retrieval_errors": error_messages
+        }
+    
+    # Format summary with whatever info we have
+    summary = f"""<b>📋 Your Registration Summary</b>
+
+Thank you for providing your information! Here's what we've got:
+
+<b>Risk Profile:</b> {user_info.get('risk_profile_text', 'Not specified').capitalize() if user_info.get('risk_profile_text') else f"{user_info.get('risk_appetite', 0)}/10"}
+<b>Deposit Amount:</b> ${user_info.get('deposit_amount', 'Not specified')}
+<b>Previous Experience:</b> {user_info.get('previous_experience', 'Not specified').capitalize() if user_info.get('previous_experience') else 'Not specified'}
+<b>MT5 Account:</b> {user_info.get('trading_account', 'Not specified')} {' ✅' if user_info.get('is_verified') else ''}
+"""
+
+    # Additional profile info if verified
+    if user_info.get('is_verified') and user_info.get('account_owner'):
+        summary += f"<b>Account Owner:</b> {user_info.get('account_owner')}\n"
+    
+    summary += """
+<b>What's Next?</b>
+Our team will review your information and set up your account for our signals service. You should receive confirmation within the next 24 hours.
+
+If you need to make any changes or have questions, please let us know!"""
+
+    # Add buttons for edit or confirm
+    keyboard = [
+        [InlineKeyboardButton("✅ Confirm Information", callback_data="confirm_registration")],
+        [InlineKeyboardButton("✏️ Edit Information", callback_data="edit_registration")],
+        [InlineKeyboardButton("👨‍💼 Speak to an Advisor", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        summary,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # Force send a summary to admin
+    try:
+        asyncio.create_task(send_profile_summary_to_admins(context, user_id))
+    except Exception as e:
+        print(f"Error sending profile summary to admins: {e}")
+
+async def confirm_registration_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle confirmation of registration."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    
+    # Mark registration as confirmed in database
+    db.add_user({
+        "user_id": user_id,
+        "registration_confirmed": True,
+        "registration_confirmed_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    await query.edit_message_text(
+        "✅ <b>Registration Confirmed!</b>\n\n"
+        "Thank you for confirming your information. Our team will be in touch soon to complete your setup.\n\n"
+        "If you have any questions in the meantime, feel free to ask!",
+        parse_mode='HTML'
+    )
+    
+    # Send profile summary to admins
+    await send_profile_summary_to_admins(context, user_id)
+    
+    # Notify admin of confirmation
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=f"✅ User {user_id} has confirmed their registration"
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+async def edit_registration_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle edit registration button."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    
+    # Provide options for what to edit
+    keyboard = [
+        [InlineKeyboardButton("Risk Profile", callback_data="edit_risk")],
+        [InlineKeyboardButton("Deposit Amount", callback_data="edit_deposit")],
+        [InlineKeyboardButton("MT5 Account", callback_data="edit_account")],
+        [InlineKeyboardButton("↩️ Back to Summary", callback_data="view_summary")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        "<b>Edit Registration</b>\n\nWhat information would you like to update?",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+
+async def speak_advisor_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle speak to advisor button."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    user_info = db.get_user(user_id)
+    user_name = user_info.get('first_name', 'User') if user_info else 'User'
+    
+    # Notify admin that user wants to speak to an advisor
+    for admin_id in ADMIN_USER_ID:
+        try:
+            keyboard = [
+                [InlineKeyboardButton("Start Conversation", callback_data=f"start_conv_{user_id}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=f"🔔 <b>ADVISOR REQUEST</b> 🔔\n\n"
+                     f"User {user_name} (ID: {user_id}) has requested to speak with an advisor.\n\n"
+                     f"Please respond to them as soon as possible.",
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+    
+    await query.edit_message_text(
+        "🔔 <b>Advisor Request Sent</b>\n\n"
+        "Thank you for your request. One of our advisors will be in touch with you shortly.\n\n"
+        "Please keep an eye on your messages for their response.",
+        parse_mode='HTML'
+    )
+
+async def edit_account_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'Try Another Account' button click."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    
+    # Reset account number state to ask for a new one
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "account_number"
+    
+    await query.edit_message_text(
+        "<b>Account Number</b> ⚠️\n\n"
+        "Please provide a different MT5 account number:",
+        parse_mode='HTML'
+    )
+    
+    # Notify admin
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=f"🔄 User {user_id} is trying another account number"
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+async def start_guided_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle 'Start Guided Setup' button click."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = update.effective_user.id
+    
+    # Start guided flow with risk profile buttons
+    keyboard = [
+        [
+            InlineKeyboardButton("Low Risk", callback_data="risk_low"),
+            InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
+            InlineKeyboardButton("High Risk", callback_data="risk_high")
+        ],
+        [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        "<b>Let's get started with the guided setup!</b>\n\n"
+        "What risk profile would you like on your account?",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # Set state to risk_profile
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "risk_profile"
+    
+    # Notify admin
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=f"🚀 User {user_id} started the guided setup process"
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
 
 # -------------------------------------- SIGNALS HANDLERS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 signal_dispatcher = None
-
+signal_system_initialized = False
 async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
     """Initialize the signal system after bot startup"""
-    global signal_dispatcher
+    global signal_dispatcher, signal_system_initialized
     
-    # Initialize signal dispatcher with the bot instance
-    signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
+    # Skip if already initialized
+    if signal_system_initialized:
+        logger.info("Signal system already initialized, skipping")
+        return
     
-    # Log successful initialization
-    logger.info("Signal system initialized successfully")
-    
-    # Schedule the first signal check
-    await signal_dispatcher.check_and_send_signal()
+    try:
+        logger.info("Starting signal system initialization...")
+        
+        # Initialize signal dispatcher with the bot instance
+        signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
+        
+        # Mark as initialized
+        signal_system_initialized = True
+        logger.info("Signal system initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Error in init_signal_system: {e}")
 
 # Define the scheduled function
 async def check_and_send_signals(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -2169,7 +3393,6 @@ async def report_signal_system_status(context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"Next check eligible: {'Yes' if hours_since >= signal_dispatcher.min_signal_interval_hours else 'No'}")
     except Exception as e:
         logger.error(f"Error generating status report: {e}")
-
 
 async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Command to check signal system status for admins"""
@@ -2225,6 +3448,12 @@ async def signal_status_command(update: Update, context: ContextTypes.DEFAULT_TY
         error_msg = f"Error retrieving signal status: {e}"
         logger.error(error_msg)
         await update.message.reply_text(f"⚠️ {error_msg}")
+
+async def check_and_send_signal_updates(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check for signal updates and send follow-up messages"""
+    global signal_dispatcher
+    if signal_dispatcher:
+        await signal_dispatcher.send_signal_updates()
 
 # -------------------------------------- MAIN ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -2522,6 +3751,64 @@ def main() -> None:
         pattern=r"^interest_"
     ))
     
+    application.add_handler(CallbackQueryHandler(
+        view_profile_callback,
+        pattern=r"^view_profile_"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        start_guided_callback,
+        pattern=r"^start_guided$"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        risk_profile_callback,
+        pattern=r"^risk_"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        experience_callback,
+        pattern=r"^experience_"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        restart_process_callback,
+        pattern=r"^restart_process$"
+    ))
+    
+
+    application.add_handler(CallbackQueryHandler(
+        confirm_registration_callback,
+        pattern=r"^confirm_registration$"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        edit_registration_callback,
+        pattern=r"^edit_registration$"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        speak_advisor_callback,
+        pattern=r"^speak_advisor$"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        edit_account_callback,
+        pattern=r"^edit_account$"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        view_summary_callback,
+        pattern=r"^view_summary$"
+    ))
+
+    application.add_handler(
+        MessageHandler(
+        filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
+        handle_auto_welcome_response,
+        block=False  
+    ))
+    
     # Add conversation handler for manual entry
     manual_entry_handler = ConversationHandler(
         entry_points=[
@@ -2545,10 +3832,12 @@ def main() -> None:
     application.add_handler(CommandHandler("forwardmt5", forward_mt5_command))
     application.add_handler(CommandHandler("testaccount", test_account_command))
     application.add_handler(CommandHandler("signalstatus", signal_status_command))
+    application.add_handler(CommandHandler("debugdb", debug_db_command))
 
 
     application.add_handler(MessageHandler(filters.ALL, silent_update_logger), group=999)
-
+    
+    
 
     # Add conversation handler for the CAPTCHA and authentication process
     auth_conv_handler = ConversationHandler(
@@ -2597,11 +3886,18 @@ def main() -> None:
     # # Add periodic job for sending messages (interval from settings)
     job_queue = application.job_queue
     
-    
+    """------------------------------
+    --- Send Report Messages ----- 
+    ---------------------------------"""
     # Schedule daily signup report
     job_queue.run_daily(
         send_daily_signup_report,
         time=time(hour=0, minute=0)
+    )
+    # Schedule daily response report
+    job_queue.run_daily(
+        send_daily_response_report,
+        time=time(hour=23, minute=0)
     )
     
     # Calculate the first run time for hourly job - at the start of the next hour
@@ -2674,9 +3970,9 @@ def main() -> None:
     # Schedule interval messages - runs every 20 minutes
     # Calculate time until next 20-minute mark
     minutes_now = now.minute
-    minutes_until_next_interval = 5 - (minutes_now % 5)
+    minutes_until_next_interval = 21 - (minutes_now % 21)
     if minutes_until_next_interval == 0:
-        minutes_until_next_interval = 5
+        minutes_until_next_interval = 21
     
     next_interval = now + timedelta(minutes=minutes_until_next_interval)
     next_interval = next_interval.replace(second=0, microsecond=0)
@@ -2684,7 +3980,7 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=21),
         first=seconds_until_next_interval  # Time in seconds until first run
     )
     
@@ -2693,9 +3989,9 @@ def main() -> None:
          Strategy Channel Messages
     ------------------------------------"""
      # Schedule strategy channel messages - every 45 minutes (different frequency)
-    minutes_until_strategy = 5 - (minutes_now % 5)
+    minutes_until_strategy = 30 - (minutes_now % 30)
     if minutes_until_strategy == 0:
-        minutes_until_strategy = 5
+        minutes_until_strategy = 30
     
     next_strategy = now + timedelta(minutes=minutes_until_strategy)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2703,16 +3999,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_strategy_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=30),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Prop-Capital Channel Messages
     ------------------------------------"""
-    minutes_until_propMessage = 5 - (minutes_now % 5)
+    minutes_until_propMessage = 35 - (minutes_now % 35)
     if minutes_until_propMessage == 0:
-        minutes_until_propMessage = 5
+        minutes_until_propMessage = 35
     
     next_strategy = now + timedelta(minutes=minutes_until_propMessage)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2720,16 +4016,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_prop_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=35),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Signals Channel Messages
     ------------------------------------"""
-    minutes_until_signals = 5 - (minutes_now % 5)
+    minutes_until_signals = 36 - (minutes_now % 36)
     if minutes_until_signals == 0:
-        minutes_until_signals = 5
+        minutes_until_signals = 36
     
     next_strategy = now + timedelta(minutes=minutes_until_signals)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2737,16 +4033,16 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_signals_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=36),
         first=seconds_until_strategy
     )
     
     """---------------------------------
          Education Channel Messages
     ------------------------------------"""
-    minutes_until_educationMessages = 5 - (minutes_now % 5)
+    minutes_until_educationMessages = 40 - (minutes_now % 40)
     if minutes_until_educationMessages == 0:
-        minutes_until_educationMessages = 5
+        minutes_until_educationMessages = 40
     
     next_strategy = now + timedelta(minutes=minutes_until_educationMessages)
     next_strategy = next_strategy.replace(second=0, microsecond=0)
@@ -2754,7 +4050,7 @@ def main() -> None:
     
     job_queue.run_repeating(
         send_ed_interval_message,
-        interval=timedelta(minutes=5),
+        interval=timedelta(minutes=40),
         first=seconds_until_strategy
     )
     
@@ -2762,13 +4058,13 @@ def main() -> None:
          Signal Jobs
     ------------------------------------"""
     
-    job_queue.run_once(init_signal_system, 60)
+    job_queue.run_once(init_signal_system, 30)
     
     # Schedule regular signal checks - run every hour
     job_queue.run_repeating(
         check_and_send_signals,
-        interval=600,  # 10 Min
-        first=120  # First check 2 minutes after bot start
+        interval=300,  # 5 Min
+        first=40  # First check 1 minute after bot start
     )
     
     job_queue.run_repeating(
@@ -2777,7 +4073,17 @@ def main() -> None:
         first=600  # First report 10 minutes after startup
     )
     
+    job_queue.run_repeating(
+        lambda context: asyncio.create_task(signal_dispatcher.check_and_apply_trailing_stops()),
+        interval=120,  # Every 5 minutes
+        first=60  # Start 2 minutes after bot startup
+    )
     
+    job_queue.run_daily(
+        lambda context: asyncio.create_task(signal_dispatcher.send_daily_stats()),
+        time=time(hour=22, minute=0)
+    )
+  
     
     # Log scheduled jobs
     logger.info(f"Scheduled hourly welcome messages starting in {seconds_until_next_hour:.2f} seconds")
