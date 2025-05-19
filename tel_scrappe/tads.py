@@ -1,10 +1,11 @@
 """
 Telegram Automated Discovery System (TADS)
 
-Este sistema automatiza el proceso de descubrimiento de canales, grupos y usuarios en Telegram.
-Se integra con un bot existente que genera señales y modera grupos.
+This system automatize the process of discovering channels, groups, and users in Telegram.
+Save all data of the entities in a database.
+It integrate with an existing bot that generates trading signals and moderates channels.
+Developed to work with funtions from existing class TelegramEntityFinder2 on file full2.py
 
-Desarrollado para trabajar con las funciones existentes en full2.py
 """
 
 import asyncio
@@ -36,7 +37,7 @@ logging.basicConfig(
 logger = logging.getLogger("TADS")
 
 class TelegramDiscoveryTask:
-    """Representa una tarea programada de descubrimiento."""
+    """Represent a single task in the TADS system."""
     
     def __init__(
         self, 
@@ -60,7 +61,7 @@ class TelegramDiscoveryTask:
         self.last_attempt_time = None
     
     def to_dict(self) -> dict:
-        """Convierte la tarea a un diccionario para serialización."""
+        """Converts the task to a dictionary for serialization storage."""
         return {
             "task_id": self.task_id,
             "task_type": self.task_type,
@@ -77,7 +78,7 @@ class TelegramDiscoveryTask:
     
     @classmethod
     def from_dict(cls, data: dict) -> 'TelegramDiscoveryTask':
-        """Crea una tarea desde un diccionario deserializado."""
+        """Create a TelegramDiscoveryTask instance task from a dictionary."""
         task = cls(
             task_id=data["task_id"],
             task_type=data["task_type"],
@@ -94,7 +95,7 @@ class TelegramDiscoveryTask:
         return task
 
 class DiscoveryState:
-    """Representa el estado actual del sistema de descubrimiento."""
+    """Represent the actual state of the discovery process."""
     
     def __init__(self):
         self.tasks: List[TelegramDiscoveryTask] = []
@@ -121,7 +122,7 @@ class DiscoveryState:
         self.current_config: Dict[str, Any] = {}
     
     def to_dict(self) -> dict:
-        """Convierte el estado a un diccionario para serialización."""
+        """Converts the state to a dictionary for serialization."""
         return {
             "tasks": [task.to_dict() for task in self.tasks],
             "discovered_entities": list(self.discovered_entities),
@@ -135,7 +136,8 @@ class DiscoveryState:
     
     @classmethod
     def from_dict(cls, data: dict) -> 'DiscoveryState':
-        """Crea un estado desde un diccionario deserializado."""
+
+        """Create a DiscoveryState instance from a dictionary deserialized."""
         state = cls()
         state.tasks = [TelegramDiscoveryTask.from_dict(task_data) for task_data in data["tasks"]]
         state.discovered_entities = set(data["discovered_entities"])
@@ -149,9 +151,10 @@ class DiscoveryState:
 
 class TelegramDiscoveryBot:
     """
-    Sistema automatizado para descubrimiento de entidades de Telegram.
-    Utiliza las funciones de TelegramEntityFinder2 para orquestar un proceso
-    de descubrimiento automatizado e inteligente.
+    Main class for the Telegram Automated Discovery Bot .
+    This class handles the core functionality of the bot, including task scheduling, API usage, and state management.
+    Utilize the TelegramEntityFinder2 for entity discovery (channel, group, supergroup, members) and joining.
+
     """
     
     def __init__(
@@ -182,7 +185,8 @@ class TelegramDiscoveryBot:
         self.bot_api_key = self.config.get("bot_api_key", "")
     
     def _load_config(self) -> dict:
-        """Carga la configuración desde el archivo JSON o crea una por defecto."""
+        """ Load configuration from JSON file or create a default one."""
+        
         default_config = {
             "run_interval_minutes": 30,
             "categories": {
@@ -223,7 +227,7 @@ class TelegramDiscoveryBot:
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
-                    logger.info(f"Configuración cargada desde {self.config_file}")
+                    logger.info(f"Configuration loaded from: {self.config_file}")
                     # Actualizar config predeterminada con valores del archivo
                     # (esto preserva valores predeterminados para claves faltantes)
                     self._deep_update(default_config, config)
@@ -232,14 +236,16 @@ class TelegramDiscoveryBot:
                 # Crear archivo de configuración inicial
                 with open(self.config_file, 'w', encoding='utf-8') as f:
                     json.dump(default_config, f, indent=4)
-                logger.info(f"Archivo de configuración creado en {self.config_file}")
+                logger.info(f"Configuration file created in: {self.config_file}")
                 return default_config
         except Exception as e:
-            logger.error(f"Error cargando configuración: {e}")
+            logger.error(f"Error loading configuration: {e}")
             return default_config
     
     def _deep_update(self, original, update):
-        """Actualiza recursivamente un diccionario con otro."""
+        """Update a nested dictionary or similar mapping."""
+        """Update recursively a dictionary with a another one."""
+
         for key, value in update.items():
             if key in original and isinstance(original[key], dict) and isinstance(value, dict):
                 self._deep_update(original[key], value)
@@ -247,46 +253,52 @@ class TelegramDiscoveryBot:
                 original[key] = value
     
     async def initialize_automated_discovery(self) -> bool:
-        """Inicializa el sistema de descubrimiento automatizado."""
+        """Initialize and start the Telegram automated discovery system."""
         try:
-            logger.info("Inicializando sistema de descubrimiento automatizado...")
+            logger.info("Inicializing Telegram automated discovery system ...")
             
             # Cargar estado previo si existe
             self._load_state()
             
             # Inicializar TelegramEntityFinder2
             self.finder = TelegramEntityFinder2()
-            if not self.finder.initialize():
+            
+            # Llamar directamente al método asíncrono
+            if not await self.finder.initialize_async():
                 logger.error("No se pudo inicializar TelegramEntityFinder2")
                 return False
+            
+            # if not self.finder.initialize():
+            #     logger.error("Could not initialize TelegramEntityFinder2")
+            #     return False
             
             # Actualizar configuración en el estado
             self.state.current_config = self.config
             
-            logger.info("Sistema de descubrimiento automatizado inicializado correctamente")
+            logger.info("System initialized successfully")
             return True
             
         except Exception as e:
-            logger.error(f"Error inicializando sistema: {e}")
+            logger.error(f"Error initializing system: {e}")
             traceback.print_exc()
             return False
     
     def _load_state(self) -> None:
-        """Carga el estado anterior del sistema si existe."""
+        """Load the current state from a file if exist."""
         try:
             if os.path.exists(self.state_file):
                 with open(self.state_file, 'r', encoding='utf-8') as f:
                     state_data = json.load(f)
                     self.state = DiscoveryState.from_dict(state_data)
-                    logger.info(f"Estado cargado desde {self.state_file}: Ciclo {self.state.cycle_count}")
+                    logger.info(f"Load state from: {self.state_file}: Cycle {self.state.cycle_count}")
             else:
-                logger.info("No se encontró archivo de estado previo. Iniciando con estado nuevo.")
+                logger.info("Could not create file of previous state. Initializing with new state.")
         except Exception as e:
-            logger.error(f"Error cargando estado: {e}")
+            logger.error(f"Error loadig state: {e}")
             # Continuar con estado nuevo
     
     def _save_state(self) -> None:
-        """Guarda el estado actual del sistema."""
+        """Save the current state to a file."""
         try:
             state_data = self.state.to_dict()
             
@@ -297,22 +309,24 @@ class TelegramDiscoveryBot:
                     import shutil
                     shutil.copy2(self.state_file, backup_file)
                 except Exception as e:
-                    logger.warning(f"No se pudo crear copia de respaldo del estado: {e}")
+                    logger.warning(f"Could not create a backup of the state: {e}")
             
             # Guardar estado actual
             with open(self.state_file, 'w', encoding='utf-8') as f:
                 json.dump(state_data, f, indent=4)
             
-            logger.debug(f"Estado guardado en {self.state_file}")
+            logger.debug(f"State saved on: {self.state_file}")
         except Exception as e:
-            logger.error(f"Error guardando estado: {e}")
+            logger.error(f"Error saving state: {e}")
     
     def schedule_discovery_tasks(self) -> List[TelegramDiscoveryTask]:
         """
-        Genera y programa tareas de descubrimiento según la configuración actual.
-        Devuelve la lista de tareas programadas para el ciclo actual.
+        Generate and schedule discovery tasks based on the current configuration.
+        
+        Returns:
+            List[TelegramDiscoveryTask]: List of scheduled tasks for the current cycle.
         """
-        logger.info("Programando tareas de descubrimiento...")
+        logger.info("Programing discovery tasks...")
         
         # Limpiar tareas completadas o fallidas
         self.state.tasks = [task for task in self.state.tasks 
@@ -400,11 +414,11 @@ class TelegramDiscoveryBot:
         # Añadir nuevas tareas a la lista existente
         self.state.tasks.extend(new_tasks)
         
-        logger.info(f"Se programaron {len(new_tasks)} nuevas tareas. Total: {len(self.state.tasks)}")
+        logger.info(f" {len(new_tasks)}  New tasks were nuevas tareas. Total: {len(self.state.tasks)}")
         return self.state.tasks
     
     def _generate_random_tasks(self, count: int) -> List[TelegramDiscoveryTask]:
-        """Genera tareas aleatorias para diversificar la búsqueda."""
+        """"""
         random_tasks = []
         
         # Lista de términos genéricos para diversificar
@@ -437,13 +451,13 @@ class TelegramDiscoveryBot:
     
     async def execute_discovery_cycle(self, tasks: List[TelegramDiscoveryTask]) -> dict:
         """
-        Ejecuta un ciclo completo de descubrimiento utilizando las tareas programadas.
+        Execute a complete discovery cycle, including task execution and entity discovery.
         
         Args:
-            tasks: Lista de tareas a ejecutar
+            tasks: List of TelegramDiscoveryTask objects to be executed.
             
         Returns:
-            Resultados del ciclo de descubrimiento
+            Results of the discovery cycle.
         """
         cycle_results = {
             "cycle_id": str(int(time.time())),

@@ -150,15 +150,20 @@ class TelegramEntityFinder2:
     #############################################
     # SECCIÓN 1: INICIALIZACIÓN Y CONFIGURACIÓN #
     #############################################
-    
+
     def initialize(self):
+        """Inicializa el cliente y prepara los archivos CSV (versión sincrónica)"""
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(self.initialize_async())
+    
+    async def initialize_async(self):
         """Inicializa el cliente y prepara los archivos CSV"""
         
         try:
             # Inicializar cliente de Telegram
             
             # Inicializar cliente de Telegram
-            self.client = self.get_telegram_client()
+            self.client = await self.get_telegram_client_async()
             
             # Preparar archivo CSV para entidades
             file_exists = os.path.exists(CHANNELS_CSV)
@@ -205,6 +210,43 @@ class TelegramEntityFinder2:
     
     def get_telegram_client(self):
         """Obtiene o crea un cliente de Telegram"""
+        # if not os.path.exists(CREDENTIAL_FILE):
+        #     self.create_credentials_file()
+        
+        try:
+            # with open(CREDENTIAL_FILE, 'r') as f:
+            #     credentials = json.load(f)
+            
+            # client = TelegramClient(
+            #     session=credentials['phone'],
+            #     api_id=credentials['api_id'],
+            #     api_hash=credentials['api_hash'],
+            #     system_version="4.16.30-vxCUSTOM",  # Versión personalizada para evitar restricciones
+            #     device_model="Desktop",
+            #     app_version="1.0.0"
+            # )
+            
+            # client.connect()
+            
+            # if not client.is_user_authorized():
+            #     client.send_code_request(credentials['phone'])
+            #     code = input('Ingresa el código de verificación recibido: ')
+            #     client.sign_in(credentials['phone'], code)
+            
+            # me = client.get_me()
+            # logger.info(f"Conectado como: {me.first_name} {getattr(me, 'last_name', '')}")
+            
+            # return client
+
+            loop = asyncio.get_event_loop()
+            return loop.run_until_complete(self.get_telegram_client_async())
+        
+        except Exception as e:
+            logger.error(f"Error al iniciar cliente: {e}")
+            raise
+
+    async def get_telegram_client_async(self):
+        """Obtiene o crea un cliente de Telegram (versión asíncrona)"""
         if not os.path.exists(CREDENTIAL_FILE):
             self.create_credentials_file()
         
@@ -216,19 +258,19 @@ class TelegramEntityFinder2:
                 session=credentials['phone'],
                 api_id=credentials['api_id'],
                 api_hash=credentials['api_hash'],
-                system_version="4.16.30-vxCUSTOM",  # Versión personalizada para evitar restricciones
+                system_version="4.16.30-vxCUSTOM",
                 device_model="Desktop",
                 app_version="1.0.0"
             )
             
-            client.connect()
+            await client.connect()
             
-            if not client.is_user_authorized():
-                client.send_code_request(credentials['phone'])
+            if not await client.is_user_authorized():
+                await client.send_code_request(credentials['phone'])
                 code = input('Ingresa el código de verificación recibido: ')
-                client.sign_in(credentials['phone'], code)
+                await client.sign_in(credentials['phone'], code)
             
-            me = client.get_me()
+            me = await client.get_me()
             logger.info(f"Conectado como: {me.first_name} {getattr(me, 'last_name', '')}")
             
             return client
@@ -466,7 +508,7 @@ class TelegramEntityFinder2:
         
             # Verificar si ya tenemos esta entidad
             if entity_id in self.entities:
-                return None
+                return {"entity_id": entity_id, "already_exists": True, **self.entities[entity_id]}
             
             # Detectar tipo de entidad (mejorado para cubrir todos los tipos)
             entity_type = "unknown"
@@ -2992,6 +3034,548 @@ class TelegramEntityFinder2:
             traceback.print_exc()
             return 0
 
+    # async def discover_user_groups_improved(self, user_id, limit=10):
+    #     """
+    #     Descubre los grupos y canales en los que participa un usuario específico,
+    #     utilizando técnicas avanzadas para superar las limitaciones de la API.
+        
+    #     Args:
+    #         user_id: ID del usuario a analizar
+    #         limit: Número máximo de grupos/canales a devolver
+            
+    #     Returns:
+    #         Lista de entidades (grupos/canales) donde posiblemente participa el usuario
+    #     """
+    #     try:
+    #         logger.info(f"Descubriendo grupos/canales del usuario {user_id} (método mejorado)...")
+            
+    #         user_entities = []
+    #         discovered_entity_ids = set()  # Para evitar duplicados
+            
+    #         # 1. Intentar obtener el usuario primero para verificar que existe
+    #         try:
+    #             user = await self.client.get_entity(int(user_id))
+    #             logger.info(f"Usuario encontrado: {user.first_name} {getattr(user, 'last_name', '')}")
+    #             username = user.username if hasattr(user, 'username') else None
+    #         except Exception as e:
+    #             logger.error(f"No se pudo obtener información del usuario {user_id}: {e}")
+    #             return []
+            
+    #         # 2. MÉTODO PRINCIPAL: Búsqueda global de mensajes del usuario
+    #         # Este método es más efectivo porque busca en todos los grupos/canales
+    #         # públicos donde el usuario ha escrito, no solo aquellos donde ambos son miembros
+    #         if username:
+    #             try:
+    #                 from telethon.tl.functions.messages import SearchGlobalRequest
+    #                 from telethon.tl.types import InputPeerEmpty
+                    
+    #                 # Buscar mensajes globales de este usuario por su username
+    #                 search_query = f"from:@{username}"
+    #                 global_results = await self.client(SearchGlobalRequest(
+    #                     q=search_query,
+    #                     filter=None,
+    #                     min_date=None,
+    #                     max_date=None,
+    #                     offset_rate=0,
+    #                     offset_peer=InputPeerEmpty(),
+    #                     offset_id=0,
+    #                     limit=100  # Pedir más para tener más posibilidades
+    #                 ))
+                    
+    #                 if hasattr(global_results, 'messages') and global_results.messages:
+    #                     logger.info(f"Encontrados {len(global_results.messages)} mensajes globales del usuario")
+                        
+    #                     # Extraer las entidades únicas de estos mensajes
+    #                     for message in global_results.messages:
+    #                         try:
+    #                             if hasattr(message, 'peer_id'):
+    #                                 # Obtener entidad completa a partir del peer_id
+    #                                 chat_entity = await self.client.get_entity(message.peer_id)
+                                    
+    #                                 # Si es un grupo o canal (tiene título)
+    #                                 if hasattr(chat_entity, 'title'):
+    #                                     entity_id = str(chat_entity.id)
+                                        
+    #                                     # Evitar duplicados
+    #                                     if entity_id not in discovered_entity_ids:
+    #                                         discovered_entity_ids.add(entity_id)
+                                            
+    #                                         # Procesar la entidad
+    #                                         entity_data = await self.process_entity_async(chat_entity, f"user_message_global_{username}")
+    #                                         if entity_data:
+    #                                             user_entities.append(entity_data)
+    #                                             logger.info(f"Entidad descubierta por mensaje global: {chat_entity.title}")
+                                                
+    #                                             # Limitar cantidad
+    #                                             if len(user_entities) >= limit:
+    #                                                 break
+    #                         except Exception as e:
+    #                             logger.warning(f"Error procesando mensaje global: {e}")
+                    
+    #                 # Esperar un poco para evitar flood
+    #                 await asyncio.sleep(2)
+                    
+    #             except Exception as e:
+    #                 logger.warning(f"Error en búsqueda global para {username}: {e}")
+            
+    #         # 3. MÉTODO SECUNDARIO: Buscar menciones del usuario en grupos/canales
+    #         # Este método encuentra grupos donde el usuario ha sido mencionado
+    #         if username and len(user_entities) < limit:
+    #             try:
+    #                 # Buscar mensajes donde se menciona al usuario
+    #                 mention_query = f"@{username}"
+    #                 mention_results = await self.client(SearchGlobalRequest(
+    #                     q=mention_query,
+    #                     filter=None,
+    #                     min_date=None,
+    #                     max_date=None,
+    #                     offset_rate=0,
+    #                     offset_peer=InputPeerEmpty(),
+    #                     offset_id=0,
+    #                     limit=50
+    #                 ))
+                    
+    #                 if hasattr(mention_results, 'messages') and mention_results.messages:
+    #                     logger.info(f"Encontradas {len(mention_results.messages)} menciones del usuario")
+                        
+    #                     # Extraer las entidades únicas de estos mensajes
+    #                     for message in mention_results.messages:
+    #                         try:
+    #                             if hasattr(message, 'peer_id'):
+    #                                 # Obtener entidad completa
+    #                                 chat_entity = await self.client.get_entity(message.peer_id)
+                                    
+    #                                 # Si es un grupo o canal
+    #                                 if hasattr(chat_entity, 'title'):
+    #                                     entity_id = str(chat_entity.id)
+                                        
+    #                                     # Evitar duplicados
+    #                                     if entity_id not in discovered_entity_ids:
+    #                                         discovered_entity_ids.add(entity_id)
+                                            
+    #                                         # Procesar la entidad
+    #                                         entity_data = await self.process_entity_async(chat_entity, f"user_mention_{username}")
+    #                                         if entity_data:
+    #                                             user_entities.append(entity_data)
+    #                                             logger.info(f"Entidad descubierta por mención: {chat_entity.title}")
+                                                
+    #                                             # Limitar cantidad
+    #                                             if len(user_entities) >= limit:
+    #                                                 break
+    #                         except Exception as e:
+    #                             logger.warning(f"Error procesando mención: {e}")
+                    
+    #                 # Esperar un poco
+    #                 await asyncio.sleep(2)
+                    
+    #             except Exception as e:
+    #                 logger.warning(f"Error buscando menciones para {username}: {e}")
+            
+    #         # 4. MÉTODO AUXILIAR: Análisis de información de perfil
+    #         # Busca enlaces o menciones en la biografía del usuario
+    #         try:
+    #             from telethon.tl.functions.users import GetFullUserRequest
+                
+    #             # Obtener perfil completo
+    #             full_user = await self.client(GetFullUserRequest(user))
+                
+    #             # Analizar la biografía si está disponible
+    #             if hasattr(full_user, 'full_user') and hasattr(full_user.full_user, 'about') and full_user.full_user.about:
+    #                 bio = full_user.full_user.about
+                    
+    #                 # Buscar enlaces y menciones en la biografía
+    #                 import re
+                    
+    #                 # Buscar menciones a grupos (@nombre)
+    #                 mentions = re.findall(r'@(\w+)', bio)
+                    
+    #                 # Buscar enlaces de Telegram (t.me/nombre)
+    #                 links = re.findall(r't\.me/(\w+)', bio)
+                    
+    #                 # Combinar ambos resultados
+    #                 potential_groups = list(set(mentions + links))
+                    
+    #                 # Investigar cada potencial grupo
+    #                 for group_name in potential_groups:
+    #                     try:
+    #                         # Intentar obtener la entidad
+    #                         group_entity = await self.client.get_entity(f"@{group_name}")
+                            
+    #                         # Verificar si es grupo o canal
+    #                         if hasattr(group_entity, 'title'):
+    #                             entity_id = str(group_entity.id)
+                                
+    #                             # Evitar duplicados
+    #                             if entity_id not in discovered_entity_ids:
+    #                                 discovered_entity_ids.add(entity_id)
+                                    
+    #                                 # Procesar la entidad
+    #                                 entity_data = await self.process_entity_async(group_entity, f"bio_reference_{username}")
+    #                                 if entity_data:
+    #                                     user_entities.append(entity_data)
+    #                                     logger.info(f"Entidad descubierta por biografía: {group_entity.title}")
+                                        
+    #                                     # Limitar cantidad
+    #                                     if len(user_entities) >= limit:
+    #                                         break
+    #                     except Exception:
+    #                         # Ignorar errores individuales al resolver entidades
+    #                         pass
+    #         except Exception as e:
+    #             logger.warning(f"Error analizando perfil para {user_id}: {e}")
+            
+    #         # 5. MÉTODO DE ÚLTIMO RECURSO: Chats en común
+    #         # Lo mantenemos como último recurso, reconociendo sus limitaciones
+    #         if len(user_entities) < limit:
+    #             try:
+    #                 # Cargar credenciales para Pyrogram
+    #                 with open(CREDENTIAL_FILE, 'r') as f:
+    #                     credentials = json.load(f)
+                    
+    #                 from pyrogram import Client
+                    
+    #                 # Intentar obtener chats comunes (limitado a chats donde ambos son miembros)
+    #                 async with Client(
+    #                     "user_groups_finder",
+    #                     api_id=credentials['api_id'],
+    #                     api_hash=credentials['api_hash'],
+    #                     phone_number=credentials['phone']
+    #                 ) as app:
+    #                     try:
+    #                         # Obtener chats comunes
+    #                         common_chats = await app.get_common_chats(int(user_id))
+                            
+    #                         if common_chats:
+    #                             logger.info(f"Encontrados {len(common_chats)} chats comunes con el usuario")
+                                
+    #                             for chat in common_chats:
+    #                                 try:
+    #                                     # Obtener entidad con Telethon
+    #                                     chat_entity = await self.client.get_entity(int(chat.id))
+                                        
+    #                                     entity_id = str(chat_entity.id)
+                                        
+    #                                     # Evitar duplicados
+    #                                     if entity_id not in discovered_entity_ids:
+    #                                         discovered_entity_ids.add(entity_id)
+                                            
+    #                                         # Procesar la entidad
+    #                                         entity_data = await self.process_entity_async(chat_entity, "common_chat")
+    #                                         if entity_data:
+    #                                             user_entities.append(entity_data)
+    #                                             logger.info(f"Entidad descubierta por chat común: {chat_entity.title}")
+                                                
+    #                                             # Limitar cantidad
+    #                                             if len(user_entities) >= limit:
+    #                                                 break
+    #                                 except Exception as e:
+    #                                     logger.warning(f"Error procesando chat común: {e}")
+    #                     except Exception as e:
+    #                         logger.warning(f"Error obteniendo chats comunes: {e}")
+    #             except Exception as e:
+    #                 logger.warning(f"Error en método de chats comunes: {e}")
+            
+    #         logger.info(f"Descubrimiento mejorado completado. Se encontraron {len(user_entities)} grupos/canales para el usuario {user_id}")
+            
+    #         # 6. FILTRADO FINAL: Evaluación de relevancia
+    #         # Podemos clasificar las entidades por probabilidad de que el usuario sea realmente miembro
+    #         if user_entities:
+    #             # Ordenar por relevancia:
+    #             # 1. Primero las descubiertas por mensajes del usuario (evidencia directa)
+    #             # 2. Luego las de biografía (alta probabilidad)
+    #             # 3. Después las de menciones (probabilidad media)
+    #             # 4. Finalmente las de chats comunes (solo si no hay suficientes)
+                
+    #             by_messages = [e for e in user_entities if "user_message" in e.get("discovery_term", "")]
+    #             by_bio = [e for e in user_entities if "bio_reference" in e.get("discovery_term", "")]
+    #             by_mentions = [e for e in user_entities if "user_mention" in e.get("discovery_term", "")]
+    #             by_common = [e for e in user_entities if "common_chat" in e.get("discovery_term", "")]
+                
+    #             # Consolidar en orden de relevancia
+    #             user_entities = by_messages + by_bio + by_mentions + by_common
+                
+    #             # Limitar a la cantidad solicitada
+    #             user_entities = user_entities[:limit]
+                
+    #             # Añadir score de confianza
+    #             for i, entity in enumerate(user_entities):
+    #                 if "user_message" in entity.get("discovery_term", ""):
+    #                     entity["user_membership_confidence"] = 0.9  # 90% confianza
+    #                 elif "bio_reference" in entity.get("discovery_term", ""):
+    #                     entity["user_membership_confidence"] = 0.7  # 70% confianza
+    #                 elif "user_mention" in entity.get("discovery_term", ""):
+    #                     entity["user_membership_confidence"] = 0.5  # 50% confianza
+    #                 else:
+    #                     entity["user_membership_confidence"] = 0.3  # 30% confianza
+            
+    #         return user_entities
+        
+    #     except Exception as e:
+    #         logger.error(f"Error en discover_user_groups_improved para {user_id}: {e}")
+    #         traceback.print_exc()
+    #         return []
+
+    
+
+    def discover_user_groups(self, user_id, limit=10):
+        """
+        Descubre los grupos y canales en los que participa un usuario específico,
+        utilizando técnicas avanzadas para superar las limitaciones de la API.
+        
+        Args:
+            user_id: ID del usuario a analizar
+            limit: Número máximo de grupos/canales a devolver
+            
+        Returns:
+            Lista de entidades (grupos/canales) donde posiblemente participa el usuario
+        """
+        try:
+            # Definir la implementación completa aquí (no como una corutina)
+            logger.info(f"Descubriendo grupos/canales del usuario {user_id}...")
+            
+            user_entities = []
+            discovered_entity_ids = set()  # Para evitar duplicados
+            
+            # 1. Intentar obtener el usuario primero para verificar que existe
+            try:
+                user = self.client.get_entity(int(user_id))
+                logger.info(f"Usuario encontrado: {user.first_name} {getattr(user, 'last_name', '')}")
+                username = user.username if hasattr(user, 'username') else None
+            except Exception as e:
+                logger.error(f"No se pudo obtener información del usuario {user_id}: {e}")
+                return []
+            
+            # 2. MÉTODO PRINCIPAL: Búsqueda global de mensajes del usuario
+            if username:
+                try:
+                    from telethon.tl.functions.messages import SearchGlobalRequest
+                    from telethon.tl.types import InputPeerEmpty
+                    
+                    # Buscar mensajes globales de este usuario por su username
+                    search_query = f"from:@{username}"
+                    global_results = self.client(SearchGlobalRequest(
+                        q=search_query,
+                        filter=None,
+                        min_date=None,
+                        max_date=None,
+                        offset_rate=0,
+                        offset_peer=InputPeerEmpty(),
+                        offset_id=0,
+                        limit=100  # Pedir más para tener más posibilidades
+                    ))
+                    
+                    if hasattr(global_results, 'messages') and global_results.messages:
+                        logger.info(f"Encontrados {len(global_results.messages)} mensajes globales del usuario")
+                        
+                        # Extraer las entidades únicas de estos mensajes
+                        for message in global_results.messages:
+                            try:
+                                if hasattr(message, 'peer_id'):
+                                    # Obtener entidad completa a partir del peer_id
+                                    chat_entity = self.client.get_entity(message.peer_id)
+                                    
+                                    # Si es un grupo o canal (tiene título)
+                                    if hasattr(chat_entity, 'title'):
+                                        entity_id = str(chat_entity.id)
+                                        
+                                        # Evitar duplicados
+                                        if entity_id not in discovered_entity_ids:
+                                            discovered_entity_ids.add(entity_id)
+                                            
+                                            # Procesar la entidad
+                                            entity_data = self.process_entity(chat_entity, f"user_message_global_{username}")
+                                            if entity_data:
+                                                user_entities.append(entity_data)
+                                                logger.info(f"Entidad descubierta por mensaje global: {chat_entity.title}")
+                                                
+                                                # Limitar cantidad
+                                                if len(user_entities) >= limit:
+                                                    break
+                            except Exception as e:
+                                logger.warning(f"Error procesando mensaje global: {e}")
+                    
+                    # Esperar un poco para evitar flood
+                    time.sleep(2)
+                    
+                except Exception as e:
+                    logger.warning(f"Error en búsqueda global para {username}: {e}")
+            
+            # 3. MÉTODO SECUNDARIO: Buscar menciones del usuario en grupos/canales
+            if username and len(user_entities) < limit:
+                try:
+                    # Buscar mensajes donde se menciona al usuario
+                    mention_query = f"@{username}"
+                    mention_results = self.client(SearchGlobalRequest(
+                        q=mention_query,
+                        filter=None,
+                        min_date=None,
+                        max_date=None,
+                        offset_rate=0,
+                        offset_peer=InputPeerEmpty(),
+                        offset_id=0,
+                        limit=50
+                    ))
+                    
+                    if hasattr(mention_results, 'messages') and mention_results.messages:
+                        logger.info(f"Encontradas {len(mention_results.messages)} menciones del usuario")
+                        
+                        # Extraer las entidades únicas de estos mensajes
+                        for message in mention_results.messages:
+                            try:
+                                if hasattr(message, 'peer_id'):
+                                    # Obtener entidad completa
+                                    chat_entity = self.client.get_entity(message.peer_id)
+                                    
+                                    # Si es un grupo o canal
+                                    if hasattr(chat_entity, 'title'):
+                                        entity_id = str(chat_entity.id)
+                                        
+                                        # Evitar duplicados
+                                        if entity_id not in discovered_entity_ids:
+                                            discovered_entity_ids.add(entity_id)
+                                            
+                                            # Procesar la entidad
+                                            entity_data = self.process_entity(chat_entity, f"user_mention_{username}")
+                                            if entity_data:
+                                                user_entities.append(entity_data)
+                                                logger.info(f"Entidad descubierta por mención: {chat_entity.title}")
+                                                
+                                                # Limitar cantidad
+                                                if len(user_entities) >= limit:
+                                                    break
+                            except Exception as e:
+                                logger.warning(f"Error procesando mención: {e}")
+                    
+                    # Esperar un poco
+                    time.sleep(2)
+                    
+                except Exception as e:
+                    logger.warning(f"Error buscando menciones para {username}: {e}")
+            
+            # 4. MÉTODO AUXILIAR: Análisis de información de perfil
+            try:
+                from telethon.tl.functions.users import GetFullUserRequest
+                
+                # Obtener perfil completo
+                full_user = self.client(GetFullUserRequest(user))
+                
+                # Analizar la biografía si está disponible
+                if hasattr(full_user, 'full_user') and hasattr(full_user.full_user, 'about') and full_user.full_user.about:
+                    bio = full_user.full_user.about
+                    
+                    # Buscar enlaces y menciones en la biografía
+                    import re
+                    
+                    # Buscar menciones a grupos (@nombre)
+                    mentions = re.findall(r'@(\w+)', bio)
+                    
+                    # Buscar enlaces de Telegram (t.me/nombre)
+                    links = re.findall(r't\.me/(\w+)', bio)
+                    
+                    # Combinar ambos resultados
+                    potential_groups = list(set(mentions + links))
+                    
+                    # Investigar cada potencial grupo
+                    for group_name in potential_groups:
+                        try:
+                            # Intentar obtener la entidad
+                            group_entity = self.client.get_entity(f"@{group_name}")
+                            
+                            # Verificar si es grupo o canal
+                            if hasattr(group_entity, 'title'):
+                                entity_id = str(group_entity.id)
+                                
+                                # Evitar duplicados
+                                if entity_id not in discovered_entity_ids:
+                                    discovered_entity_ids.add(entity_id)
+                                    
+                                    # Procesar la entidad
+                                    entity_data = self.process_entity(group_entity, f"bio_reference_{username}")
+                                    if entity_data:
+                                        user_entities.append(entity_data)
+                                        logger.info(f"Entidad descubierta por biografía: {group_entity.title}")
+                                        
+                                        # Limitar cantidad
+                                        if len(user_entities) >= limit:
+                                            break
+                        except Exception:
+                            # Ignorar errores individuales al resolver entidades
+                            pass
+            except Exception as e:
+                logger.warning(f"Error analizando perfil para {user_id}: {e}")
+            
+            # 5. MÉTODO DE ÚLTIMO RECURSO: Chats en común (si hay menos de los esperados)
+            if len(user_entities) < limit:
+                try:
+                    # Intentar obtener diálogos actuales y analizarlos
+                    dialogs = self.client.get_dialogs(limit=50)
+                    for dialog in dialogs:
+                        if hasattr(dialog.entity, 'title'):  # Es un grupo o canal
+                            try:
+                                # Verificar si el usuario está en este chat
+                                # (limitado, pero puede funcionar en algunos casos)
+                                entity_id = str(dialog.entity.id)
+                                
+                                # Evitar duplicados
+                                if entity_id not in discovered_entity_ids:
+                                    # Buscar mensajes de este usuario en este chat
+                                    messages = self.client.get_messages(
+                                        dialog.entity,
+                                        search=f"from:@{username}" if username else None,
+                                        limit=5
+                                    )
+                                    
+                                    if messages and len(messages) > 0:
+                                        discovered_entity_ids.add(entity_id)
+                                        
+                                        # Procesar la entidad
+                                        entity_data = self.process_entity(dialog.entity, "common_chat")
+                                        if entity_data:
+                                            user_entities.append(entity_data)
+                                            logger.info(f"Entidad descubierta por chat común: {dialog.entity.title}")
+                                            
+                                            # Limitar cantidad
+                                            if len(user_entities) >= limit:
+                                                break
+                            except Exception as e:
+                                continue  # Ignorar errores individuales
+                except Exception as e:
+                    logger.warning(f"Error en método alternativo: {e}")
+            
+            logger.info(f"Descubrimiento completado. Se encontraron {len(user_entities)} grupos/canales para el usuario {user_id}")
+            
+            # 6. FILTRADO FINAL: Evaluación de relevancia
+            if user_entities:
+                # Ordenar por relevancia
+                by_messages = [e for e in user_entities if "user_message" in e.get("discovery_term", "")]
+                by_bio = [e for e in user_entities if "bio_reference" in e.get("discovery_term", "")]
+                by_mentions = [e for e in user_entities if "user_mention" in e.get("discovery_term", "")]
+                by_common = [e for e in user_entities if "common_chat" in e.get("discovery_term", "")]
+                
+                # Consolidar en orden de relevancia
+                user_entities = by_messages + by_bio + by_mentions + by_common
+                
+                # Limitar a la cantidad solicitada
+                user_entities = user_entities[:limit]
+                
+                # Añadir score de confianza
+                for i, entity in enumerate(user_entities):
+                    if "user_message" in entity.get("discovery_term", ""):
+                        entity["user_membership_confidence"] = 0.9  # 90% confianza
+                    elif "bio_reference" in entity.get("discovery_term", ""):
+                        entity["user_membership_confidence"] = 0.7  # 70% confianza
+                    elif "user_mention" in entity.get("discovery_term", ""):
+                        entity["user_membership_confidence"] = 0.5  # 50% confianza
+                    else:
+                        entity["user_membership_confidence"] = 0.3  # 30% confianza
+            
+            return user_entities
+        
+        except Exception as e:
+            logger.error(f"Error en discover_user_groups para {user_id}: {e}")
+            traceback.print_exc()
+            return []
+
     # 5.2 MÉTODOS ESPECÍFICOS (CONSERVAMOS LOS ORIGINALES PARA COMPATIBILIDAD)
 
     def extract_users_from_comment_sections(self, entity_id, message_limit=50):
@@ -5265,7 +5849,810 @@ class TelegramEntityFinder2:
             traceback.print_exc()
             print(f"Error: {str(e)}")
 
-    
+    ###########################################
+    # SECCIÓN New: DISCOVER GRPUPS FROM USERS #
+    ###########################################
+
+    def discover_user_groups_improved(self, user_id, limit=10):
+        """
+        Versión mejorada de discover_user_groups que utiliza múltiples técnicas.
+        Implementa la lógica de búsqueda completa que estaba en la opción 11.
+        
+        Args:
+            user_id: ID o username del usuario
+            limit: Número máximo de grupos a devolver
+            
+        Returns:
+            Lista de entidades (grupos/canales) donde participa el usuario
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            return loop.run_until_complete(self.discover_user_groups_improved_async(user_id, limit))
+        except Exception as e:
+            logger.error(f"Error en discover_user_groups_improved para {user_id}: {e}")
+            traceback.print_exc()
+            return []
+
+    async def discover_user_groups_improved_async(self, user_id, limit=10):
+        """
+        Implementación asíncrona mejorada para descubrir grupos de un usuario.
+        
+        Args:
+            user_id: ID o username del usuario
+            limit: Número máximo de grupos a devolver
+            
+        Returns:
+            Lista de entidades (grupos/canales) donde participa el usuario
+        """
+        try:
+            # Importaciones necesarias
+            from telethon.tl.functions.contacts import SearchRequest
+            from telethon.tl.functions.users import GetFullUserRequest
+            from telethon.tl.functions.channels import GetParticipantRequest
+            from telethon.errors import UserNotParticipantError
+            import re
+            
+            # Variables para resultados
+            user_entities = []
+            discovered_entity_ids = set()
+            
+            # 1. Obtener usuario completo
+            try:
+                # Verificar si es ID o username
+                if isinstance(user_id, str) and (user_id.startswith('@') or not user_id.isdigit()):
+                    # Es un username
+                    username_input = user_id if user_id.startswith('@') else f'@{user_id}'
+                    user = await self.client.get_entity(username_input)
+                    user_id = user.id
+                    print(f"Usuario encontrado: {user.first_name} {getattr(user, 'last_name', '')}")
+                else:
+                    # Es un ID numérico
+                    user = await self.client.get_entity(int(user_id))
+                    print(f"Usuario encontrado: {user.first_name} {getattr(user, 'last_name', '')}")
+                
+                username = user.username if hasattr(user, 'username') else None
+                logger.info(f"Usuario encontrado: {user.first_name} {getattr(user, 'last_name', '')}")
+            except Exception as e:
+                logger.error(f"Error obteniendo detalles del usuario: {e}")
+                return []
+            
+            # 2. Verificación de canales donde estamos subscritos
+            logger.info("Verificando canales y grupos donde eres miembro...")
+            print("Verificando canales y grupos donde eres miembro...")
+            
+            # Obtener diálogos actuales
+            try:
+                dialogs = []
+                chunk_size = 50
+                
+                # Obtener diálogos en lotes para tener más
+                for i in range(3):  # Intentar obtener hasta 150 diálogos (3 lotes de 50)
+                    new_dialogs = await self.client.get_dialogs(limit=chunk_size, offset_date=None if i == 0 else dialogs[-1].date)
+                    if not new_dialogs:
+                        break
+                        
+                    dialogs.extend(new_dialogs)
+                    
+                    # Pequeña pausa para evitar errores
+                    await asyncio.sleep(1)
+                    
+                logger.info(f"Analizando {len(dialogs)} diálogos...")
+                print(f"Analizando {len(dialogs)} diálogos...")
+                
+                # Verificar cada diálogo para ver si el usuario está presente
+                for dialog in dialogs:
+                    if hasattr(dialog.entity, 'title'):  # Es grupo o canal, no chat privado
+                        entity_id = str(dialog.entity.id)
+                        
+                        # Evitar duplicados
+                        if entity_id not in discovered_entity_ids:
+                            try:
+                                # Buscar mensajes del usuario en este chat si tiene username
+                                if username:
+                                    try:
+                                        # Pequeña pausa para evitar errores
+                                        await asyncio.sleep(0.5)
+                                        
+                                        # Buscar mensajes de este usuario específicamente
+                                        messages = await self.client.get_messages(
+                                            dialog.entity,
+                                            from_user=f"@{username}" if username else user_id,
+                                            limit=2
+                                        )
+                                        
+                                        if messages and len(messages) > 0:
+                                            # El usuario ha enviado mensajes aquí
+                                            discovered_entity_ids.add(entity_id)
+                                            entity_data = await self.process_entity_async(dialog.entity, "user_messages")
+                                            if entity_data:
+                                                entity_data["user_membership_confidence"] = 0.9
+                                                user_entities.append(entity_data)
+                                                print(f"✓ Mensajes encontrados en: {dialog.entity.title}")
+                                                logger.info(f"Mensajes encontrados en: {dialog.entity.title}")
+                                                continue  # Pasar al siguiente diálogo
+                                    except Exception as e:
+                                        # Ignorar errores específicos de búsqueda
+                                        pass
+                                
+                                # Si lo anterior no funcionó, intentar verificar participación directa
+                                # Este método solo funciona para canales/supergrupos donde tenemos permisos
+                                try:
+                                    # Verificar si es un supergrupo o canal
+                                    is_channel = (hasattr(dialog.entity, 'broadcast') and dialog.entity.broadcast) or \
+                                            (hasattr(dialog.entity, 'megagroup') and dialog.entity.megagroup)
+                                    
+                                    if is_channel:
+                                        # Pequeña pausa para evitar errores
+                                        await asyncio.sleep(0.5)
+                                        
+                                        # Intentar obtener información del participante
+                                        participant = await self.client(GetParticipantRequest(
+                                            channel=dialog.entity,
+                                            participant=user_id
+                                        ))
+                                        
+                                        # Si llegamos aquí, el usuario es miembro
+                                        discovered_entity_ids.add(entity_id)
+                                        entity_data = await self.process_entity_async(dialog.entity, "is_member")
+                                        if entity_data:
+                                            entity_data["user_membership_confidence"] = 1.0  # 100% confianza
+                                            user_entities.append(entity_data)
+                                            print(f"✓ Miembro confirmado en: {dialog.entity.title}")
+                                            logger.info(f"Miembro confirmado en: {dialog.entity.title}")
+                                except UserNotParticipantError:
+                                    # El usuario definitivamente no es parte de este grupo
+                                    pass
+                                except Exception as e:
+                                    # Otros errores (probablemente no tenemos permiso)
+                                    pass
+                                    
+                            except Exception as e:
+                                # Ignorar errores generales por entidad
+                                continue
+                
+                logger.info(f"Se encontraron {len(user_entities)} grupos mediante verificación directa")
+                print(f"Se encontraron {len(user_entities)} grupos mediante verificación directa")
+                
+            except Exception as e:
+                logger.error(f"Error verificando membresía: {e}")
+                print(f"Error verificando membresía: {e}")
+            
+            # 3. Análisis del perfil del usuario
+            if len(user_entities) < limit:
+                logger.info("Analizando perfil del usuario...")
+                print("Analizando perfil del usuario...")
+                try:
+                    # Pequeña pausa para evitar errores
+                    await asyncio.sleep(1)
+                    
+                    # Obtener perfil completo
+                    full_user = await self.client(GetFullUserRequest(user))
+                    
+                    # Analizar biografía
+                    if hasattr(full_user, 'full_user') and hasattr(full_user.full_user, 'about') and full_user.full_user.about:
+                        bio = full_user.full_user.about
+                        logger.info(f"Biografía encontrada: {bio[:50]}..." if len(bio) > 50 else bio)
+                        print(f"Biografía encontrada: {bio[:50]}..." if len(bio) > 50 else bio)
+                        
+                        # Buscar menciones en la biografía
+                        mentions = re.findall(r'@(\w+)', bio)
+                        # Buscar enlaces t.me
+                        links = re.findall(r't\.me/(\w+)', bio)
+                        # Buscar enlaces con joinchat
+                        joinchat_links = re.findall(r't\.me/joinchat/(\w+)', bio)
+                        
+                        # Agrupar todos los posibles identificadores
+                        potential_groups = list(set(mentions + links))
+                        logger.info(f"Referencias potenciales encontradas: {len(potential_groups)}")
+                        print(f"Referencias potenciales encontradas: {len(potential_groups)}")
+                        
+                        for group_name in potential_groups:
+                            try:
+                                # Pequeña pausa para evitar errores
+                                await asyncio.sleep(1)
+                                
+                                # Intentar obtener entidad
+                                group_entity = await self.client.get_entity(f"@{group_name}")
+                                
+                                # Verificar si es grupo o canal
+                                if hasattr(group_entity, 'title'):
+                                    entity_id = str(group_entity.id)
+                                    
+                                    # Evitar duplicados
+                                    if entity_id not in discovered_entity_ids:
+                                        discovered_entity_ids.add(entity_id)
+                                        entity_data = await self.process_entity_async(group_entity, "bio_reference")
+                                        if entity_data:
+                                            entity_data["user_membership_confidence"] = 0.7
+                                            user_entities.append(entity_data)
+                                            print(f"✓ Entidad encontrada en biografía: {group_entity.title}")
+                                            logger.info(f"Entidad encontrada en biografía: {group_entity.title}")
+                            except Exception as e:
+                                # No es una entidad válida o no tenemos acceso
+                                pass
+                except Exception as e:
+                    logger.error(f"Error analizando perfil: {e}")
+                    print(f"Error analizando perfil: {e}")
+            
+            # 4. Búsqueda por contactos y entidades relacionadas
+            if username and len(user_entities) < limit:
+                logger.info("Buscando entidades relacionadas...")
+                print("Buscando entidades relacionadas...")
+                try:
+                    # Pequeña pausa para evitar errores
+                    await asyncio.sleep(1)
+                    
+                    # Usar SearchRequest que es más fiable que SearchGlobalRequest
+                    search_results = await self.client(SearchRequest(
+                        q=username,  # Buscar por el username directamente
+                        limit=20
+                    ))
+                    
+                    # Procesar resultados
+                    if hasattr(search_results, 'chats') and search_results.chats:
+                        logger.info(f"Entidades potencialmente relacionadas: {len(search_results.chats)}")
+                        print(f"Entidades potencialmente relacionadas: {len(search_results.chats)}")
+                        
+                        for chat in search_results.chats:
+                            try:
+                                entity_id = str(chat.id)
+                                
+                                # Evitar duplicados
+                                if entity_id not in discovered_entity_ids:
+                                    discovered_entity_ids.add(entity_id)
+                                    entity_data = await self.process_entity_async(chat, "related_name")
+                                    if entity_data:
+                                        entity_data["user_membership_confidence"] = 0.4  # Confianza baja-media
+                                        user_entities.append(entity_data)
+                                        print(f"✓ Entidad relacionada: {chat.title}")
+                                        logger.info(f"Entidad relacionada: {chat.title}")
+                            except Exception as e:
+                                # Ignorar errores individuales
+                                logger.warning(f"Error procesando entidad relacionada: {e}")
+                                continue
+                except Exception as e:
+                    logger.error(f"Error en búsqueda de entidades relacionadas: {e}")
+                    print(f"Error en búsqueda de entidades relacionadas: {e}")
+            
+            # 5. Intento final: Buscar si el usuario es administrador en algún lugar
+            if username and len(user_entities) < limit:
+                logger.info("Buscando canales donde el usuario es administrador...")
+                print("Buscando canales donde el usuario es administrador...")
+                try:
+                    # Buscar términos combinados con el nombre de usuario para encontrar canales
+                    # donde podría ser administrador/creador
+                    combined_terms = [
+                        f"{username} channel",
+                        f"{username} group",
+                        f"{username} oficial",
+                        f"{username} official",
+                        user.first_name
+                    ]
+                    
+                    for term in combined_terms[:3]:  # Limitar a los primeros 3 términos
+                        try:
+                            # Pequeña pausa para evitar errores
+                            await asyncio.sleep(1)
+                            
+                            # Buscar con término combinado
+                            term_results = await self.client(SearchRequest(
+                                q=term,
+                                limit=10
+                            ))
+                            
+                            if hasattr(term_results, 'chats') and term_results.chats:
+                                for chat in term_results.chats:
+                                    try:
+                                        entity_id = str(chat.id)
+                                        
+                                        # Evitar duplicados
+                                        if entity_id not in discovered_entity_ids:
+                                            discovered_entity_ids.add(entity_id)
+                                            entity_data = await self.process_entity_async(chat, "admin_search")
+                                            if entity_data:
+                                                entity_data["user_membership_confidence"] = 0.6  # Confianza media
+                                                user_entities.append(entity_data)
+                                                print(f"✓ Posible canal administrado: {chat.title}")
+                                                logger.info(f"Posible canal administrado: {chat.title}")
+                                    except Exception as e:
+                                        # Ignorar errores individuales
+                                        logger.warning(f"Error procesando posible canal administrado: {e}")
+                                        continue
+                        except Exception as e:
+                            # Ignorar errores de búsqueda individual
+                            logger.warning(f"Error en búsqueda con término '{term}': {e}")
+                            continue
+                except Exception as e:
+                    logger.error(f"Error en búsqueda final: {e}")
+                    print(f"Error en búsqueda final: {e}")
+            
+            # 6. IMPORTANTE: NO DESCARTAR LOS RESULTADOS DE SearchRequest
+            # Este es un punto crítico que podría ser la diferencia
+            if len(user_entities) == 0 and username:
+                print("Buscando resultados adicionales...")
+                try:
+                    # Usar otra técnica de búsqueda directa
+                    direct_search_results = await self.client(SearchRequest(
+                        q=username,
+                        limit=20
+                    ))
+                    
+                    if hasattr(direct_search_results, 'chats') and direct_search_results.chats:
+                        for chat in direct_search_results.chats:
+                            entity_id = str(chat.id)
+                            if entity_id not in discovered_entity_ids:
+                                discovered_entity_ids.add(entity_id)
+                                entity_data = await self.process_entity_async(chat, "direct_search")
+                                if entity_data:
+                                    entity_data["user_membership_confidence"] = 0.3  # Confianza baja
+                                    user_entities.append(entity_data)
+                                    print(f"✓ Entidad encontrada por búsqueda directa: {chat.title}")
+                except Exception as e:
+                    logger.error(f"Error en búsqueda directa final: {e}")
+            
+            # 7. Ordenar por confianza y limitar resultados
+            user_entities.sort(key=lambda e: e.get("user_membership_confidence", 0), reverse=True)
+            user_entities = user_entities[:limit]
+            
+            return user_entities
+            
+        except Exception as e:
+            logger.error(f"Error en discover_user_groups_improved_async para {user_id}: {e}")
+            traceback.print_exc()
+            return []
+
+    async def discover_user_groups_batch(self, user_ids, limit_per_user=5, max_users=10):
+        """
+        Descubre grupos y canales para un lote de usuarios.
+        
+        Args:
+            user_ids: Lista de IDs de usuarios a analizar
+            limit_per_user: Número máximo de grupos a descubrir por usuario
+            max_users: Número máximo de usuarios a procesar por lote
+            
+        Returns:
+            Diccionario con resultados del descubrimiento
+        """
+        if not user_ids:
+            return {"users_processed": 0, "entities_found": []}
+        
+        logger.info(f"Iniciando descubrimiento de grupos para {len(user_ids)} usuarios...")
+        
+        # Limitar la cantidad de usuarios a procesar en este lote
+        if len(user_ids) > max_users:
+            # Seleccionar usuarios aleatorios si hay demasiados
+            import random
+            user_ids = random.sample(user_ids, max_users)
+        
+        all_entities = []
+        user_entity_map = {}  # Mapeo de user_id -> [entity_data]
+        users_processed = 0
+        
+        for user_id in user_ids:
+            try:
+                # Usar el método implementado de descubrimiento individual
+                user_entities = await self.discover_user_groups(user_id, limit=limit_per_user)
+                
+                if user_entities:
+                    user_entity_map[user_id] = user_entities
+                    all_entities.extend(user_entities)
+                
+                # Marcar usuario como procesado
+                users_processed += 1
+                
+                # Esperar entre usuarios para evitar límites
+                await asyncio.sleep(random.uniform(2, 5))
+                
+            except Exception as e:
+                logger.error(f"Error descubriendo grupos para usuario {user_id}: {e}")
+            
+        # Eliminar duplicados basados en entity_id
+        unique_entities = []
+        seen_ids = set()
+        
+        for entity in all_entities:
+            entity_id = entity.get("entity_id")
+            if entity_id and entity_id not in seen_ids:
+                seen_ids.add(entity_id)
+                unique_entities.append(entity)
+        
+        logger.info(f"Descubrimiento de grupos completado. Procesados {users_processed} usuarios. "
+                f"Descubiertas {len(unique_entities)} entidades únicas.")
+        
+        return {
+            "users_processed": users_processed,
+            "entities_found": unique_entities,
+            "user_entity_map": user_entity_map
+        }
+
+    def get_user_common_groups(self, user_ids, min_common=2):
+        """
+        Encuentra grupos comunes entre varios usuarios.
+        Útil para determinar qué grupos son más relevantes para cierto conjunto de usuarios.
+        
+        Args:
+            user_ids: Lista de IDs de usuario
+            min_common: Número mínimo de usuarios que deben estar en un grupo para considerarlo relevante
+            
+        Returns:
+            Lista de entidades (grupos/canales) ordenadas por relevancia (cantidad de usuarios presentes)
+        """
+        try:
+            # Esta función supone que ya se ha ejecutado discover_user_groups_batch
+            # y tenemos la información almacenada de los grupos de cada usuario
+            
+            # Contador de grupos y usuarios presentes
+            group_count = {}  # entity_id -> número de usuarios presentes
+            
+            # Contar presencia de usuarios en cada grupo
+            for user_id in user_ids:
+                key = f"{user_id}"
+                
+                # Buscar en el diccionario members
+                for member_key, member in self.members.items():
+                    if member_key.startswith(key + "_"):
+                        # Este es un registro para este usuario
+                        entity_id = member.get('entity_id')
+                        if entity_id:
+                            group_count[entity_id] = group_count.get(entity_id, 0) + 1
+            
+            # Filtrar solo grupos con suficientes usuarios comunes
+            common_groups = []
+            
+            for entity_id, count in group_count.items():
+                if count >= min_common:
+                    # Obtener datos de la entidad
+                    if entity_id in self.entities:
+                        entity_data = self.entities[entity_id].copy()
+                        entity_data['common_users'] = count
+                        common_groups.append(entity_data)
+            
+            # Ordenar por número de usuarios comunes (mayor primero)
+            common_groups.sort(key=lambda x: x.get('common_users', 0), reverse=True)
+            
+            return common_groups
+            
+        except Exception as e:
+            logger.error(f"Error obteniendo grupos comunes: {e}")
+            traceback.print_exc()
+            return []
+
+    def discover_user_groups_original(self, user_id_or_username, limit=10):
+        """
+        Réplica exacta de la lógica original que estaba en el interactive_menu opción 11.
+        Descubre los grupos y canales en los que participa un usuario específico.
+        
+        Args:
+            user_id_or_username: ID o username del usuario (acepta formato con o sin @)
+            limit: Número máximo de grupos/canales a devolver (por defecto 10)
+            
+        Returns:
+            Lista de entidades (grupos/canales) donde participa el usuario
+        """
+        try:
+            # Importaciones necesarias
+            from telethon.tl.functions.contacts import SearchRequest
+            from telethon.tl.functions.users import GetFullUserRequest
+            from telethon.tl.functions.channels import GetParticipantRequest
+            from telethon.errors import UserNotParticipantError
+            import re
+            import time
+            
+            # Variables para resultados
+            user_entities = []
+            discovered_entity_ids = set()
+            
+            # 1. Obtener usuario completo
+            try:
+                # Verificar si es ID o username
+                if isinstance(user_id_or_username, str) and (user_id_or_username.startswith('@') or not user_id_or_username.isdigit()):
+                    # Es un username
+                    username_input = user_id_or_username if user_id_or_username.startswith('@') else f'@{user_id_or_username}'
+                    user = self.client.get_entity(username_input)
+                    user_id = user.id
+                    logger.info(f"Usuario encontrado: {user.first_name} {getattr(user, 'last_name', '')}")
+                else:
+                    # Es un ID numérico
+                    user_id = int(user_id_or_username)
+                    user = self.client.get_entity(user_id)
+                    logger.info(f"Usuario encontrado: {user.first_name} {getattr(user, 'last_name', '')}")
+                
+                username = user.username if hasattr(user, 'username') else None
+            except Exception as e:
+                logger.error(f"Error obteniendo detalles del usuario: {e}")
+                return []
+            
+            # 2. Verificación de canales donde estamos subscritos
+            logger.info("Verificando canales y grupos donde eres miembro...")
+            
+            # Obtener diálogos actuales
+            try:
+                dialogs = []
+                chunk_size = 50
+                
+                # Obtener diálogos en lotes para tener más
+                for i in range(3):  # Intentar obtener hasta 150 diálogos (3 lotes de 50)
+                    new_dialogs = self.client.get_dialogs(limit=chunk_size, offset_date=None if i == 0 else dialogs[-1].date)
+                    if not new_dialogs:
+                        break
+                        
+                    dialogs.extend(new_dialogs)
+                    
+                    # Pequeña pausa para evitar errores
+                    time.sleep(1)
+                    
+                logger.info(f"Analizando {len(dialogs)} diálogos...")
+                
+                # Verificar cada diálogo para ver si el usuario está presente
+                for dialog in dialogs:
+                    if hasattr(dialog.entity, 'title'):  # Es grupo o canal, no chat privado
+                        entity_id = str(dialog.entity.id)
+                        
+                        # Evitar duplicados
+                        if entity_id not in discovered_entity_ids:
+                            try:
+                                # Buscar mensajes del usuario en este chat si tiene username
+                                if username:
+                                    try:
+                                        # Pequeña pausa para evitar errores
+                                        time.sleep(0.5)
+                                        
+                                        # Buscar mensajes de este usuario específicamente
+                                        messages = self.client.get_messages(
+                                            dialog.entity,
+                                            from_user=f"@{username}" if username else user_id,
+                                            limit=2
+                                        )
+                                        
+                                        if messages and len(messages) > 0:
+                                            # El usuario ha enviado mensajes aquí
+                                            discovered_entity_ids.add(entity_id)
+                                            entity_data = self.process_entity(dialog.entity, "user_messages")
+                                            if entity_data:
+                                                if entity_data.get("already_exists"):
+                                                    print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                                                else:
+                                                    print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                                                entity_data["user_membership_confidence"] = 0.9
+                                                user_entities.append(entity_data)
+                                                logger.info(f"Mensajes encontrados en: {dialog.entity.title}")
+                                                continue  # Pasar al siguiente diálogo
+                                    except Exception as e:
+                                        # Ignorar errores específicos de búsqueda
+                                        pass
+                                
+                                # Si lo anterior no funcionó, intentar verificar participación directa
+                                # Este método solo funciona para canales/supergrupos donde tenemos permisos
+                                try:
+                                    # Verificar si es un supergrupo o canal
+                                    is_channel = (hasattr(dialog.entity, 'broadcast') and dialog.entity.broadcast) or \
+                                            (hasattr(dialog.entity, 'megagroup') and dialog.entity.megagroup)
+                                    
+                                    if is_channel:
+                                        # Pequeña pausa para evitar errores
+                                        time.sleep(0.5)
+                                        
+                                        # Intentar obtener información del participante
+                                        participant = self.client(GetParticipantRequest(
+                                            channel=dialog.entity,
+                                            participant=user_id
+                                        ))
+                                        
+                                        # Si llegamos aquí, el usuario es miembro
+                                        discovered_entity_ids.add(entity_id)
+                                        entity_data = self.process_entity(dialog.entity, "is_member")
+                                        if entity_data:
+                                            if entity_data.get("already_exists"):
+                                                print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                                            else:
+                                                print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                                            entity_data["user_membership_confidence"] = 1.0  # 100% confianza
+                                            user_entities.append(entity_data)
+                                            logger.info(f"Miembro confirmado en: {dialog.entity.title}")
+                                except UserNotParticipantError:
+                                    # El usuario definitivamente no es parte de este grupo
+                                    pass
+                                except Exception as e:
+                                    # Otros errores (probablemente no tenemos permiso)
+                                    pass
+                                    
+                            except Exception as e:
+                                # Ignorar errores generales por entidad
+                                continue
+                
+                logger.info(f"Se encontraron {len(user_entities)} grupos mediante verificación directa")
+                
+            except Exception as e:
+                logger.error(f"Error verificando membresía: {e}")
+            
+            # 3. Análisis del perfil del usuario
+            if len(user_entities) < limit:
+                logger.info("Analizando perfil del usuario...")
+                try:
+                    # Pequeña pausa para evitar errores
+                    time.sleep(1)
+                    
+                    # Obtener perfil completo
+                    full_user = self.client(GetFullUserRequest(user))
+                    
+                    # Analizar biografía
+                    if hasattr(full_user, 'full_user') and hasattr(full_user.full_user, 'about') and full_user.full_user.about:
+                        bio = full_user.full_user.about
+                        logger.info(f"Biografía encontrada: {bio[:50]}..." if len(bio) > 50 else bio)
+                        
+                        # Buscar menciones en la biografía
+                        mentions = re.findall(r'@(\w+)', bio)
+                        # Buscar enlaces t.me
+                        links = re.findall(r't\.me/(\w+)', bio)
+                        # Buscar enlaces con joinchat
+                        joinchat_links = re.findall(r't\.me/joinchat/(\w+)', bio)
+                        
+                        # Agrupar todos los posibles identificadores
+                        potential_groups = list(set(mentions + links))
+                        logger.info(f"Referencias potenciales encontradas: {len(potential_groups)}")
+                        
+                        for group_name in potential_groups:
+                            try:
+                                # Pequeña pausa para evitar errores
+                                time.sleep(1)
+                                
+                                # Intentar obtener entidad
+                                group_entity = self.client.get_entity(f"@{group_name}")
+                                
+                                # Verificar si es grupo o canal
+                                if hasattr(group_entity, 'title'):
+                                    entity_id = str(group_entity.id)
+                                    
+                                    # Evitar duplicados
+                                    if entity_id not in discovered_entity_ids:
+                                        discovered_entity_ids.add(entity_id)
+                                        entity_data = self.process_entity(group_entity, "bio_reference")
+                                        if entity_data:
+                                            if entity_data.get("already_exists"):
+                                                print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                                            else:
+                                                print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                                            entity_data["user_membership_confidence"] = 0.7
+                                            user_entities.append(entity_data)
+                                            logger.info(f"Entidad encontrada en biografía: {group_entity.title}")
+                            except Exception as e:
+                                # No es una entidad válida o no tenemos acceso
+                                pass
+                except Exception as e:
+                    logger.error(f"Error analizando perfil: {e}")
+            
+            # 4. Búsqueda por contactos y entidades relacionadas
+            if username and len(user_entities) < limit:
+                logger.info("Buscando entidades relacionadas...")
+                try:
+                    # Pequeña pausa para evitar errores
+                    time.sleep(1)
+                    
+                    # Usar SearchRequest que es más fiable que SearchGlobalRequest
+                    search_results = self.client(SearchRequest(
+                        q=username,  # Buscar por el username directamente
+                        limit=20
+                    ))
+                    
+                    # Procesar resultados
+                    if hasattr(search_results, 'chats') and search_results.chats:
+                        logger.info(f"Entidades potencialmente relacionadas: {len(search_results.chats)}")
+                        
+                        for chat in search_results.chats:
+                            try:
+                                entity_id = str(chat.id)
+                                
+                                # Evitar duplicados
+                                if entity_id not in discovered_entity_ids:
+                                    discovered_entity_ids.add(entity_id)
+                                    entity_data = self.process_entity(chat, "related_name")
+                                    if entity_data:
+                                        if entity_data.get("already_exists"):
+                                            print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                                        else:
+                                            print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                                        entity_data["user_membership_confidence"] = 0.4  # Confianza baja-media
+                                        user_entities.append(entity_data)
+                                        logger.info(f"Entidad relacionada: {chat.title}")
+                            except Exception as e:
+                                # Ignorar errores individuales
+                                continue
+                except Exception as e:
+                    logger.error(f"Error en búsqueda de entidades relacionadas: {e}")
+            
+            # 5. Intento final: Buscar si el usuario es administrador en algún lugar
+            if username and len(user_entities) < limit:
+                logger.info("Buscando canales donde el usuario es administrador...")
+                try:
+                    # Buscar términos combinados con el nombre de usuario para encontrar canales
+                    # donde podría ser administrador/creador
+                    combined_terms = [
+                        f"{username} channel",
+                        f"{username} group",
+                        f"{username} oficial",
+                        f"{username} official",
+                        user.first_name
+                    ]
+                    
+                    for term in combined_terms[:3]:  # Limitar a los primeros 3 términos
+                        try:
+                            # Pequeña pausa para evitar errores
+                            time.sleep(1)
+                            
+                            # Buscar con término combinado
+                            term_results = self.client(SearchRequest(
+                                q=term,
+                                limit=10
+                            ))
+                            
+                            if hasattr(term_results, 'chats') and term_results.chats:
+                                for chat in term_results.chats:
+                                    try:
+                                        entity_id = str(chat.id)
+                                        
+                                        # Evitar duplicados
+                                        if entity_id not in discovered_entity_ids:
+                                            discovered_entity_ids.add(entity_id)
+                                            entity_data = self.process_entity(chat, "admin_search")
+                                            if entity_data:
+                                                if entity_data.get("already_exists"):
+                                                    print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                                                else:
+                                                    print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                                                entity_data["user_membership_confidence"] = 0.6  # Confianza media
+                                                user_entities.append(entity_data)
+                                                logger.info(f"Posible canal administrado: {chat.title}")
+                                    except Exception as e:
+                                        # Ignorar errores individuales
+                                        continue
+                        except Exception as e:
+                            # Ignorar errores de búsqueda individual
+                            continue
+                except Exception as e:
+                    logger.error(f"Error en búsqueda final: {e}")
+            
+            # 6. CRUCIAL: Buscar directamente por el nombre de usuario si aún no hay resultados
+            if len(user_entities) == 0 and username:
+                logger.info("Realizando búsqueda directa final...")
+                try:
+                    # Intentar diferentes tipos de búsquedas
+                    # Búsqueda directa con el username exacto
+                    direct_search_results = self.client(SearchRequest(
+                        q=username,
+                        limit=20
+                    ))
+                    
+                    if hasattr(direct_search_results, 'chats') and direct_search_results.chats:
+                        logger.info(f"Búsqueda directa encontró {len(direct_search_results.chats)} entidades")
+                        
+                        for chat in direct_search_results.chats:
+                            entity_id = str(chat.id)
+                            if entity_id not in discovered_entity_ids:
+                                discovered_entity_ids.add(entity_id)
+                                entity_data = self.process_entity(chat, "direct_search")
+                                if entity_data:
+                                    if entity_data.get("already_exists"):
+                                        print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                                    else:
+                                        print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                                    entity_data["user_membership_confidence"] = 0.3  # Confianza baja
+                                    user_entities.append(entity_data)
+                                    logger.info(f"Entidad encontrada por búsqueda directa: {chat.title}")
+                except Exception as e:
+                    logger.error(f"Error en búsqueda directa final: {e}")
+            
+            # 7. Ordenar por confianza y limitar resultados
+            user_entities.sort(key=lambda e: e.get("user_membership_confidence", 0), reverse=True)
+            user_entities = user_entities[:limit]
+            
+            logger.info(f"Búsqueda completada. Se encontraron {len(user_entities)} entidades para el usuario.")
+            return user_entities
+            
+        except Exception as e:
+            logger.error(f"Error en discover_user_groups_original para {user_id_or_username}: {e}")
+            traceback.print_exc()
+            return []
+
 
 def interactive_menu():
     """Menú interactivo principal"""
@@ -5291,6 +6678,7 @@ def interactive_menu():
             print("8. Ver estadísticas")
             print("9. Exportar datos")
             print("10. Analizar entidades desconocidas")
+            print("11. Descubrir grupos de un usuario")
             print("0. Salir")
             
             option = input("\nSelecciona una opción: ")
@@ -5683,7 +7071,456 @@ def interactive_menu():
             elif option == "10":
                 # Analizar entidades desconocidas
                 explorer.analyze_unknown_entities()  # Esta debería seguir siendo sincrónica
-            
+
+            elif option =="11":
+                # 
+                
+                # # Nueva opción para descubrir grupos de usuario
+                # print("\n=== DESCUBRIR GRUPOS DE UN USUARIO ===")
+                # user_input = input("Ingresa el ID o username del usuario (@username): ")
+                
+                # # Determinar si es ID o username
+                # user_id = None
+                # username = None
+                
+                # if user_input.startswith("@"):
+                #     username = user_input[1:]  # Quitar el @ inicial
+                #     print(f"Buscando usuario por username: @{username}")
+                #     try:
+                #         # Intentar obtener el usuario por username
+                #         user = explorer.client.get_entity(user_input)
+                #         user_id = user.id
+                #         print(f"Usuario encontrado: {user.first_name} {getattr(user, 'last_name', '')}")
+                #     except Exception as e:
+                #         print(f"Error encontrando usuario {user_input}: {e}")
+                #         continue
+                # else:
+                #     try:
+                #         user_id = int(user_input)
+                #         print(f"Buscando usuario por ID: {user_id}")
+                #     except ValueError:
+                #         print("ID de usuario inválido. Debe ser un número entero o @username.")
+                #         continue
+                
+                # if not user_id:
+                #     print("No se pudo determinar el ID del usuario.")
+                #     continue
+                
+                # # Solicitar límite
+                # limit_input = input("Número máximo de grupos a buscar (Enter para 10): ")
+                # try:
+                #     limit = int(limit_input) if limit_input.strip() else 10
+                # except ValueError:
+                #     print("Valor inválido, se usará límite predeterminado de 10.")
+                #     limit = 10
+                
+                # print(f"\nBuscando grupos del usuario {user_id}...")
+                # print("Este proceso puede tardar varios minutos. Por favor, espera...")
+                
+                # try:
+                #     # Importaciones necesarias
+                #     from telethon.tl.functions.contacts import SearchRequest
+                #     from telethon.tl.functions.users import GetFullUserRequest
+                #     from telethon.tl.functions.channels import GetParticipantRequest
+                #     from telethon.errors import UserNotParticipantError
+                #     import re
+                #     import time
+                    
+                #     # Variables para resultados
+                #     user_entities = []
+                #     discovered_entity_ids = set()
+                    
+                #     # 1. Obtener usuario completo
+                #     try:
+                #         user = explorer.client.get_entity(int(user_id))
+                #         username = user.username if hasattr(user, 'username') else None
+                        
+                #         print(f"Usuario: {user.first_name} {getattr(user, 'last_name', '')}")
+                #         if username:
+                #             print(f"Username: @{username}")
+                #     except Exception as e:
+                #         print(f"Error obteniendo detalles del usuario: {e}")
+                #         continue
+                    
+                #     # 2. Verificación de canales donde estamos subscritos
+                #     print("\nVerificando canales y grupos donde eres miembro...")
+                    
+                #     # Obtener diálogos actuales
+                #     try:
+                #         dialogs = []
+                #         chunk_size = 50
+                        
+                #         # Obtener diálogos en lotes para tener más
+                #         for i in range(3):  # Intentar obtener hasta 150 diálogos (3 lotes de 50)
+                #             new_dialogs = explorer.client.get_dialogs(limit=chunk_size, offset_date=None if i == 0 else dialogs[-1].date)
+                #             if not new_dialogs:
+                #                 break
+                                
+                #             dialogs.extend(new_dialogs)
+                            
+                #             # Pequeña pausa para evitar errores
+                #             time.sleep(1)
+                            
+                #         print(f"Analizando {len(dialogs)} diálogos...")
+                        
+                #         # Verificar cada diálogo para ver si el usuario está presente
+                #         for dialog in dialogs:
+                #             if hasattr(dialog.entity, 'title'):  # Es grupo o canal, no chat privado
+                #                 entity_id = str(dialog.entity.id)
+                                
+                #                 # Evitar duplicados
+                #                 if entity_id not in discovered_entity_ids:
+                #                     try:
+                #                         # Buscar mensajes del usuario en este chat si tiene username
+                #                         if username:
+                #                             try:
+                #                                 # Pequeña pausa para evitar errores
+                #                                 time.sleep(0.5)
+                                                
+                #                                 # Buscar mensajes de este usuario específicamente
+                #                                 messages = explorer.client.get_messages(
+                #                                     dialog.entity,
+                #                                     from_user=user_input,  # Usar @username completo
+                #                                     limit=2
+                #                                 )
+                                                
+                #                                 if messages and len(messages) > 0:
+                #                                     # El usuario ha enviado mensajes aquí
+                #                                     discovered_entity_ids.add(entity_id)
+                #                                     entity_data = explorer.process_entity(dialog.entity, "user_messages")
+                #                                     if entity_data:
+                #                                         if entity_data.get("already_exists"):
+                #                                             print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                #                                         else:
+                #                                             print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                #                                         entity_data["user_membership_confidence"] = 0.9
+                #                                         user_entities.append(entity_data)
+                #                                         print(f"✓ Mensajes encontrados en: {dialog.entity.title}")
+                #                                         continue  # Pasar al siguiente diálogo
+                #                             except Exception:
+                #                                 # Ignorar errores específicos de búsqueda
+                #                                 pass
+                                        
+                #                         # Si lo anterior no funcionó, intentar verificar participación directa
+                #                         # Este método solo funciona para canales/supergrupos donde tenemos permisos
+                #                         try:
+                #                             # Verificar si es un supergrupo o canal
+                #                             is_channel = (hasattr(dialog.entity, 'broadcast') and dialog.entity.broadcast) or \
+                #                                     (hasattr(dialog.entity, 'megagroup') and dialog.entity.megagroup)
+                                            
+                #                             if is_channel:
+                #                                 # Pequeña pausa para evitar errores
+                #                                 time.sleep(0.5)
+                                                
+                #                                 # Intentar obtener información del participante
+                #                                 participant = explorer.client(GetParticipantRequest(
+                #                                     channel=dialog.entity,
+                #                                     participant=user_id
+                #                                 ))
+                                                
+                #                                 # Si llegamos aquí, el usuario es miembro
+                #                                 discovered_entity_ids.add(entity_id)
+                #                                 entity_data = explorer.process_entity(dialog.entity, "is_member")
+                #                                 if entity_data:
+                #                                     if entity_data.get("already_exists"):
+                #                                         print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                #                                     else:
+                #                                         print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                #                                     entity_data["user_membership_confidence"] = 1.0  # 100% confianza
+                #                                     user_entities.append(entity_data)
+                #                                     print(f"✓ Miembro confirmado en: {dialog.entity.title}")
+                #                         except UserNotParticipantError:
+                #                             # El usuario definitivamente no es parte de este grupo
+                #                             pass
+                #                         except Exception:
+                #                             # Otros errores (probablemente no tenemos permiso)
+                #                             pass
+                                            
+                #                     except Exception:
+                #                         # Ignorar errores generales por entidad
+                #                         continue
+                        
+                #         print(f"Se encontraron {len(user_entities)} grupos mediante verificación directa")
+                        
+                #     except Exception as e:
+                #         print(f"Error verificando membresía: {e}")
+                    
+                #     # 3. Análisis del perfil del usuario
+                #     if len(user_entities) < limit:
+                #         print("\nAnalizando perfil del usuario...")
+                #         try:
+                #             # Pequeña pausa para evitar errores
+                #             time.sleep(1)
+                            
+                #             # Obtener perfil completo
+                #             full_user = explorer.client(GetFullUserRequest(user))
+                            
+                #             # Analizar biografía
+                #             if hasattr(full_user, 'full_user') and hasattr(full_user.full_user, 'about') and full_user.full_user.about:
+                #                 bio = full_user.full_user.about
+                #                 print(f"Biografía encontrada: {bio[:50]}..." if len(bio) > 50 else bio)
+                                
+                #                 # Buscar menciones en la biografía
+                #                 mentions = re.findall(r'@(\w+)', bio)
+                #                 # Buscar enlaces t.me
+                #                 links = re.findall(r't\.me/(\w+)', bio)
+                #                 # Buscar enlaces con joinchat
+                #                 joinchat_links = re.findall(r't\.me/joinchat/(\w+)', bio)
+                                
+                #                 # Agrupar todos los posibles identificadores
+                #                 potential_groups = list(set(mentions + links))
+                #                 print(f"Referencias potenciales encontradas: {len(potential_groups)}")
+                                
+                #                 for group_name in potential_groups:
+                #                     try:
+                #                         # Pequeña pausa para evitar errores
+                #                         time.sleep(1)
+                                        
+                #                         # Intentar obtener entidad
+                #                         group_entity = explorer.client.get_entity(f"@{group_name}")
+                                        
+                #                         # Verificar si es grupo o canal
+                #                         if hasattr(group_entity, 'title'):
+                #                             entity_id = str(group_entity.id)
+                                            
+                #                             # Evitar duplicados
+                #                             if entity_id not in discovered_entity_ids:
+                #                                 discovered_entity_ids.add(entity_id)
+                #                                 entity_data = explorer.process_entity(group_entity, "bio_reference")
+                #                                 if entity_data:
+                #                                     if entity_data.get("already_exists"):
+                #                                         print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                #                                     else:
+                #                                         print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                #                                     entity_data["user_membership_confidence"] = 0.7
+                #                                     user_entities.append(entity_data)
+                #                                     print(f"✓ Entidad encontrada en biografía: {group_entity.title}")
+                #                     except Exception:
+                #                         # No es una entidad válida o no tenemos acceso
+                #                         pass
+                #         except Exception as e:
+                #             print(f"Error analizando perfil: {e}")
+                    
+                #     # 4. Búsqueda por contactos y entidades relacionadas
+                #     if username and len(user_entities) < limit:
+                #         print("\nBuscando entidades relacionadas...")
+                #         try:
+                #             # Pequeña pausa para evitar errores
+                #             time.sleep(1)
+                            
+                #             # Usar SearchRequest que es más fiable que SearchGlobalRequest
+                #             search_results = explorer.client(SearchRequest(
+                #                 q=username,  # Buscar por el username directamente
+                #                 limit=20
+                #             ))
+                            
+                #             # Procesar resultados
+                #             if hasattr(search_results, 'chats') and search_results.chats:
+                #                 print(f"Entidades potencialmente relacionadas: {len(search_results.chats)}")
+                                
+                #                 for chat in search_results.chats:
+                #                     try:
+                #                         entity_id = str(chat.id)
+                                        
+                #                         # Evitar duplicados
+                #                         if entity_id not in discovered_entity_ids:
+                #                             discovered_entity_ids.add(entity_id)
+                #                             entity_data = explorer.process_entity(chat, "related_name")
+                #                             if entity_data:
+                #                                 if entity_data.get("already_exists"):
+                #                                     print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                #                                 else:
+                #                                     print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                #                                 entity_data["user_membership_confidence"] = 0.4  # Confianza baja-media
+                #                                 user_entities.append(entity_data)
+                #                                 print(f"✓ Entidad relacionada: {chat.title}")
+                #                     except Exception:
+                #                         # Ignorar errores individuales
+                #                         continue
+                #         except Exception as e:
+                #             print(f"Error en búsqueda de entidades relacionadas: {e}")
+                    
+                #     # 5. Intento final: Buscar si el usuario es administrador en algún lugar
+                #     if username and len(user_entities) < limit:
+                #         print("\nBuscando canales donde el usuario es administrador...")
+                #         try:
+                #             # Buscar términos combinados con el nombre de usuario para encontrar canales
+                #             # donde podría ser administrador/creador
+                #             combined_terms = [
+                #                 f"{username} channel",
+                #                 f"{username} group",
+                #                 f"{username} oficial",
+                #                 f"{username} official",
+                #                 user.first_name
+                #             ]
+                            
+                #             for term in combined_terms[:3]:  # Limitar a los primeros 3 términos
+                #                 try:
+                #                     # Pequeña pausa para evitar errores
+                #                     time.sleep(1)
+                                    
+                #                     # Buscar con término combinado
+                #                     term_results = explorer.client(SearchRequest(
+                #                         q=term,
+                #                         limit=10
+                #                     ))
+                                    
+                #                     if hasattr(term_results, 'chats') and term_results.chats:
+                #                         for chat in term_results.chats:
+                #                             try:
+                #                                 entity_id = str(chat.id)
+                                                
+                #                                 # Evitar duplicados
+                #                                 if entity_id not in discovered_entity_ids:
+                #                                     discovered_entity_ids.add(entity_id)
+                #                                     entity_data = explorer.process_entity(chat, "admin_search")
+                #                                     if entity_data:
+                #                                         if entity_data.get("already_exists"):
+                #                                             print(f"✓ Encontrado: {dialog.entity.title} [Ya en base de datos]")
+                #                                         else:
+                #                                             print(f"✓ Encontrado: {dialog.entity.title} [Nuevo]")
+                #                                         entity_data["user_membership_confidence"] = 0.6  # Confianza media
+                #                                         user_entities.append(entity_data)
+                #                                         print(f"✓ Posible canal administrado: {chat.title}")
+                #                             except Exception:
+                #                                 # Ignorar errores individuales
+                #                                 continue
+                #                 except Exception:
+                #                     # Ignorar errores de búsqueda individual
+                #                     continue
+                #         except Exception as e:
+                #             print(f"Error en búsqueda final: {e}")
+                    
+                #     # 6. Ordenar por confianza y limitar resultados
+                #     user_entities.sort(key=lambda e: e.get("user_membership_confidence", 0), reverse=True)
+                #     user_entities = user_entities[:limit]
+                    
+                #     # Mostrar resultados finales
+                #     if user_entities:
+                #         print(f"\nSe encontraron {len(user_entities)} posibles grupos/canales donde participa el usuario:")
+                #         print("\n=== GRUPOS DESCUBIERTOS ===")
+                        
+                #         # Mostrar grupos encontrados
+                #         for i, group in enumerate(user_entities, 1):
+                #             title = group.get('title', '')
+                #             username = group.get('username', '')
+                #             entity_type = group.get('type', '')
+                #             members = group.get('members_count', 'N/A')
+                #             confidence = group.get('user_membership_confidence', 0) * 100  # A porcentaje
+                            
+                #             print(f"{i}. {title} (@{username})")
+                #             print(f"   Tipo: {entity_type}, Miembros: {members}")
+                #             print(f"   Confianza: {confidence:.1f}%")
+                #             print(f"   Enlace: https://t.me/{username}" if username else "   Sin enlace público")
+                #             print()
+                        
+                #         # Ofrecer opción para unirse a alguno de los grupos
+                #         join_option = input("\n¿Deseas unirte a alguno de estos grupos? (Ingresa el número o 'n' para cancelar): ")
+                #         if join_option.lower() != 'n':
+                #             try:
+                #                 join_index = int(join_option) - 1
+                #                 if 0 <= join_index < len(user_entities):
+                #                     group_to_join = user_entities[join_index]
+                #                     group_username = group_to_join.get('username', '')
+                #                     group_id = group_to_join.get('entity_id', '')
+                                    
+                #                     if group_username:
+                #                         join_success = explorer.join_entity(group_username)
+                #                         if join_success:
+                #                             print(f"Te has unido exitosamente a: {group_to_join.get('title')}")
+                #                         else:
+                #                             print(f"No se pudo unir a: {group_to_join.get('title')}")
+                #                     else:
+                #                         print("Este grupo/canal no tiene username público para unirse.")
+                #                 else:
+                #                     print("Número inválido.")
+                #             except ValueError:
+                #                 print("Por favor, ingresa un número válido.")
+                #     else:
+                #         print("\nNo se encontraron grupos para este usuario.")
+                #         print("Sugerencias:")
+                #         print("- Intenta con otro usuario que sea más activo públicamente")
+                #         print("- Verifica si el usuario tiene un nombre de usuario válido")
+                #         print("- El usuario podría participar solo en grupos privados")
+                # except Exception as e:
+                #     print(f"Error al buscar grupos del usuario: {e}")
+                #     traceback.print_exc()
+                    
+                    
+                # except Exception as e:
+                #     print(f"Error al buscar grupos del usuario: {e}")
+                #     traceback.print_exc()
+
+                 # Nueva opción para descubrir grupos de usuario
+                print("\n=== DESCUBRIR GRUPOS DE UN USUARIO ===")
+                user_input = input("Ingresa el ID o username del usuario (@username): ")
+                
+                # Solicitar límite
+                limit_input = input("Número máximo de grupos a buscar (Enter para 10): ")
+                try:
+                    limit = int(limit_input) if limit_input.strip() else 10
+                except ValueError:
+                    print("Valor inválido, se usará límite predeterminado de 10.")
+                    limit = 10
+                
+                print(f"\nBuscando grupos del usuario {user_input}...")
+                print("Este proceso puede tardar varios minutos. Por favor, espera...")
+                
+                try:
+                    # Usar el método original con la lógica exacta del menú interactivo
+                    user_entities = explorer.discover_user_groups_original(user_input, limit)
+                    
+                    # Mostrar resultados
+                    if user_entities:
+                        print(f"\nSe encontraron {len(user_entities)} posibles grupos/canales donde participa el usuario:")
+                        print("\n=== GRUPOS DESCUBIERTOS ===")
+                        
+                        # Mostrar grupos encontrados
+                        for i, group in enumerate(user_entities, 1):
+                            title = group.get('title', '')
+                            username = group.get('username', '')
+                            entity_type = group.get('type', '')
+                            members = group.get('members_count', 'N/A')
+                            confidence = group.get('user_membership_confidence', 0) * 100  # A porcentaje
+                            
+                            print(f"{i}. {title} (@{username})")
+                            print(f"   Tipo: {entity_type}, Miembros: {members}")
+                            print(f"   Confianza: {confidence:.1f}%")
+                            print(f"   Enlace: https://t.me/{username}" if username else "   Sin enlace público")
+                            print()
+                        
+                        # Ofrecer opción para unirse a alguno de los grupos
+                        join_option = input("\n¿Deseas unirte a alguno de estos grupos? (Ingresa el número o 'n' para cancelar): ")
+                        if join_option.lower() != 'n':
+                            try:
+                                join_index = int(join_option) - 1
+                                if 0 <= join_index < len(user_entities):
+                                    group_to_join = user_entities[join_index]
+                                    group_username = group_to_join.get('username', '')
+                                    group_id = group_to_join.get('entity_id', '')
+                                    
+                                    if group_username:
+                                        join_success = explorer.join_entity(group_username)
+                                        if join_success:
+                                            print(f"Te has unido exitosamente a: {group_to_join.get('title')}")
+                                        else:
+                                            print(f"No se pudo unir a: {group_to_join.get('title')}")
+                                    else:
+                                        print("Este grupo/canal no tiene username público para unirse.")
+                                else:
+                                    print("Número inválido.")
+                            except ValueError:
+                                print("Por favor, ingresa un número válido.")
+                    else:
+                        print("\nNo se encontraron grupos para este usuario.")
+                        print("Sugerencias:")
+                        print("- Intenta con otro usuario que sea más activo públicamente")
+                        print("- Verifica si el usuario tiene un nombre de usuario válido")
+                        print("- El usuario podría participar solo en grupos privados")
+                except Exception as e:
+                    print(f"Error al buscar grupos del usuario: {e}")
+                    traceback.print_exc()
+
             elif option == "0":
                 print("Saliendo del programa...")
                 break
