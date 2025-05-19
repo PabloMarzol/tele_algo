@@ -13,13 +13,14 @@ load_dotenv()
 class MT5SignalExecutor:
     """Executes trading signals on the MetaTrader 5 platform."""
     
-    def __init__(self, username=None, password=None, server=None, risk_percent=25.0):
+    def __init__(self, username = None, password = None, server = None, risk_percent = 0.7, terminal_path = None):
         """Initialize the MT5 signal executor."""
         self.logger = logging.getLogger('MT5SignalExecutor')
         self.connected = False
         self.risk_percent = risk_percent  # Risk per trade (percentage of account balance)
         self.executed_signals = {}  # Track signals that have been executed
         self.initialized = False
+        self.terminal_path = terminal_path
         
         # Connect to MT5
         self.initialize_mt5(username, password, server)
@@ -46,13 +47,25 @@ class MT5SignalExecutor:
         }
     
     def initialize_mt5(self, username=None, password=None, server=None):
-        """Connect to MetaTrader5 terminal."""
+        """Connect to MetaTrader5 terminal using the specified terminal path."""
         try:
-            self.logger.info("Initializing MT5 connection for trade execution...")
+            # Shutdown any existing MT5 instance first
+            try:
+                mt5.shutdown()
+                self.logger.info("Shut down any existing MT5 connection")
+            except:
+                pass
             
-            # Initialize MT5 if not already initialized
-            if not mt5.initialize():
-                self.logger.error(f"❌ MT5 initialization failed: Error code {mt5.last_error()}")
+            # Log terminal path being used
+            if self.terminal_path:
+                self.logger.info(f"Initializing MT5 using terminal path: {self.terminal_path}")
+            else:
+                self.logger.info("Initializing MT5 using default terminal path")
+            
+            # Initialize MT5 with the specified terminal path
+            if not mt5.initialize(path=self.terminal_path):
+                error_code = mt5.last_error()
+                self.logger.error(f"❌ MT5 initialization failed: Error code {error_code}")
                 return False
             
             self.logger.info("✅ MT5 initialized successfully!")
@@ -66,8 +79,8 @@ class MT5SignalExecutor:
                     
                     login_result = mt5.login(
                         login=username, 
-                        password=password,
-                        server=server
+                        password=str(password),
+                        server=str(server)
                     )
                     
                     if not login_result:
@@ -169,6 +182,102 @@ class MT5SignalExecutor:
         except Exception as e:
             self.logger.error(f"Error validating price: {e}")
             return False, price
+    
+    def validate_sl_tp(self, symbol, price, sl, tp, direction):
+        """
+        Validate and adjust stop loss and take profit levels to meet broker requirements.
+        
+        Args:
+            symbol (str): Trading symbol
+            price (float): Entry price
+            sl (float): Stop loss price
+            tp (float): Take profit price
+            direction (str): Trade direction (BUY/SELL)
+            
+        Returns:
+            tuple: (adjusted_sl, adjusted_tp)
+        """
+        try:
+            # Get symbol info
+            symbol_info = mt5.symbol_info(symbol)
+            if not symbol_info:
+                self.logger.error(f"Failed to get symbol info for {symbol}")
+                return sl, tp
+            
+            # Get minimum stop level in points
+            min_stop_level = symbol_info.trade_stops_level
+            
+            # Get current prices
+            tick = mt5.symbol_info_tick(symbol)
+            if not tick:
+                self.logger.error(f"Failed to get tick data for {symbol}")
+                return sl, tp
+            
+            bid = tick.bid
+            ask = tick.ask
+            
+            # Calculate point value based on digits
+            point = symbol_info.point
+            
+            # Calculate minimum distance in price
+            min_distance = min_stop_level * point
+            
+            # Adjust SL and TP based on direction
+            adjusted_sl = sl
+            adjusted_tp = tp
+            
+            if direction == "BUY":
+                # For BUY orders, SL must be below entry price and below current price
+                current_price = ask
+                
+                # Calculate minimum SL level below current price
+                min_sl = current_price - min_distance
+                
+                # If SL is too close, adjust it
+                if sl > min_sl:
+                    self.logger.warning(f"Stop loss {sl:.5f} too close to current price {current_price:.5f} (min distance: {min_distance:.5f})")
+                    adjusted_sl = min_sl
+                    self.logger.info(f"Adjusted stop loss to {adjusted_sl:.5f}")
+                
+                # For BUY orders, TP must be above entry price and current price
+                # Calculate minimum TP level above current price
+                min_tp = current_price + min_distance
+                
+                # If TP is too close, adjust it
+                if tp < min_tp:
+                    self.logger.warning(f"Take profit {tp:.5f} too close to current price {current_price:.5f} (min distance: {min_distance:.5f})")
+                    adjusted_tp = min_tp
+                    self.logger.info(f"Adjusted take profit to {adjusted_tp:.5f}")
+            
+            else:  # SELL
+                # For SELL orders, SL must be above entry price and above current price
+                current_price = bid
+                
+                # Calculate minimum SL level above current price
+                min_sl = current_price + min_distance
+                
+                # If SL is too close, adjust it
+                if sl < min_sl:
+                    self.logger.warning(f"Stop loss {sl:.5f} too close to current price {current_price:.5f} (min distance: {min_distance:.5f})")
+                    adjusted_sl = min_sl
+                    self.logger.info(f"Adjusted stop loss to {adjusted_sl:.5f}")
+                
+                # For SELL orders, TP must be below entry price and current price
+                # Calculate minimum TP level below current price
+                min_tp = current_price - min_distance
+                
+                # If TP is too close, adjust it
+                if tp > min_tp:
+                    self.logger.warning(f"Take profit {tp:.5f} too close to current price {current_price:.5f} (min distance: {min_distance:.5f})")
+                    adjusted_tp = min_tp
+                    self.logger.info(f"Adjusted take profit to {adjusted_tp:.5f}")
+            
+            return adjusted_sl, adjusted_tp
+        
+        except Exception as e:
+            self.logger.error(f"Error validating SL/TP: {e}")
+            return sl, tp
+    
         
     def execute_signal(self, signal_data):
         """
@@ -184,12 +293,20 @@ class MT5SignalExecutor:
             if not self.initialize_mt5():
                 return {"success": False, "error": "MT5 not connected"}
         
+        # Extract signal ID
         signal_id = signal_data.get("signal_id", f"{signal_data['symbol']}_{signal_data['direction']}_{datetime.now().strftime('%Y%m%d%H%M%S')}")
         
-        # Check if signal already executed
+        # Log the unique signal ID
+        self.logger.info(f"Processing signal with ID: {signal_id}")
+        
+        # Check if signal already executed - STRICT CHECK
         if signal_id in self.executed_signals:
-            self.logger.info(f"Signal {signal_id} already executed")
-            return {"success": False, "error": "Signal already executed", "order_details": self.executed_signals[signal_id]}
+            self.logger.info(f"Signal {signal_id} already executed - skipping duplicate execution")
+            return {
+                "success": False, 
+                "error": "Signal already executed", 
+                "order_details": self.executed_signals[signal_id]
+            }
         
         try:
             # Extract signal details
@@ -299,13 +416,28 @@ class MT5SignalExecutor:
             # Execute multiple entry orders
             executed_orders = []
             
-            # Create a safe comment
-            safe_comment = f"VFX{direction}"
+            # Write comment for each strategy
+            if "strategy" in signal_data:
+                strategy_code = signal_data.get("strategy", "")
+                # Map strategy codes to MT5 comment prefixes
+                strategy_prefix = {
+                    "MA_CROSS": "Momentum_",
+                    "RSI_REV": "MeanRev_",
+                    "SUP_RES": "SD_",
+                    "VOL_HAWKES": "VOL_HAWKES_"
+                }.get(strategy_code, "")
+                
+                # Use the strategy prefix in the comment
+                _comment = f"VFX_{strategy_prefix}{direction}"
+            else:
+                # Fallback to original comment style if no strategy specified
+                _comment = f"VFX{direction}"
             
             for i in range(num_entries):
                 # For each entry point, we'll place a limit order
                 entry_price = entry_prices[i]
                 lot_size = lot_sizes[i]
+                
                 
                 # Skip if lot size is invalid
                 if lot_size < min_lot or lot_size <= 0:
@@ -323,11 +455,17 @@ class MT5SignalExecutor:
                 is_valid_price, adjusted_entry_price = self.validate_price(symbol, entry_price, direction)
                 if not is_valid_price:
                     self.logger.warning(f"Price validation issue for order {i+1} - using adjusted price: {adjusted_entry_price:.5f}")
-                
-                # Use the adjusted entry price
                 entry_price = adjusted_entry_price
                 
-                # Prepare the order request
+                adjusted_sl, adjusted_tp = self.validate_sl_tp(symbol, entry_price, stop_loss, take_profit, direction)
+                if adjusted_sl != stop_loss:
+                    self.logger.info(f"Using adjusted stop loss: {adjusted_sl:.5f} (original: {stop_loss:.5f})")
+                    stop_loss = adjusted_sl
+                if adjusted_tp != take_profit:
+                    self.logger.info(f"Using adjusted take profit: {adjusted_tp:.5f} (original: {take_profit:.5f})")
+                    take_profit = adjusted_tp
+                
+                # Prepare the order request with the strategy-specific comment
                 request = {
                     "action": mt5.TRADE_ACTION_PENDING,
                     "symbol": symbol,
@@ -338,7 +476,7 @@ class MT5SignalExecutor:
                     "tp": take_profit,
                     "deviation": self.slippage_pips,
                     "magic": 123456 + i,
-                    "comment": f"{safe_comment}{i+1}",
+                    "comment": f"{_comment}{i+1}",
                     "type_time": mt5.ORDER_TIME_GTC,
                     "type_filling": mt5.ORDER_FILLING_IOC,
                 }
@@ -819,14 +957,14 @@ class MT5SignalExecutor:
             self.logger.error(f"Error closing position: {e}")
             return {"success": False, "error": str(e)}
     
-    def apply_trailing_stop(self, signal_id=None, trailing_pips=None, min_profit_pips=None):
+    def apply_trailing_stop(self, signal_id=None, trailing_percent=None, min_profit_percent=None):
         """
-        Apply trailing stop to active positions by moving only the stop loss.
+        Apply trailing stop to active positions using instrument-specific scaling.
         
         Args:
             signal_id (str, optional): Specific signal ID to apply trailing stop to, or None for all active signals
-            trailing_pips (float, optional): Distance to maintain between price and stop loss in pips
-            min_profit_pips (float, optional): Minimum profit in pips before trailing stop activates
+            trailing_percent (float, optional): Distance to maintain between price and stop loss in percent of price
+            min_profit_percent (float, optional): Minimum profit in percent before trailing stop activates
             
         Returns:
             dict: Results of trailing stop operations
@@ -835,12 +973,24 @@ class MT5SignalExecutor:
             if not self.initialize_mt5():
                 return {"success": False, "error": "MT5 not connected"}
         
-        # Set defaults if not provided
-        if trailing_pips is None:
-            trailing_pips = 50  # Default trailing stop distance
+        # Define instrument-specific pip values and appropriate trailing distances
+        instrument_settings = {
+            # Format: "symbol": {"pip_multiplier": X, "min_profit_pips": Y, "trailing_pips": Z}
+            # Where X is the multiplier to convert standard pips to appropriate size for this instrument
+            "XAUUSD": {"pip_multiplier": 10.0, "min_profit_pips": 200, "trailing_pips": 500},  # Gold needs wider stops
+            "BTCUSD": {"pip_multiplier": 100.0, "min_profit_pips": 5000, "trailing_pips": 10000},  # Bitcoin needs much wider stops
+            "US30": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # Dow Jones
+            "US500": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # S&P 500
+            "NAS100": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # Nasdaq
+            "UK100": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # FTSE 100
+            "FRA40": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # CAC 40
+            "GER40": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # DAX
+            "default": {"pip_multiplier": 1.0, "min_profit_pips": 20, "trailing_pips": 50}  # Default for forex pairs
+        }
         
-        if min_profit_pips is None:
-            min_profit_pips = 20  # Default minimum profit before trailing activates
+        # Set defaults if not provided
+        default_trailing_pips = 50  # Default trailing stop distance for forex
+        default_min_profit_pips = 20  # Default minimum profit before trailing activates for forex
         
         results = {
             "success": True,
@@ -866,6 +1016,18 @@ class MT5SignalExecutor:
                 symbol = signal_info["symbol"]
                 direction = signal_info["direction"]
                 orders = signal_info.get("orders", [])
+                
+                # Get instrument-specific settings
+                settings = instrument_settings.get(symbol, instrument_settings["default"])
+                pip_multiplier = settings["pip_multiplier"]
+                instrument_min_profit_pips = settings["min_profit_pips"]
+                instrument_trailing_pips = settings["trailing_pips"]
+                
+                # Use provided values or instrument-specific defaults
+                trailing_pips = trailing_percent if trailing_percent is not None else instrument_trailing_pips
+                min_profit_pips = min_profit_percent if min_profit_percent is not None else instrument_min_profit_pips
+                
+                self.logger.info(f"Using instrument-specific settings for {symbol}: min_profit_pips={min_profit_pips}, trailing_pips={trailing_pips}, pip_multiplier={pip_multiplier}")
                 
                 # Check if the signal has associated orders
                 if not orders:
@@ -930,7 +1092,7 @@ class MT5SignalExecutor:
                     
                     # Check if we have enough profit to activate trailing stop
                     if profit_pips < min_profit_pips:
-                        self.logger.info(f"Position {order_id} from symbol {symbol}, profit ({profit_pips:.1f} pips) below minimum threshold ({min_profit_pips} pips)")
+                        self.logger.info(f"Position {order_id} profit ({profit_pips:.1f} pips) below minimum threshold ({min_profit_pips} pips)")
                         results["details"].append({
                             "order_id": order_id,
                             "symbol": symbol,
@@ -944,6 +1106,7 @@ class MT5SignalExecutor:
                     
                     # Calculate new stop loss based on trailing distance
                     current_sl = position.sl
+                    current_tp = position.tp  # Store current take profit
                     
                     if direction == "BUY":
                         # For BUY, move stop loss up as price moves up
@@ -952,14 +1115,15 @@ class MT5SignalExecutor:
                         
                         # Only move stop loss if it would move up (don't move it down)
                         if current_sl < new_sl:
-                            self.logger.info(f"Updating trailing stop for BUY position {order_id} from symbol {symbol}: {current_sl:.5f} -> {new_sl:.5f}")
+                            self.logger.info(f"Updating trailing stop for BUY position {order_id}: {current_sl:.5f} -> {new_sl:.5f}")
                             
-                            # Modify ONLY the stop loss, leaving take profit untouched
+                            # Modify ONLY the stop loss, maintaining the current take profit
                             request = {
                                 "action": mt5.TRADE_ACTION_SLTP,
                                 "symbol": symbol,
                                 "position": position.ticket,
-                                "sl": new_sl  # Only modify stop loss
+                                "sl": new_sl,  # New stop loss
+                                "tp": current_tp  # Keep current take profit
                             }
                             
                             result = mt5.order_send(request)
@@ -972,6 +1136,7 @@ class MT5SignalExecutor:
                                     "direction": direction,
                                     "old_sl": current_sl,
                                     "new_sl": new_sl,
+                                    "tp": current_tp,  # Include TP in the details
                                     "profit_pips": profit_pips,
                                     "trailing_pips": trailing_pips,
                                     "updated": True
@@ -1009,14 +1174,15 @@ class MT5SignalExecutor:
                         
                         # Only move stop loss if it would move down (don't move it up)
                         if current_sl > new_sl or current_sl == 0:
-                            self.logger.info(f"Updating trailing stop for SELL position {order_id} from symbol {symbol}: {current_sl:.5f} -> {new_sl:.5f}")
+                            self.logger.info(f"Updating trailing stop for SELL position {order_id}: {current_sl:.5f} -> {new_sl:.5f}")
                             
-                            # Modify ONLY the stop loss, leaving take profit untouched
+                            # Modify ONLY the stop loss, maintaining the current take profit
                             request = {
                                 "action": mt5.TRADE_ACTION_SLTP,
                                 "symbol": symbol,
                                 "position": position.ticket,
-                                "sl": new_sl  # Only modify stop loss
+                                "sl": new_sl,  # New stop loss
+                                "tp": current_tp  # Keep current take profit
                             }
                             
                             result = mt5.order_send(request)
@@ -1029,6 +1195,7 @@ class MT5SignalExecutor:
                                     "direction": direction,
                                     "old_sl": current_sl,
                                     "new_sl": new_sl,
+                                    "tp": current_tp,  # Include TP in the details
                                     "profit_pips": profit_pips,
                                     "trailing_pips": trailing_pips,
                                     "updated": True

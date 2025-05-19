@@ -10,6 +10,7 @@ from groq_client import GroqClient
 from signal_tracker import SignalTracker
 from signal_follow import SignalFollowUpGenerator
 from mt5_signal_executor import MT5SignalExecutor
+from mt5_accountManager import MultiAccountExecutor
 
 load_dotenv()
 ADMIN_USER_ID = [7823596188, 7396303047]
@@ -29,12 +30,15 @@ class SignalDispatcher:
             server = os.getenv("MT5_SERVER")
         )
         # Initialize the signal executor
-        self.signal_executor = MT5SignalExecutor(
-            username = os.getenv("MT5_USERNAME"),
-            password = os.getenv("MT5_PASSWORD"),
-            server = os.getenv("MT5_SERVER"),
-            risk_percent = 0.7  # risk % per trade
-        )
+        # self.signal_executor = MT5SignalExecutor(
+        #     username = os.getenv("MT5_USERNAME"),
+        #     password = os.getenv("MT5_PASSWORD"),
+        #     server = os.getenv("MT5_SERVER"),
+        #     risk_percent = 0.7  # risk % per trade
+        # )
+        
+        self.signal_executor = MultiAccountExecutor()
+        
         self.auto_execute = False
         # self.signal_tracker = self.signal_generator.signal_history 
 
@@ -209,38 +213,34 @@ class SignalDispatcher:
                     try:
                         execution_result = self.signal_executor.execute_signal(signal_info)
                         
-                        # Log the execution result
                         if execution_result["success"]:
-                            self.logger.info(f"Signal {signal_id} executed successfully: {execution_result['order_count']} orders placed")
+                            accounts_executed = execution_result["accounts_executed"]
+                            total_accounts = execution_result["total_accounts"]
+                            self.logger.info(f"Signal {signal_id} executed on {accounts_executed}/{total_accounts} accounts")
                             
-                            # Format order details for the admin notification
-                            order_details = "\n".join([
-                                f"• Order {i+1}: ID {order['order_id']}, Entry {order['entry_price']:.2f}, SL {order['stop_loss']:.2f}, Lot {order['lot_size']:.2f}"
-                                for i, order in enumerate(execution_result['orders'])
-                            ])
+                            # Format account details for the admin notification
+                            account_details = ""
+                            for account_name, result in execution_result["details"].items():
+                                if result["success"]:
+                                    orders_placed = result.get("order_count", 0)
+                                    total_lots = result.get("total_lot_size", 0)
+                                    account_details += f"• {account_name}: ✅ {orders_placed} orders, {total_lots:.2f} lots\n"
+                                else:
+                                    error = result.get("error", "Unknown error")
+                                    account_details += f"• {account_name}: ❌ Error: {error}\n"
                             
-                            # Send execution notification to admin only
-                            order_details = ""
-                            for i, order in enumerate(execution_result['orders']):
-                                order_details += f"• Order {i+1}: ID {order['order_id']}, Entry {order['entry_price']:.2f}, SL {order['stop_loss']:.2f}, Lot {order['lot_size']:.2f}, TP at {order['take_profit']:.2f}\n"
-
                             # Send execution notification to admin only
                             admin_msg = f"""
-                            🤖 <b>VFX_Algo Trading Signal</b> 🤖
+                    🤖 <b>SIGNAL AUTO-EXECUTED</b> 🤖
 
-                            Symbol: {signal_info['symbol']} {signal_info['direction']}
-                            Placed {execution_result['order_count']} limit orders across the entry range.
+                    Symbol: {signal_info['symbol']} {signal_info['direction']}
+                    Executed on {accounts_executed}/{total_accounts} accounts
 
-                            <b>Order Details:</b>
-                            {order_details}
-                            <b>Take Profit Levels:</b>
-                            - TP1: {execution_result['take_profits'][0] if execution_result['take_profits'] else 'N/A'}
-                            {f"• TP2: {execution_result['take_profits'][1]}" if len(execution_result['take_profits']) > 1 else ""}
-                            {f"• TP3: {execution_result['take_profits'][2]}" if len(execution_result['take_profits']) > 2 else ""}
+                    <b>Account Details:</b>
+                    {account_details}
 
-                            Total Position Size: {execution_result.get('total_lot_size', 0):.2f} lots
-                            Signal ID: {signal_id}
-                            """
+                    Signal ID: {signal_id}
+                    """
                             # Send to admin only
                             for admin_id in ADMIN_USER_ID:
                                 try:
@@ -252,8 +252,7 @@ class SignalDispatcher:
                                 except Exception as e:
                                     self.logger.error(f"Failed to send execution notification to admin {admin_id}: {e}")
                         else:
-                            error_msg = f"Failed to execute signal {signal_id}: {execution_result['error']}"
-                            self.logger.error(error_msg)
+                            self.logger.error(f"Failed to execute signal {signal_id} on any account: {execution_result['error']}")
                             
                             # Notify admin of execution failure
                             for admin_id in ADMIN_USER_ID:
@@ -340,6 +339,28 @@ class SignalDispatcher:
                 self.logger.error("Could not determine symbol from signal message")
                 return None
             
+            # Extract strategy type - look for strategy names in the message
+            strategy_mappings = {
+                "MA_CROSS SIGNAL": "MA_CROSS",
+                "Moving Average Crossover": "MA_CROSS",
+                "RSI_REV SIGNAL": "RSI_REV",
+                "RSI Reversal": "RSI_REV",
+                "SUP_RES SIGNAL": "SUP_RES",
+                "Support & Resistance": "SUP_RES",
+                "VOL_HAWKES SIGNAL": "VOL_HAWKES",
+                "Volatility Breakout (Hawkes)": "VOL_HAWKES"
+            }
+            
+            # Find strategy in message
+            for strategy_text, strategy_code in strategy_mappings.items():
+                if strategy_text in signal_message:
+                    signal_info["strategy"] = strategy_code
+                    break
+                    
+            # Default strategy if not found
+            if "strategy" not in signal_info:
+                signal_info["strategy"] = "VFX-LIMIT"
+            
             # Extract price levels using regex
             import re
             
@@ -372,8 +393,20 @@ class SignalDispatcher:
             if tp3_match:
                 signal_info["take_profit3"] = float(tp3_match.group(1))
             
-            # Add strategy and timeframe (not in the message, but we can set defaults)
-            signal_info["strategy"] = "VFX-LIMIT"
+            # Extract Hawkes-specific data if present
+            hawkes_vol_match = re.search(r"Current Volatility:\s*(\d+\.\d+)", signal_message)
+            if hawkes_vol_match:
+                signal_info["hawkes_vol"] = float(hawkes_vol_match.group(1))
+                
+            q05_match = re.search(r"Lower Threshold:\s*(\d+\.\d+)", signal_message)
+            if q05_match:
+                signal_info["q05"] = float(q05_match.group(1))
+                
+            q95_match = re.search(r"Upper Threshold:\s*(\d+\.\d+)", signal_message)
+            if q95_match:
+                signal_info["q95"] = float(q95_match.group(1))
+            
+            # Add timeframe (not in the message, but we can set defaults)
             signal_info["timeframe"] = "M15"  # Default timeframe
             
             # Add timestamp
@@ -468,21 +501,76 @@ class SignalDispatcher:
                 return
             
             # Apply trailing stops to all active positions
-            result = self.signal_executor.apply_trailing_stop()
-            
-            if result["success"]:
-                if result["positions_updated"] > 0:
-                    self.logger.info(f"Modify positions' orders for {result['positions_updated']} out of {result['positions_checked']} positions")
+            # Handle both single-account and multi-account executors
+            if isinstance(self.signal_executor, MultiAccountExecutor):
+                # Multi-account execution
+                result = self.signal_executor.apply_trailing_stop()
+                
+                if result["success"]:
+                    accounts_updated = result["accounts_updated"]
+                    total_accounts = result["total_accounts"]
                     
-                    # Notify admin of trailing stop updates
+                    if accounts_updated > 0:
+                        self.logger.info(f"Updated trailing stops on {accounts_updated}/{total_accounts} accounts")
+                        
+                        # Format account details for the admin notification
+                        account_details = ""
+                        positions_updated = 0
+                        
+                        for account_name, account_result in result["details"].items():
+                            if account_result["success"]:
+                                account_positions_updated = account_result.get("positions_updated", 0)
+                                positions_updated += account_positions_updated
+                                
+                                if account_positions_updated > 0:
+                                    account_details += f"\n<b>{account_name}:</b>\n"
+                                    
+                                    # Add details for each updated position
+                                    for detail in account_result.get("details", []):
+                                        if detail.get("updated", False):
+                                            account_details += f"• {detail['symbol']} {detail['direction']}: SL {detail['old_sl']:.5f} → {detail['new_sl']:.5f} (Profit: {detail['profit_pips']:.1f} pips)\n"
+                        
+                        if positions_updated > 0:
+                            admin_msg = f"""
+    🔄 <b>TRAILING STOPS UPDATED</b> 🔄
+
+    Updated positions on {accounts_updated}/{total_accounts} accounts.
+    Total positions updated: {positions_updated}
+
+    {account_details}
+    """
+                            
+                            # Send to admin only
+                            for admin_id in ADMIN_USER_ID:
+                                try:
+                                    await self.bot.send_message(
+                                        chat_id=admin_id,
+                                        text=admin_msg,
+                                        parse_mode='HTML'
+                                    )
+                                except Exception as e:
+                                    self.logger.error(f"Failed to send trailing stop notification to admin {admin_id}: {e}")
+                    else:
+                        self.logger.info(f"No trailing stops updated on any account.")
+                else:
+                    self.logger.error(f"Error applying trailing stops: {result.get('error', 'Unknown error')}")
+                    
+            else:
+                # Single-account execution (original implementation)
+                result = self.signal_executor.apply_trailing_stop()
+                
+                if result["success"]:
                     if result["positions_updated"] > 0:
+                        self.logger.info(f"Updated trailing stops for {result['positions_updated']} out of {result['positions_checked']} positions")
+                        
+                        # Notify admin of trailing stop updates
                         update_details = "\n".join([
-                            f"• {detail['symbol']} {detail['direction']}: Limit_Order moved from {detail['old_sl']:.5f} to {detail['new_sl']:.5f} (Profit: {detail['profit_pips']:.1f} pips)"
+                            f"• {detail['symbol']} {detail['direction']}: SL {detail['old_sl']:.5f} → {detail['new_sl']:.5f} (Profit: {detail['profit_pips']:.1f} pips)"
                             for detail in result["details"] if detail.get("updated", False)
                         ])
                         
                         admin_msg = f"""
-    🔄 <b>LIMIT_ORDERS UPDATED</b> 🔄
+    🔄 <b>TRAILING STOPS UPDATED</b> 🔄
 
     Updated {result["positions_updated"]} out of {result["positions_checked"]} positions:
 
@@ -499,10 +587,10 @@ class SignalDispatcher:
                                 )
                             except Exception as e:
                                 self.logger.error(f"Failed to send trailing stop notification to admin {admin_id}: {e}")
+                    else:
+                        self.logger.info(f"No trailing stops updated. Checked {result['positions_checked']} positions.")
                 else:
-                    self.logger.info(f"No trailing stops updated. Checked {result['positions_checked']} positions.")
-            else:
-                self.logger.error(f"Error applying trailing stops: {result['error']}")
+                    self.logger.error(f"Error applying trailing stops: {result.get('error', 'Unknown error')}")
                 
         except Exception as e:
             self.logger.error(f"Error in check_and_apply_trailing_stops: {e}")

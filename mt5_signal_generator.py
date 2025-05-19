@@ -6,12 +6,14 @@ import logging
 from datetime import datetime, timedelta
 import time
 
+# Import our Hawkes strategy module
+from hawkes import calculate_hawkes_signal
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler()  # Ensures output to terminal
+        logging.StreamHandler() 
     ]
 )
 
@@ -30,9 +32,8 @@ class MT5SignalGenerator:
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M5
-                    #mt5.TIMEFRAME_M15,   
-                    #mt5.TIMEFRAME_M30  
+                    mt5.TIMEFRAME_M5,
+                    mt5.TIMEFRAME_M15
                 ],
                 'params': {'fast_length': 9, 'slow_length': 21}
             },
@@ -41,8 +42,7 @@ class MT5SignalGenerator:
                     'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
-                'timeframes': [
-                   #mt5.TIMEFRAME_M5,   
+                'timeframes': [   
                     mt5.TIMEFRAME_M15,   
                     mt5.TIMEFRAME_M30   
                 ],
@@ -55,10 +55,22 @@ class MT5SignalGenerator:
                 ],
                 'timeframes': [
                     mt5.TIMEFRAME_M5,  
-                    mt5.TIMEFRAME_M15  
-                    #mt5.TIMEFRAME_M30
+                    mt5.TIMEFRAME_M15
                 ],
                 'params': {'lookback': 20, 'threshold': 0.001}
+            },
+        
+            'hawkes_volatility': {
+                'symbols': [
+                    'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
+                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                ],
+                'timeframes': [
+                    mt5.TIMEFRAME_M15,
+                    mt5.TIMEFRAME_M30,
+                    mt5.TIMEFRAME_H1
+                ],
+                'params': {'atr_lookback': 251, 'kappa': 0.51, 'quantile_lookback': 97}
             }
         }
         
@@ -70,7 +82,7 @@ class MT5SignalGenerator:
         self.max_signals_per_day = 30    
         self.min_minutes_between_signals = 15
     
-    def initialize_mt5(self, username=295277, password="Abcdefg@1", server="VortexFX-Servers"):
+    def initialize_mt5(self, username=None, password=None, server=None):
         """Connect to MetaTrader5 terminal with detailed logging"""
         try:
             self.logger.info("Initializing MT5 connection...")
@@ -191,11 +203,11 @@ class MT5SignalGenerator:
         
         # Buy signal: fast MA crosses-over slow MA
         if prev_fast <= prev_slow and curr_fast > curr_slow:
-            return self.format_signal(symbol, "BUY", df)
+            return self.format_signal(symbol, "BUY", df, "MA_CROSS")
             
         # Sell signal: fast MA crosses-under slow MA
         elif prev_fast >= prev_slow and curr_fast < curr_slow:
-            return self.format_signal(symbol, "SELL", df)
+            return self.format_signal(symbol, "SELL", df, "MA_CROSS")
             
         return None
     
@@ -220,11 +232,11 @@ class MT5SignalGenerator:
         
         # Buy signal: RSI crossing up from oversold
         if prev_rsi < oversold and current_rsi > oversold:
-            return self.format_signal(symbol, "BUY", df)
+            return self.format_signal(symbol, "BUY", df, "RSI_REV")
             
         # Sell signal: RSI crossing down from overbought
         elif prev_rsi > overbought and current_rsi < overbought:
-            return self.format_signal(symbol, "SELL", df)
+            return self.format_signal(symbol, "SELL", df, "RSI_REV")
             
         return None
     
@@ -248,35 +260,62 @@ class MT5SignalGenerator:
         
         # Buy signal: breakout above resistance
         if prev_close < recent_high and current_close > recent_high:
-            return self.format_signal(symbol, "BUY", df)
+            return self.format_signal(symbol, "BUY", df, "SUP_RES")
             
         # Sell signal: breakdown below support
         elif prev_close > recent_low and current_close < recent_low:
-            return self.format_signal(symbol, "SELL", df)
+            return self.format_signal(symbol, "SELL", df, "SUP_RES")
             
         return None
     
-    def format_signal(self, symbol, direction, price_data):
-        """Format the signal according to our template with enhanced styling"""
+    def calculate_hawkes_volatility(self, symbol, timeframe, atr_lookback=24, kappa=0.1, quantile_lookback=72):
+        """Calculate Hawkes volatility breakout signal"""
+        # Get more bars for the Hawkes strategy since it needs longer lookback
+        df = self.get_price_data(symbol, timeframe, bars=max(atr_lookback, quantile_lookback) * 2)
+        if df is None or df.height < max(atr_lookback, quantile_lookback):
+            return None
+        
+        # Calculate Hawkes signal
+        signal, hawkes_values, q05, q95 = calculate_hawkes_signal(
+            df, atr_lookback, kappa, quantile_lookback
+        )
+        
+        if signal == 0 or hawkes_values is None:
+            return None
+            
+        # Include Hawkes-specific values in additional_data
+        additional_data = {
+            "hawkes_vol": float(hawkes_values[-1]) if hawkes_values is not None else None,
+            "q05": float(q05) if q05 is not None else None,
+            "q95": float(q95) if q95 is not None else None
+        }
+        
+        if signal == 1:  # Buy signal
+            return self.format_signal(symbol, "BUY", df, "VOL_HAWKES", additional_data)
+        else:  # Sell signal
+            return self.format_signal(symbol, "SELL", df, "VOL_HAWKES", additional_data)
+    
+    def format_signal(self, symbol, direction, price_data, strategy_name="", additional_data=None):
+        """Format the signal according to our template with enhanced styling and strategy identification"""
         # Get current price info
         current_price = price_data.tail(1)["close"][0]
         
         # Define volatility-based parameters for each instrument
         # Format: [entry_range_pct, sl_pct, tp1_pct, tp2_pct, tp3_pct]
         parameters = {
-            # Original assets
-            "XAUUSD": [0.15, 0.4, 0.2, 0.35, 0.5],    # Gold
-            "NAS100": [0.12, 0.3, 0.15, 0.25, 0.4],    # Nasdaq
-            "EURUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # EUR/USD
-            "GBPUSD": [0.06, 0.12, 0.08, 0.15, 0.25], # GBP/USD
+            # Asset Group_1
+            "XAUUSD": [0.15, 0.4, 0.2, 0.35, 0.5],    
+            "NAS100": [0.12, 0.3, 0.15, 0.25, 0.4],    
+            "EURUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   
+            "GBPUSD": [0.06, 0.12, 0.08, 0.15, 0.25], 
             
-            # New assets
-            "AUDUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   # AUD/USD
-            "USDCAD": [0.05, 0.1, 0.07, 0.12, 0.2],   # USD/CAD
-            "FRA40": [0.1, 0.25, 0.12, 0.2, 0.35],    # CAC 40
-            "UK100": [0.1, 0.25, 0.12, 0.2, 0.35],    # FTSE 100
-            "US30": [0.1, 0.25, 0.12, 0.2, 0.35],     # Dow Jones
-            "US500": [0.1, 0.25, 0.12, 0.2, 0.35]     # S&P 500
+            # Asset Group_2
+            "AUDUSD": [0.05, 0.1, 0.07, 0.12, 0.2],   
+            "USDCAD": [0.05, 0.1, 0.07, 0.12, 0.2],   
+            "FRA40": [0.1, 0.25, 0.12, 0.2, 0.35],    
+            "UK100": [0.1, 0.25, 0.12, 0.2, 0.35],    
+            "US30": [0.1, 0.25, 0.12, 0.2, 0.35],     
+            "US500": [0.1, 0.25, 0.12, 0.2, 0.35]     
         }
         
         # Use default if symbol not in our parameters list
@@ -308,6 +347,16 @@ class MT5SignalGenerator:
         }
         
         display_symbol = symbol_display.get(symbol, f"💱 {symbol[:3]}/{symbol[3:]}")
+        
+        # Strategy display names
+        strategy_display = {
+            "MA_CROSS": "Moving Average Crossover",
+            "RSI_REV": "RSI Reversal",
+            "SUP_RES": "Support & Resistance",
+            "VOL_HAWKES": "Volatility Breakout (Hawkes)"
+        }
+        
+        strategy_display_name = strategy_display.get(strategy_name, "VFX Signal")
         
         # Decimal places to round to
         if symbol in ["EURUSD", "GBPUSD", "AUDUSD", "USDCAD"]:
@@ -354,10 +403,31 @@ class MT5SignalGenerator:
             tp2 = round(entry_low * (1 - tp2_range), decimals)
             tp3 = round(entry_low * (1 - tp3_range), decimals)
         
-        # Format the signal with enhanced styling (bold text, better spacing)
+        # Add strategy-specific details if provided
+        strategy_details = ""
+        if strategy_name == "VOL_HAWKES" and additional_data:
+            hawkes_vol = additional_data.get("hawkes_vol")
+            q05 = additional_data.get("q05")
+            q95 = additional_data.get("q95")
+            
+            if hawkes_vol is not None and q05 is not None and q95 is not None:
+                # Format numbers to 3 decimal places
+                hawkes_vol_str = f"{hawkes_vol:.3f}"
+                q05_str = f"{q05:.3f}"
+                q95_str = f"{q95:.3f}"
+                
+                strategy_details = f"""
+    📊 <b>Volatility Analysis:</b>
+    • Current Volatility: {hawkes_vol_str}
+    • Lower Threshold: {q05_str}
+    • Upper Threshold: {q95_str}
+    """
+        
+        # Format the signal with enhanced styling and strategy identification
         signal = f"""
-    🔔 <b>VFX TRADE SIGNAL</b> 🔔
+    🔔 <b>VFX {strategy_name} SIGNAL</b> 🔔
 
+    <b>Strategy:</b> {strategy_display_name}
     <b>Asset:</b> {display_symbol}
     <b>Direction:</b> {direction_emoji} <b>{entry_type}</b>
 
@@ -368,7 +438,7 @@ class MT5SignalGenerator:
     🎯 <b>Take Profit Levels:</b>
     • TP1: {tp1}
     • TP2: {tp2}
-    • TP3: {tp3}
+    • TP3: {tp3}{strategy_details}
 
     📊 <b>Risk management is key.</b>
 
@@ -381,12 +451,15 @@ class MT5SignalGenerator:
 
         # Create a key for this signal to track in history
         signal_key = f"{symbol}_{direction}_{datetime.now().strftime('%Y%m%d')}"
+        
+        # Add strategy name to the signal history
         self.signal_history[signal_key] = {
             'timestamp': datetime.now(),
             'symbol': symbol,
             'direction': direction,
             'entry_low': entry_low,
-            'entry_high': entry_high
+            'entry_high': entry_high,
+            'strategy': strategy_name  # Include strategy name in history
         }
         
         return signal
@@ -423,9 +496,19 @@ class MT5SignalGenerator:
                             config['params']['lookback'],
                             config['params']['threshold']
                         )
+                    # Add the new Hawkes volatility strategy
+                    elif strategy_name == 'hawkes_volatility':
+                        signal = self.calculate_hawkes_volatility(
+                            symbol,
+                            timeframe,
+                            config['params']['atr_lookback'],
+                            config['params']['kappa'],
+                            config['params']['quantile_lookback']
+                        )
                     
                     # If valid signal found, return it
                     if signal:
+                        self.logger.info(f"Generated {strategy_name} signal for {symbol}")
                         return signal
         
         # No signals found from any strategy
