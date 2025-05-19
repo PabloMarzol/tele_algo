@@ -962,7 +962,7 @@ class TelegramEntityFinder2:
             
             logger.info(f"Encontrados {len(dialogs)} diálogos")
             
-            # Filtrar solo canales y grupos
+            # Filtrar solo canales y grupos 
             entities_count = 0
             existing_count = 0
             entity_types = {"channel": 0, "megagroup": 0, "group": 0, "forum": 0, "unknown": 0}
