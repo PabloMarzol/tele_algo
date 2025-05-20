@@ -311,11 +311,11 @@ class SignalDispatcher:
             # Extract symbol by checking for common display names
             symbol_mappings = {
                 "GOLD (XAU/USD)": "XAUUSD",
-                "NASDAQ (NAS100)": "NAS100",
                 "EUR/USD": "EURUSD",
                 "GBP/USD": "GBPUSD",
                 "AUD/USD": "AUDUSD",
                 "USD/CAD": "USDCAD",
+                "NASDAQ (NAS100)": "NAS100",
                 "CAC 40 (FRA40)": "FRA40",
                 "FTSE 100 (UK100)": "UK100",
                 "DOW JONES (US30)": "US30",
@@ -348,7 +348,10 @@ class SignalDispatcher:
                 "SUP_RES SIGNAL": "SUP_RES",
                 "Support & Resistance": "SUP_RES",
                 "VOL_HAWKES SIGNAL": "VOL_HAWKES",
-                "Volatility Breakout (Hawkes)": "VOL_HAWKES"
+                "Volatility Breakout (Hawkes)": "VOL_HAWKES",
+                "Momentum": "MA_CROSS",
+                "Mean_Rev": "RSI_REV",
+                "SD_Inference": "SUP_RES"
             }
             
             # Find strategy in message
@@ -407,7 +410,7 @@ class SignalDispatcher:
                 signal_info["q95"] = float(q95_match.group(1))
             
             # Add timeframe (not in the message, but we can set defaults)
-            signal_info["timeframe"] = "M15"  # Default timeframe
+            signal_info["timeframe"] = "M5"  # Default timeframe
             
             # Add timestamp
             signal_info["timestamp"] = datetime.now()

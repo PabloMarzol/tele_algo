@@ -32,9 +32,9 @@ class MT5SignalGenerator:
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M5,
-                    mt5.TIMEFRAME_M15
+                    mt5.TIMEFRAME_M5 
                 ],
+                'confirmation_timeframe': mt5.TIMEFRAME_M3,  
                 'params': {'fast_length': 9, 'slow_length': 21}
             },
             'rsi_reversal': {
@@ -42,7 +42,7 @@ class MT5SignalGenerator:
                     'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
-                'timeframes': [   
+                'timeframes': [
                     mt5.TIMEFRAME_M15,   
                     mt5.TIMEFRAME_M30   
                 ],
@@ -55,22 +55,20 @@ class MT5SignalGenerator:
                 ],
                 'timeframes': [
                     mt5.TIMEFRAME_M5,  
-                    mt5.TIMEFRAME_M15
+                    mt5.TIMEFRAME_M15  
                 ],
                 'params': {'lookback': 20, 'threshold': 0.001}
             },
-        
+            # Add the new Hawkes volatility strategy
             'hawkes_volatility': {
                 'symbols': [
                     'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M15,
-                    mt5.TIMEFRAME_M30,
-                    mt5.TIMEFRAME_H1
+                    mt5.TIMEFRAME_M5  # Run only on 5min timeframe
                 ],
-                'params': {'atr_lookback': 251, 'kappa': 0.51, 'quantile_lookback': 97}
+                'params': {'atr_lookback': 297, 'kappa': 0.552, 'quantile_lookback': 27}
             }
         }
         
@@ -181,7 +179,10 @@ class MT5SignalGenerator:
             return None
     
     def calculate_ma_crossover(self, symbol, timeframe, fast_length=9, slow_length=21):
-        """Calculate Moving Average Crossover signal using Polars"""
+        """
+        Calculate Moving Average Crossover signal using Polars with 3min confirmation
+        """
+        # Get data for primary timeframe
         df = self.get_price_data(symbol, timeframe, bars=slow_length*2)
         if df is None or df.height < slow_length:
             return None
@@ -201,14 +202,61 @@ class MT5SignalGenerator:
         curr_fast = last_rows["fast_ma"][1]
         curr_slow = last_rows["slow_ma"][1]
         
+        # Initial crossover detection
+        crossover_detected = False
+        direction = None
+        
         # Buy signal: fast MA crosses-over slow MA
         if prev_fast <= prev_slow and curr_fast > curr_slow:
-            return self.format_signal(symbol, "BUY", df, "MA_CROSS")
-            
+            crossover_detected = True
+            direction = "BUY"
         # Sell signal: fast MA crosses-under slow MA
         elif prev_fast >= prev_slow and curr_fast < curr_slow:
-            return self.format_signal(symbol, "SELL", df, "MA_CROSS")
+            crossover_detected = True
+            direction = "SELL"
+        
+        # If no crossover detected, exit early
+        if not crossover_detected:
+            return None
+        
+        # If crossover detected, confirm with 3min timeframe
+        confirmation_timeframe = self.strategies['ma_crossover'].get('confirmation_timeframe', mt5.TIMEFRAME_M3)
+        
+        # Get confirmation timeframe data
+        conf_df = self.get_price_data(symbol, confirmation_timeframe, bars=fast_length*2)
+        if conf_df is None or conf_df.height < fast_length:
+            self.logger.warning(f"Could not get confirmation data for {symbol} on {confirmation_timeframe}")
+            return None
+        
+        # Calculate MAs on confirmation timeframe
+        conf_df = conf_df.with_columns([
+            pl.col("close").rolling_mean(fast_length).alias("fast_ma"),
+            pl.col("close").rolling_mean(slow_length).alias("slow_ma")
+        ])
+        
+        # Get latest relationship on confirmation timeframe
+        latest_conf = conf_df.tail(1)
+        if latest_conf.height == 0:
+            return None
             
+        latest_fast = latest_conf["fast_ma"][0]
+        latest_slow = latest_conf["slow_ma"][0]
+        
+        # Check for None values - THIS FIXES THE ERROR
+        if latest_fast is None or latest_slow is None:
+            self.logger.warning(f"Missing MA values in confirmation timeframe for {symbol}")
+            return None
+        
+        # Confirm the signal based on direction
+        if direction == "BUY" and latest_fast > latest_slow:
+            # Confirmed BUY signal
+            return self.format_signal(symbol, "BUY", df, "MA_CROSS")
+        elif direction == "SELL" and latest_fast < latest_slow:
+            # Confirmed SELL signal
+            return self.format_signal(symbol, "SELL", df, "MA_CROSS")
+        
+        # Signal not confirmed by the shorter timeframe
+        self.logger.info(f"MA Crossover signal for {symbol} not confirmed on {confirmation_timeframe} timeframe")
         return None
     
     def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=2, overbought=95, oversold=5):
@@ -350,10 +398,10 @@ class MT5SignalGenerator:
         
         # Strategy display names
         strategy_display = {
-            "MA_CROSS": "Moving Average Crossover",
-            "RSI_REV": "RSI Reversal",
-            "SUP_RES": "Support & Resistance",
-            "VOL_HAWKES": "Volatility Breakout (Hawkes)"
+            "MA_CROSS": "Momentum",
+            "RSI_REV": "Mean_Rev",
+            "SUP_RES": "SD_Inference",
+            "VOL_HAWKES": "VOL_HAWKES"
         }
         
         strategy_display_name = strategy_display.get(strategy_name, "VFX Signal")
@@ -425,7 +473,7 @@ class MT5SignalGenerator:
         
         # Format the signal with enhanced styling and strategy identification
         signal = f"""
-    🔔 <b>VFX {strategy_name} SIGNAL</b> 🔔
+    🔔 <b>VFX SIGNAL</b> 🔔
 
     <b>Strategy:</b> {strategy_display_name}
     <b>Asset:</b> {display_symbol}

@@ -422,8 +422,8 @@ class MT5SignalExecutor:
                 # Map strategy codes to MT5 comment prefixes
                 strategy_prefix = {
                     "MA_CROSS": "Momentum_",
-                    "RSI_REV": "MeanRev_",
-                    "SUP_RES": "SD_",
+                    "RSI_REV": "Mean_Rev_",
+                    "SUP_RES": "SD_Inference_",
                     "VOL_HAWKES": "VOL_HAWKES_"
                 }.get(strategy_code, "")
                 
@@ -979,12 +979,12 @@ class MT5SignalExecutor:
             # Where X is the multiplier to convert standard pips to appropriate size for this instrument
             "XAUUSD": {"pip_multiplier": 10.0, "min_profit_pips": 200, "trailing_pips": 500},  # Gold needs wider stops
             "BTCUSD": {"pip_multiplier": 100.0, "min_profit_pips": 5000, "trailing_pips": 10000},  # Bitcoin needs much wider stops
-            "US30": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # Dow Jones
-            "US500": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # S&P 500
-            "NAS100": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # Nasdaq
-            "UK100": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # FTSE 100
-            "FRA40": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # CAC 40
-            "GER40": {"pip_multiplier": 5.0, "min_profit_pips": 100, "trailing_pips": 250},  # DAX
+            "US30": {"pip_multiplier": 5.0, "min_profit_pips": 900, "trailing_pips": 550},  # Dow Jones
+            "US500": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # S&P 500
+            "NAS100": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # Nasdaq
+            "UK100": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # FTSE 100
+            "FRA40": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # CAC 40
+            "GER40": {"pip_multiplier": 5.0, "min_profit_pips": 900, "trailing_pips": 550},  # DAX
             "default": {"pip_multiplier": 1.0, "min_profit_pips": 20, "trailing_pips": 50}  # Default for forex pairs
         }
         

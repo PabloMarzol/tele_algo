@@ -4,3 +4,5 @@ user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_accou
 6983253508,VFXTRADEX,VFX,"",0,0,"",false,2025-04-24 13:06:39,2025-04-24 13:06:39,false,"","","","",false,"","","",false,"","","",""
 8113209614,VFX_1Bot,DM,"",0,0,"",false,2025-04-27 20:56:24,2025-04-27 20:56:24,false,"","","","",false,"","","",false,"","","",""
 1127393419,MagusQuant,Magus,Quant,5,25000,300239,true,2025-05-15 01:08:05,2025-05-15 01:08:05,false,"","","","",false,"",main_channel,2025-05-15 01:08:43,true,2025-05-15 01:08:43,medium,300239,2025-05-15 01:10:33
+7097133726,birdcapri,Bird,Bill,8,10000,300348,true,2025-05-20 16:05:38,2025-05-20 16:05:38,false,"","","","",true,2025-05-20 16:15:20,main_channel,2025-05-20 16:12:31,true,2025-05-20 16:12:31,high,300348,2025-05-20 16:14:07
+7369915384,TRADEXCELLENT,TRADEX,,0,0,"",false,2025-05-20 16:23:32,2025-05-20 16:23:32,false,"","","","",false,"",main_channel,2025-05-20 16:23:32,false,"","","",""

@@ -29,7 +29,7 @@ class HawkesProcess:
         
         Parameters:
         -----------
-        data_series: np.ndarray
+        data_series: np.ndarray or list
             Input data series to process
         
         Returns:
@@ -50,7 +50,7 @@ class HawkesProcess:
         
         return output * self.kappa
 
-def calculate_hawkes_signal(df, atr_lookback=251, kappa=0.51, quantile_lookback=97):
+def calculate_hawkes_signal(df, atr_lookback=297, kappa=0.51, quantile_lookback=27):
     """
     Calculate trading signals based on Hawkes process volatility
     
@@ -84,14 +84,26 @@ def calculate_hawkes_signal(df, atr_lookback=251, kappa=0.51, quantile_lookback=
             (df["low"] - df["close"].shift(1)).abs()
         )
         
-        atr = true_range.rolling_mean(atr_lookback).fill_null(true_range)
+        # We need to materialize the true_range expression into a Series
+        true_range = true_range.alias("true_range")
+        df_with_tr = df.with_columns([true_range])
         
-        # Calculate normalized range (high-low) / atr
-        norm_range = ((df["high"] - df["low"]) / atr).fill_null(0)
+        # Calculate ATR as rolling mean of true range
+        atr_series = df_with_tr["true_range"].rolling_mean(atr_lookback).fill_null(df_with_tr["true_range"])
+        
+        # Calculate normalized range
+        # Add both ATR and normalized range to the dataframe
+        df_with_indicators = df_with_tr.with_columns([
+            atr_series.alias("atr"),
+            ((df["high"] - df["low"]) / atr_series).fill_null(0).alias("norm_range")
+        ])
+        
+        # Now extract the normalized range as a numpy array
+        norm_range_np = df_with_indicators["norm_range"].to_numpy()
         
         # Apply Hawkes process
         hawkes = HawkesProcess(kappa=kappa)
-        hawkes_values = hawkes.process_data(norm_range.to_numpy())
+        hawkes_values = hawkes.process_data(norm_range_np)
         
         # Calculate quantiles
         valid_values = hawkes_values[~np.isnan(hawkes_values)]
