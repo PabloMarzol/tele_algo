@@ -107,11 +107,16 @@ class DiscoveryState:
             "entity_requests": 0,
             "join_requests": 0
         }
-        self.api_limits: Dict[str, tuple] = {
-            # (requests_per_minute, requests_per_hour)
-            "search_requests": (20, 300),
-            "entity_requests": (30, 500),
-            "join_requests": (5, 40)
+        # self.api_limits: Dict[str, tuple] = {
+        #     # (requests_per_minute, requests_per_hour)
+        #     "search_requests": (20, 300),
+        #     "entity_requests": (30, 500),
+        #     "join_requests": (5, 40)
+        # }
+        self.api_limits = {
+            "search_requests": (3, 10),  # Reducido de (20, 300)
+            "entity_requests": (3, 10),  # Reducido de (30, 500)
+            "join_requests": (2, 5)      # Reducido de (5, 40)
         }
         # Estadísticas de eficacia
         self.effectiveness: Dict[str, Dict[str, float]] = {
@@ -150,8 +155,8 @@ class DiscoveryState:
         return state
 
 class TelegramDiscoveryBot:
+    
     """
-    Main class for the Telegram Automated Discovery Bot .
     This class handles the core functionality of the bot, including task scheduling, API usage, and state management.
     Utilize the TelegramEntityFinder2 for entity discovery (channel, group, supergroup, members) and joining.
 
@@ -169,6 +174,7 @@ class TelegramDiscoveryBot:
         
         # Estado del sistema
         self.state = DiscoveryState()
+
         
         # Configuración y ajustes
         self.config = self._load_config()
@@ -257,6 +263,7 @@ class TelegramDiscoveryBot:
         try:
             logger.info("Inicializing Telegram automated discovery system ...")
             
+            
             # Cargar estado previo si existe
             self._load_state()
             
@@ -265,7 +272,7 @@ class TelegramDiscoveryBot:
             
             # Llamar directamente al método asíncrono
             if not await self.finder.initialize_async():
-                logger.error("No se pudo inicializar TelegramEntityFinder2")
+                logger.error("Error inizialiting TelegramEntityFinder2")
                 return False
             
             # if not self.finder.initialize():
@@ -762,17 +769,87 @@ class TelegramDiscoveryBot:
             "timestamp": datetime.now().isoformat()
         }
     
+    # async def _execute_extract_members_task(self, task: TelegramDiscoveryTask) -> dict:
+    #     """Ejecuta una tarea de extracción de miembros de una entidad."""
+    #     entity_id = task.parameters.get("entity_id")
+    #     method = task.parameters.get("method", "comprehensive")
+    #     # discover_user_groups = task.parameters.get("discover_user_groups", True)
+        
+    #     if not entity_id:
+    #         return {"error": "Entity ID needed for members extraction"}
+        
+    #     logger.info(f"Extracting members from  entity ID: {entity_id} xith method: {method}")
+        
+    #     try:
+    #         if method == "comprehensive":
+    #             # Usar el método más completo
+    #             result = await self.finder.extract_users_ultimate_comprehensive_async(entity_id)
+    #         elif method == "messages":
+    #             # Usar método de análisis de mensajes
+    #             result = await self.finder.extract_users_from_messages_comprehensive_async(entity_id)
+    #         elif method == "reactions":
+    #             # Usar método de análisis de reacciones
+    #             result = await self.finder.extract_users_from_reactions_comprehensive_async(entity_id)
+    #         elif method == "standard":
+    #             # Usar método estándar
+    #             result = await self.finder.extract_members_from_entity_async(entity_id)
+    #         else:
+    #             # Por defecto usar el método más completo
+    #             result = await self.finder.extract_users_ultimate_comprehensive_async(entity_id)
+                
+    #         return {
+    #             "entity_id": entity_id,
+    #             "method": method,
+    #             "members_extracted": result,
+    #             "timestamp": datetime.now().isoformat()
+    #         }
+            
+    #     except Exception as e:
+    #         logger.error(f"Error extrating members from: {entity_id}: {e}")
+    #         return {
+            #     "entity_id": entity_id,
+            #     "method": method,
+            #     "error": str(e),
+            #     "timestamp": datetime.now().isoformat()
+            # }
+    
     async def _execute_extract_members_task(self, task: TelegramDiscoveryTask) -> dict:
         """Ejecuta una tarea de extracción de miembros de una entidad."""
         entity_id = task.parameters.get("entity_id")
         method = task.parameters.get("method", "comprehensive")
+        discover_user_groups = task.parameters.get("discover_user_groups", True)  # Nuevo parámetro
         
         if not entity_id:
             return {"error": "Entity ID needed for members extraction"}
         
-        logger.info(f"Extracting members from  entity ID: {entity_id} xith method: {method}")
+        logger.info(f"Extracting members from entity ID: {entity_id} with method: {method}")
         
         try:
+            # MODIFICACIÓN: Primero intentar resolver la entidad para manejar tanto usernames como IDs numéricos
+            try:
+                # Si es un username o contiene caracteres no numéricos, usarlo directamente
+                if isinstance(entity_id, str) and (entity_id.startswith('@') or not entity_id.isdigit()):
+                    # Es un username, usarlo directamente sin convertir a int
+                    logger.info(f"Handling entity as username: {entity_id}")
+                    
+                    # Intentar resolver la entidad para verificar que existe
+                    try:
+                        entity = await self.finder.client.get_entity(entity_id)
+                        logger.info(f"Entity resolved successfully: {entity.title}")
+                        # Actualizamos entity_id al ID numérico para futuras referencias si es necesario
+                        numeric_entity_id = str(entity.id)
+                    except Exception as e:
+                        logger.warning(f"Could not resolve entity with username {entity_id}: {e}")
+                        # Continuamos con el username original si no se puede resolver
+                        numeric_entity_id = entity_id
+                else:
+                    # Es un ID numérico, continuar como antes
+                    logger.info(f"Handling entity as numeric ID: {entity_id}")
+                    numeric_entity_id = entity_id
+            except Exception as e:
+                logger.warning(f"Error resolving entity type, proceeding with original: {e}")
+                numeric_entity_id = entity_id
+            # Extraer miembros con el método solicitado
             if method == "comprehensive":
                 # Usar el método más completo
                 result = await self.finder.extract_users_ultimate_comprehensive_async(entity_id)
@@ -788,23 +865,100 @@ class TelegramDiscoveryBot:
             else:
                 # Por defecto usar el método más completo
                 result = await self.finder.extract_users_ultimate_comprehensive_async(entity_id)
-                
-            return {
+            
+            # Resultado base
+            task_result = {
                 "entity_id": entity_id,
                 "method": method,
                 "members_extracted": result,
                 "timestamp": datetime.now().isoformat()
             }
             
+            # NUEVO: Descubrir grupos de usuarios si está habilitado
+            if discover_user_groups and result > 0:
+                # Recuperar información de usuarios extraídos
+                user_groups_discovered = 0
+                users_processed = 0
+                
+                # Obtener lista de miembros extraídos para esta entidad
+                entity_members = []
+                for key, member in self.finder.members.items():
+                    if member.get('entity_id') == entity_id or member.get('entity_id') == numeric_entity_id:
+                        entity_members.append(member)
+                
+                # Si hay miembros, seleccionar algunos para descubrir sus grupos
+                if entity_members:
+                    # Limitar usuarios a procesar (máximo 3 por entidad)
+                    import random
+                    sample_size = max(1, len(entity_members))
+                    # selected_members = random.sample(entity_members, sample_size)
+                    
+                    logger.info(f"Discovering groups from {sample_size} users in entity {entity_id}")
+                    # for member in selected_members:
+                    for member in entity_members:
+                        user_id = member.get('user_id')
+                        username = member.get('username')
+                        
+                        # Usar identificador adecuado
+                        user_identifier = f"@{username}" if username else user_id
+                        
+                        try:
+                            # Usar la función original para descubrir grupos del usuario
+                            # user_groups =  self.finder.discover_user_groups_original(user_identifier, limit=sample_size)
+                            try:
+                                # Usar la función mejorada para descubrir grupos del usuario
+                                user_groups = await self.finder.discover_user_groups_improved_async(user_identifier, limit=sample_size)
+                            except AttributeError:
+                                # Si la función asíncrona no está disponible, usar la versión sincrónica
+                                user_groups = self.finder.discover_user_groups_improved(user_identifier, limit=sample_size)
+                            users_processed += 1
+                            
+                            if user_groups:
+                                user_groups_discovered += len(user_groups)
+                                logger.info(f"Found {len(user_groups)} groups for user {user_identifier}")
+                                
+                                # Crear tareas para unirse a grupos con alta confianza
+                                for group in user_groups:
+                                    if group.get("user_membership_confidence", 0) >= 0.5:
+                                        # Solo si tiene username para poder unirse
+                                        if group.get("username"):
+                                            # Crear tarea para unirse más tarde
+                                            self.state.tasks.append(TelegramDiscoveryTask(
+                                                task_id=f"join_user_group_{int(time.time())}",
+                                                task_type="join_entity",
+                                                parameters={
+                                                    "username": group.get("username"),
+                                                    "entity_id": group.get("entity_id"),
+                                                    "source": f"user_{user_id}"
+                                                },
+                                                priority=7,
+                                                scheduled_time=datetime.now() + timedelta(
+                                                    minutes=random.randint(15, 60)
+                                                )
+                                            ))
+                            
+                            # Pausa entre usuarios
+                            await asyncio.sleep(5)
+                            
+                        except Exception as e:
+                            logger.error(f"Error discovering groups for user {user_identifier}: {e}")
+                    
+                    # Incluir resultados de descubrimiento de grupos
+                    task_result["user_groups_discovered"] = user_groups_discovered
+                    task_result["users_processed_for_groups"] = users_processed
+                else:
+                    print(f"No members found for entity {entity_id} in method : {method}")
+                
+            return task_result
+            
         except Exception as e:
-            logger.error(f"Error extrating members from: {entity_id}: {e}")
+            logger.error(f"Error extracting members from: {entity_id}: {e}")
             return {
                 "entity_id": entity_id,
                 "method": method,
                 "error": str(e),
                 "timestamp": datetime.now().isoformat()
-            }
-    
+        }
     async def process_discovered_entities(self, entities: List[dict]) -> dict:
         """
         Process discovered entities to determine classification, actions, etc
@@ -834,16 +988,22 @@ class TelegramDiscoveryBot:
         
         # Calcular un score de relevancia para cada entidad
         threshold = self.config.get("entity_relevance_threshold", 0.6)
+
+        # Lista para almacenar usuarios encontrados para procesamiento posterior
+        discovered_users = []
         
         for entity in entities:
             # Calcular score de relevancia (0-1)
             relevance_score = self._calculate_entity_relevance(entity)
             entity["relevance_score"] = relevance_score
+
+            
             
             # Clasificar según score
             if relevance_score >= 0.8:
                 # Alta relevancia
                 prioritized.append(entity)
+
                 
                 # Si se configura auto-join, también marcar para interacción
                 if self.config.get("auto_join", True):
@@ -902,7 +1062,11 @@ class TelegramDiscoveryBot:
         if entity_type == "channel":
             score += 0.1  # Los canales suelen ser más relevantes para señales
         elif entity_type == "megagroup":
-            score += 0.05  # Los supergrupos también pueden ser relevantes
+            score += 0.07  # Los supergrupos también pueden ser relevantes
+        elif entity_type == "group":
+            score += 0.06  # Los grupos también pueden ser relevantes para leads
+        elif entity_type == "forum":
+            score += 0.06     # Los foros también pueden ser relevantes para leads
             
         # 2. Categoría
         category = entity.get("category", "unknown")
@@ -938,7 +1102,7 @@ class TelegramDiscoveryBot:
         
         # Keywords que indican alta relevancia en el contexto de trading/señales
         high_value_keywords = ["signal", "alert", "trading", "profit", "analysis", 
-                              "crypto", "forex", "stock", "market", "invest"]
+                              "crypto", "forex", "stock", "market", "invest", "fx", "stock", "stockmarket", "strategy", "gold", "bitcoin", "ETH", "BTCUSD", "ETHUSD", "USD", "GBP", "EUR", "JPY", "AUS", "broker"]
         
         for keyword in high_value_keywords:
             if keyword in description or keyword in title:
