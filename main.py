@@ -23,6 +23,8 @@ from vfx_Scheduler import VFXMessageScheduler
 from signal_dispatcher import SignalDispatcher
 from config import Config
 
+from mysql_manager import get_mysql_connection
+
 # Global instance of the VFX message scheduler
 config = Config()
 vfx_scheduler = VFXMessageScheduler()
@@ -54,10 +56,12 @@ auth = TradingAccountAuth(db_path="./bot_data/trading_accounts.csv")
 
 # Configuration
 BOT_TOKEN = "8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694"
-ADMIN_USER_ID = [7823596188, 7396303047]
+ADMIN_USER_ID = [7823596188, 7396303047, 8177033621]
 ADMIN_USER_ID_2 = 7396303047
 
 MAIN_CHANNEL_ID = "-1002586937373"
+
+SUPPORT_GROUP_ID = -1002520071214
 
 STRATEGY_CHANNEL_ID = "-1002575685046"
 STRATEGY_GROUP_ID = -1002428210575
@@ -269,7 +273,7 @@ async def handle_account_verification(update: Update, context: ContextTypes.DEFA
             # Update user info
             db.add_user({
                 "user_id": user_id,
-                "trading_account": account_number,
+                "enhanced_trading_account": account_number,
                 "is_verified": True
             })
             
@@ -369,124 +373,6 @@ async def deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except ValueError:
         await update.message.reply_text("Please enter a valid amount between 100 and 10,000.")
         return DEPOSIT_AMOUNT
-
-async def trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Store trading account, validate against Accounts_List.csv, and complete the registration."""
-    account_number = update.message.text.strip()
-    user_id = update.effective_user.id
-    
-    print(f"===== TRADING ACCOUNT FUNCTION =====")
-    print(f"Received: {account_number} from user {user_id}")
-    print(f"Current context.user_data: {context.user_data}")
-    
-    # Initial response to user
-    await update.message.reply_text("Processing your trading account...")
-    
-    try:
-        # Validate account format 
-        is_valid = auth.validate_account_format(account_number)
-        print(f"Account format validation result: {is_valid}")
-        
-        if not is_valid:
-            await update.message.reply_text("Invalid account format. Please enter a valid account number.")
-            return TRADING_ACCOUNT
-        
-        # Get stored user data or create if missing
-        if "user_info" not in context.user_data:
-            print("WARNING: user_info missing from context, creating empty dict")
-            context.user_data["user_info"] = {}
-        
-        # Verify against Accounts_List.csv
-        account_verified = False
-        account_owner = None
-        
-        try:
-            # Load accounts from CSV file
-            accounts_df = pl.read_csv("./bot_data/Accounts_List.csv")
-            
-            # Convert account_number to integer for comparison with the Account column
-            try:
-                account_int = int(account_number)
-                # Check if account exists in the dataframe
-                account_match = accounts_df.filter(pl.col("Account") == account_int)
-                
-                if account_match.height > 0:
-                    account_verified = True
-                    account_owner = account_match.select("Name")[0, 0]
-                    print(f"Account verified: {account_number} belongs to {account_owner}")
-                else:
-                    print(f"Account {account_number} not found in Accounts_List.csv")
-            except ValueError:
-                print(f"Could not convert account number to integer for verification")
-        except Exception as e:
-            print(f"Error verifying account against CSV: {e}")
-        
-        # Store in user_data
-        context.user_data["user_info"]["trading_account"] = account_number
-        context.user_data["user_info"]["account_verified"] = account_verified
-        context.user_data["user_info"]["account_owner"] = account_owner
-        
-        print(f"Stored account in user_data: {context.user_data}")
-        
-        # Update in database with proper error handling
-        try:
-            db_result = db.add_user({
-                "user_id": user_id,
-                "trading_account": account_number,
-                "is_verified": account_verified,
-                "account_owner": account_owner if account_owner else "Unknown",
-                "last_response": account_number,
-                "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
-            print(f"Database update result: {db_result}")
-            
-            # If account is verified, also mark it verified in the database
-            if account_verified:
-                mark_result = db.mark_user_verified(user_id)
-                print(f"Mark verified result: {mark_result}")
-        except Exception as e:
-            print(f"ERROR updating database: {e}")
-        
-        # Set verification message based on result
-        if account_verified:
-            verification_message = (
-                f"✅ Account {account_number} verified successfully!\n\n"
-                f"Account owner: {account_owner}\n\n"
-                f"Thank you for completing your registration. Our team will now process your information "
-                f"and add you to the appropriate VIP channels based on your selected interests."
-            )
-            
-            # Send profile summary to admins (add this function if not already defined)
-            asyncio.create_task(send_profile_summary_to_admins(context, user_id))
-        else:
-            verification_message = (
-                f"⚠️ Account {account_number} could not be verified automatically.\n\n"
-                f"Your details have been saved and our team will manually review your information. "
-                f"You'll receive access to your selected VIP channels after verification is complete."
-            )
-        
-        # Send appropriate response to user
-        await update.message.reply_text(verification_message)
-        
-        # Try to send admin notification independently
-        asyncio.create_task(send_registration_notification(context, user_id, account_number, account_verified))
-        
-        # Clean up conversation data safely
-        if "user_info" in context.user_data:
-            user_info_copy = context.user_data["user_info"].copy()  # Keep a copy for logging
-            del context.user_data["user_info"]
-            print(f"Cleaned up user_info, contained: {user_info_copy}")
-        
-        print("===== TRADING ACCOUNT FUNCTION COMPLETED =====")
-        return ConversationHandler.END
-        
-    except Exception as e:
-        print(f"CRITICAL ERROR in trading_account: {e}")
-        # Provide a fallback response
-        await update.message.reply_text(
-            "We encountered an issue processing your account. Please try again or contact support."
-        )
-        return ConversationHandler.END
 
 async def send_registration_notification(context, user_id, account_number, account_verified):
     """Send detailed notification about new registration to admin team."""
@@ -744,29 +630,62 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
                 # Format same text with HTML
                 formatted_msg = welcome_msg  # Keep original message text
 
-                # Send the welcome message with HTML parsing and buttons
-                await context.bot.send_message(
-                    chat_id=original_sender_id,
-                    text=formatted_msg,
-                    parse_mode='HTML',  # Enable HTML parsing
-                    reply_markup=reply_markup  # Add buttons
-                )
-                
-                # Mark this user as having received the auto-welcome
-                db.add_user({
-                    "user_id": original_sender_id,
-                    "auto_welcomed": True,
-                    "auto_welcome_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                })
-                
-                # Notify admin that automated welcome was sent
-                source_text = "signals channel" if forwarded_from_channel == "signals_channel" else "main channel"
-                await update.message.reply_text(
-                    f"✅ Automated welcome message sent to {original_sender_name} (ID: {original_sender_id}).\n\n"
-                    f"User identified as coming from the {source_text}.\n\n"
-                    f"The message includes questions about their risk profile, capital, and account number.\n\n"
-                    f"Their responses will be tracked in the database."
-                )
+                try:
+                    # Send the welcome message directly to the user
+                    await context.bot.send_message(
+                        chat_id=original_sender_id,
+                        text=welcome_msg,
+                        parse_mode='HTML',
+                        reply_markup=reply_markup
+                    )
+                    
+                    # Mark this user as having received the auto-welcome
+                    db.add_user({
+                        "user_id": original_sender_id,
+                        "auto_welcomed": True,
+                        "auto_welcome_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                    
+                    # Notify admin that automated welcome was sent
+                    source_text = "signals channel" if forwarded_from_channel == "signals_channel" else "main channel"
+                    await update.message.reply_text(
+                        f"✅ Automated welcome message sent to {original_sender_name} (ID: {original_sender_id}).\n\n"
+                        f"User identified as coming from the {source_text}.\n\n"
+                        f"The message includes questions about their risk profile, capital, and account number.\n\n"
+                        f"Their responses will be tracked in the database."
+                    )
+                    
+                except Exception as e:
+                    print(f"Error sending automated welcome: {e}")
+                    
+                    # Check if it's a privacy restriction error
+                    if "Forbidden: bot can't initiate conversation with a user" in str(e):
+                        # Create "start bot" deep link - this is a special link format that opens the bot when clicked
+                        bot_username = await context.bot.get_me()
+                        bot_username = bot_username.username
+                        start_link = f"https://t.me/{bot_username}?start=ref_{update.effective_user.id}"
+                        
+                        # Create keyboard with copy buttons
+                        keyboard = [
+                            [InlineKeyboardButton("Generate Welcome Link", callback_data=f"gen_welcome_{original_sender_id}")],
+                            [InlineKeyboardButton("View User Profile", callback_data=f"view_profile_{original_sender_id}")]
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        
+                        await update.message.reply_text(
+                            f"⚠️ Cannot message {original_sender_name} directly due to Telegram privacy settings.\n\n"
+                            f"This means the user has not started a conversation with the bot yet.\n\n"
+                            f"Option 1: You can ask the user to click this link first:\n"
+                            f"{start_link}\n\n"
+                            f"Option 2: Click 'Generate Welcome Link' to create a personalized message for this user.",
+                            reply_markup=reply_markup
+                        )
+                    else:
+                        # Other error
+                        await update.message.reply_text(
+                            f"⚠️ Failed to send automated welcome to {original_sender_name}: {e}\n\n"
+                            f"Would you like to start a conversation manually?"
+                        )
                 
                 # Store this user in admin's active conversations with source info
                 context.bot_data.setdefault("auto_welcoming_users", {})
@@ -954,6 +873,7 @@ async def add_to_vip_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply_markup=None
         )
 
+
 async def forward_to_copier_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle callback for forwarding user to copier team."""
     query = update.callback_query
@@ -990,57 +910,110 @@ async def forward_to_copier_callback(update: Update, context: ContextTypes.DEFAU
                 )
                 return
             
-            # Get risk appetite and deposit amount
+            # Get user details
             user_name = user_info.get('first_name', 'Unknown')
+            last_name = user_info.get('last_name', '')
+            username = user_info.get('username', 'None')
             risk_appetite = user_info.get('risk_appetite', 'Not specified')
             deposit_amount = user_info.get('deposit_amount', 'Not specified')
+            vip_channels = user_info.get('vip_channels', 'None')
+            is_verified = user_info.get('is_verified', False)
             
-            # Format copier team message
+            # Format copier team message with more details
             copier_message = (
-                f"🔄 NEW ACCOUNT FOR COPIER SYSTEM 🔄\n\n"
-                f"User: {user_name} {user_info.get('last_name', '')}\n"
-                f"Trading Account: {trading_account}\n"
-                f"Risk Level: {risk_appetite}/10\n"
-                f"Deposit Amount: ${deposit_amount}\n"
-                f"VIP Channels: {user_info.get('vip_channels', 'None')}\n"
-                f"Date Added: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                f"👉 Please add this account to the copier system."
+                f"🔄 **NEW ACCOUNT FOR COPIER SYSTEM** 🔄\n\n"
+                f"📋 **USER DETAILS:**\n"
+                f"• Name: {user_name} {last_name}\n"
+                f"• Username: @{username}\n"
+                f"• User ID: {user_id}\n"
+                f"• Trading Account: {trading_account} {'✅' if is_verified else '⚠️'}\n\n"
+                f"📊 **TRADING PROFILE:**\n"
+                f"• Risk Level: {risk_appetite}/10\n"
+                f"• Deposit Amount: ${deposit_amount}\n"
+                f"• VIP Services: {vip_channels}\n"
+                f"• Account Status: {'Verified' if is_verified else 'Pending Verification'}\n\n"
+                f"⏰ **Date Added:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"👉 **ACTION REQUIRED:** Please add this account to the copier system and configure the appropriate risk parameters."
             )
             
-            # Update database to mark as forwarded to copier team
-            db.add_user({
-                "user_id": user_id,
-                "copier_forwarded": True,
-                "copier_forwarded_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
+            # Create action buttons for the copier team
+            copier_keyboard = [
+                [
+                    InlineKeyboardButton("✅ Account Added", callback_data=f"copier_added_{user_id}"),
+                    InlineKeyboardButton("❌ Account Rejected", callback_data=f"copier_rejected_{user_id}")
+                ],
+                [InlineKeyboardButton("📞 Contact User", callback_data=f"contact_user_{user_id}")],
+                [InlineKeyboardButton("📝 View Full Profile", callback_data=f"view_profile_{user_id}")]
+            ]
+            copier_reply_markup = InlineKeyboardMarkup(copier_keyboard)
             
-            # In production, this would be sent to a specific copier team chat
-            # For now, we'll just update the message
-            await query.edit_message_text(
-                text=f"✅ Account forwarded to copier team:\n\n{copier_message}\n\n"
-                f"(In production, this would be sent to your copier team's chat)",
-                reply_markup=None
-            )
+            # Send message to support group (copier team)
+            try:
+                copier_team_message = await context.bot.send_message(
+                    chat_id=SUPPORT_GROUP_ID,
+                    text=copier_message,
+                    parse_mode='Markdown',
+                    reply_markup=copier_reply_markup
+                )
+                
+                print(f"Successfully sent copier team message to support group {SUPPORT_GROUP_ID}")
+                
+                # Update database to mark as forwarded to copier team
+                db.add_user({
+                    "user_id": user_id,
+                    "copier_forwarded": True,
+                    "copier_forwarded_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "copier_message_id": copier_team_message.message_id
+                })
+                
+                # Update the original admin message to confirm it was sent
+                await query.edit_message_text(
+                    text=f"✅ **Account Successfully Forwarded to Copier Team**\n\n"
+                         f"**User:** {user_name} {last_name}\n"
+                         f"**Account:** {trading_account}\n"
+                         f"**Risk Level:** {risk_appetite}/10\n"
+                         f"**Deposit:** ${deposit_amount}\n\n"
+                         f"📤 **Message sent to Support Group**\n"
+                         f"🕒 **Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                         f"The copier team will be able to take action on this account using the buttons provided.",
+                    parse_mode='Markdown',
+                    reply_markup=None
+                )
+                
+            except Exception as e:
+                print(f"Error sending message to support group: {e}")
+                await query.edit_message_text(
+                    text=f"⚠️ **Error sending to copier team:** {e}\n\n"
+                         f"Please manually forward this information:\n\n{copier_message}",
+                    parse_mode='Markdown',
+                    reply_markup=None
+                )
+                return
             
             # Also notify the user
             try:
                 user_notification = (
-                    f"📊 Your trading account has been forwarded to our trading team!\n\n"
-                    f"Account: {trading_account}\n"
-                    f"Risk Level: {risk_appetite}/10\n\n"
-                    f"Our team will set up your account with the optimal parameters based on your risk profile. "
-                    f"You'll receive confirmation once your account is connected to our trading system."
+                    f"📊 **Your trading account has been forwarded to our copier team!**\n\n"
+                    f"**Account:** {trading_account}\n"
+                    f"**Risk Level:** {risk_appetite}/10\n"
+                    f"**Deposit Amount:** ${deposit_amount}\n\n"
+                    f"Our copier team will review your account and set up the optimal trading parameters based on your risk profile. "
+                    f"You'll receive confirmation once your account is connected to our automated trading system.\n\n"
+                    f"**Expected Setup Time:** 24 hours\n"
+                    f"**Next Steps:** Our team will contact you with setup details and login credentials for your copier dashboard."
                 )
                 
                 await context.bot.send_message(
                     chat_id=user_id,
-                    text=user_notification
+                    text=user_notification,
+                    parse_mode='Markdown'
                 )
-                print(f"Successfully sent copier team notification to user {user_id}")
+                print(f"Successfully sent notification to user {user_id}")
             except Exception as e:
                 print(f"Failed to send notification to user {user_id}: {e}")
                 
         except Exception as e:
+            print(f"Error in forward_to_copier_callback: {e}")
             await query.edit_message_text(
                 text=f"⚠️ Error forwarding to copier team: {e}",
                 reply_markup=None
@@ -1051,6 +1024,134 @@ async def forward_to_copier_callback(update: Update, context: ContextTypes.DEFAU
             reply_markup=None
         )
 
+async def copier_team_action_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle copier team action buttons (added, rejected, contact)."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    print(f"Received copier team action: {callback_data}")
+    
+    # Parse callback data
+    parts = callback_data.split('_')
+    if len(parts) >= 3:
+        action = parts[1]  # added, rejected, contact
+        user_id = parts[2]
+        
+        try:
+            # Get user info
+            user_info = db.get_user(user_id)
+            if not user_info:
+                await query.edit_message_text(
+                    text="⚠️ User not found in database",
+                    reply_markup=None
+                )
+                return
+            
+            user_name = user_info.get('first_name', 'Unknown')
+            trading_account = user_info.get('trading_account', 'N/A')
+            
+            if action == "added":
+                # Mark user as added to copier system
+                db.add_user({
+                    "user_id": user_id,
+                    "copier_status": "active",
+                    "copier_activated_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+                
+                # Update the message to show it's been handled
+                await query.edit_message_text(
+                    text=f"✅ **ACCOUNT ADDED TO COPIER SYSTEM**\n\n"
+                         f"**User:** {user_name}\n"
+                         f"**Account:** {trading_account}\n"
+                         f"**Status:** Active in copier system\n"
+                         f"**Added by:** {query.from_user.first_name}\n"
+                         f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                         f"✅ User has been notified of successful setup.",
+                    parse_mode='Markdown',
+                    reply_markup=None
+                )
+                
+                # Notify the user
+                try:
+                    user_success_message = (
+                        f"🎉 **Congratulations! Your account has been successfully added to our copier system!**\n\n"
+                        f"**Account:** {trading_account}\n"
+                        f"**Status:** Active\n"
+                        f"**Setup Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                        f"Your account is now automatically copying our professional trading signals. "
+                        f"You can monitor your performance through your MT5 platform.\n\n"
+                        f"**Important Notes:**\n"
+                        f"• Trades will be executed automatically based on your risk settings\n"
+                        f"• You can monitor performance 24/7 through MT5\n"
+                        f"• Our team monitors all accounts during market hours\n\n"
+                        f"Welcome to our automated trading system! 🚀"
+                    )
+                    
+                    await context.bot.send_message(
+                        chat_id=user_id,
+                        text=user_success_message,
+                        parse_mode='Markdown'
+                    )
+                except Exception as e:
+                    print(f"Error notifying user of copier activation: {e}")
+                    
+            elif action == "rejected":
+                # Mark user as rejected
+                db.add_user({
+                    "user_id": user_id,
+                    "copier_status": "rejected",
+                    "copier_rejected_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+                
+                # Create follow-up buttons for admin
+                rejection_keyboard = [
+                    [InlineKeyboardButton("📞 Contact User to Resolve", callback_data=f"contact_user_{user_id}")],
+                    [InlineKeyboardButton("🔄 Retry Setup", callback_data=f"forward_copier_{user_id}")]
+                ]
+                rejection_reply_markup = InlineKeyboardMarkup(rejection_keyboard)
+                
+                await query.edit_message_text(
+                    text=f"❌ **ACCOUNT REJECTED FROM COPIER SYSTEM**\n\n"
+                         f"**User:** {user_name}\n"
+                         f"**Account:** {trading_account}\n"
+                         f"**Status:** Rejected\n"
+                         f"**Rejected by:** {query.from_user.first_name}\n"
+                         f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                         f"⚠️ Please contact the user to resolve any issues.",
+                    parse_mode='Markdown',
+                    reply_markup=rejection_reply_markup
+                )
+                
+            elif action == "contact":
+                # Provide contact options
+                contact_keyboard = [
+                    [InlineKeyboardButton("💬 Start Direct Chat", callback_data=f"start_conv_{user_id}")],
+                    [InlineKeyboardButton("📋 View Full Profile", callback_data=f"view_profile_{user_id}")]
+                ]
+                contact_reply_markup = InlineKeyboardMarkup(contact_keyboard)
+                
+                await query.edit_message_text(
+                    text=f"📞 **CONTACT USER: {user_name}**\n\n"
+                         f"**User ID:** {user_id}\n"
+                         f"**Account:** {trading_account}\n"
+                         f"**Username:** @{user_info.get('username', 'None')}\n\n"
+                         f"Choose how you'd like to contact this user:",
+                    parse_mode='Markdown',
+                    reply_markup=contact_reply_markup
+                )
+                
+        except Exception as e:
+            print(f"Error handling copier team action: {e}")
+            await query.edit_message_text(
+                text=f"⚠️ Error processing action: {e}",
+                reply_markup=None
+            )
+    else:
+        await query.edit_message_text(
+            text="⚠️ Invalid action format",
+            reply_markup=None
+        )
 
 # -------------------------------------- Analytics Functions ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -1364,35 +1465,93 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f"User ID {user_id} ({user.first_name}) started the bot")
     
     # Handle referral parameter in a separate async function to avoid message leakage
+    referral_admin = None
     if context.args and context.args[0].startswith("ref_"):
-        # Don't await here, let it run independently
-        asyncio.create_task(handle_referral(context, user, context.args[0]))
+        try:
+            # Extract the referring admin's ID
+            referral_admin = int(context.args[0].split("_")[1])
+            print(f"User {user_id} was referred by admin {referral_admin}")
+            
+            # Store this connection in the database
+            db.add_user({
+                "user_id": user_id,
+                "referred_by": referral_admin,
+                "referral_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+            # Store in bot data for quick access
+            context.bot_data.setdefault("admin_user_connections", {})
+            context.bot_data["admin_user_connections"][user_id] = referral_admin
+            
+            # Also store in auto-welcoming users
+            context.bot_data.setdefault("auto_welcoming_users", {})
+            context.bot_data["auto_welcoming_users"][user_id] = {
+                "name": user.first_name,
+                "status": "referred",
+                "referred_by": referral_admin,
+                "first_contact_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            # Notify admin of connection
+            try:
+                await context.bot.send_message(
+                    chat_id=referral_admin,
+                    text=f"✅ {user.first_name} (ID: {user_id}) has connected with the bot through your link! "
+                         f"They have started the registration process."
+                )
+            except Exception as e:
+                print(f"Error notifying admin {referral_admin}: {e}")
+        except Exception as e:
+            print(f"Error processing referral: {e}")
     
     # Add user to database if not exists
     db.add_user({
         "user_id": user.id,
         "username": user.username,
         "first_name": user.first_name,
-        "last_name": user.last_name
+        "last_name": user.last_name,
+        "join_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_active": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
     
-    # Update user activity
-    db.update_user_activity(user.id)
+    # If this is a referred user, start with welcome message from referring admin
+    if referral_admin:
+        admin_info = db.get_user(referral_admin)
+        admin_name = admin_info.get('first_name', 'Admin') if admin_info else 'Admin'
+        
+        await update.message.reply_text(
+            f"Welcome {user.first_name}! You've been connected to our registration system by {admin_name}. "
+            f"Let's get your account set up!"
+        )
+    else:
+        # Standard welcome
+        await update.message.reply_text(f"Hello {user.first_name}! I'm your trading assistant bot.")
     
-    # Send welcome message - this is the FIRST message the user should see
-    await update.message.reply_text(f"Hello {user.first_name}! I'm your trading assistant bot.")
+    # Start guided setup with buttons right away
+    keyboard = [
+        [
+            InlineKeyboardButton("Low Risk", callback_data="risk_low"),
+            InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
+            InlineKeyboardButton("High Risk", callback_data="risk_high")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        "<b>Let's start with your profile setup!</b>\n\n"
+        "What risk profile would you like on your account?",
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # Set initial state
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "risk_profile"
     
     # Update analytics
     db.update_analytics(active_users=1)
     
-    # If this is a private chat, start the conversation
-    if update.effective_chat.type == "private":
-        await update.message.reply_text(
-            f"{PRIVATE_WELCOME_MSG}\n\nFirst, what's your risk appetite from 1-10?"
-        )
-        return RISK_APPETITE
-    
-    return ConversationHandler.END
+    return RISK_APPETITE
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a help message with all available commands."""
@@ -1937,14 +2096,14 @@ async def send_giveaway_message(context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     
     # Determine which message to send based on the hour
-    if current_hour == 17:
-        message = vfx_scheduler.get_welcome_message(17)
+    if current_hour == 15:
+        message = vfx_scheduler.get_welcome_message(15)
         message_type = "Daily Giveaway Announcement"
-    elif current_hour == 18:
-        message = vfx_scheduler.get_welcome_message(18)
+    elif current_hour == 16:
+        message = vfx_scheduler.get_welcome_message(16)
         message_type = "Giveaway Countdown"
-    elif current_hour == 19:
-        message = vfx_scheduler.get_welcome_message(19)
+    elif current_hour == 17:
+        message = vfx_scheduler.get_welcome_message(17)
         message_type = "Giveaway Winner Announcement"
     else:
         logger.error(f"Unexpected hour for giveaway message: {current_hour}")
@@ -2497,7 +2656,7 @@ async def copy_template_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
 
 async def handle_auto_welcome_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle responses to the automated welcome message."""
+    """Handle responses to the automated welcome message with enhanced verification."""
     user_id = update.effective_user.id
     message_text = update.message.text
     print(f"AUTO WELCOME RESPONSE: User ID {user_id}, Message: {message_text}")
@@ -2578,83 +2737,202 @@ async def handle_auto_welcome_response(update: Update, context: ContextTypes.DEF
             return
                 
         elif current_step == "account_number" or current_step == "previous_experience":
-            # Process as account number (after experience or explicitly in account_number state)
-            print(f"Processing as account number: {message_text}")
+            # 🔥 ENHANCED VERIFICATION STARTS HERE
+            print(f"Processing as account number with enhanced verification: {message_text}")
             
             # Check if it looks like an account number
             if message_text.isdigit() and len(message_text) == 6:
-                # Process account number
-                db.add_user({
-                    "user_id": user_id,
-                    "trading_account": message_text,
-                    "last_response": message_text,
-                    "last_response_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                })
+                account_number = message_text
                 
-                # Attempt to verify the account
-                is_valid = auth.validate_account_format(message_text)
-                print(f"Account validation for {message_text}: {is_valid}")
+                # Get user's stated deposit intention from database
+                user_info = db.get_user(user_id)
+                stated_amount = user_info.get("deposit_amount", 0) if user_info else 0
                 
-                if is_valid:
-                    account_verified = auth.verify_account(message_text, user_id)
-                    print(f"Account verification for {message_text}: {account_verified}")
+                print(f"===== ENHANCED ACCOUNT VERIFICATION (AUTO WELCOME) =====")
+                print(f"Account: {account_number}, User: {user_id}, Stated: ${stated_amount}")
+                
+                await update.message.reply_text("🔍 Verifying your account and checking balance...")
+                
+                # Validate account format first
+                if not auth.validate_account_format(account_number):
+                    await update.message.reply_text(
+                        "❌ Invalid account format. Please enter a valid trading account number."
+                    )
+                    return
+                
+                # Connect to MySQL and verify account with balance
+                mysql_db = get_mysql_connection()
+                if not mysql_db.is_connected():
+                    await update.message.reply_text(
+                        "⚠️ Unable to verify account at the moment. Please try again later."
+                    )
+                    return
+                
+                try:
+                    account_info = mysql_db.verify_account_exists(account_number)
                     
-                    if account_verified:
-                        db.mark_user_verified(user_id)
+                    if not account_info['exists']:
+                        await update.message.reply_text(
+                            f"❌ Account {account_number} not found in our system.\n\n"
+                            f"Please check the account number or contact support if you believe this is an error."
+                        )
+                        return
+                    
+                    # Extract account details
+                    real_balance = float(account_info.get('balance', 0))
+                    account_name = account_info.get('name', 'Unknown')
+                    account_status = account_info.get('status', 'Unknown')
+                    
+                    print(f"Account found: {account_name}, Balance: ${real_balance}, Status: {account_status}")
+                    
+                    # Store account info in database
+                    db.add_user({
+                        "user_id": user_id,
+                        "trading_account": account_number,
+                        "account_owner": account_name,
+                        "account_balance": real_balance,
+                        "account_status": account_status,
+                        "is_verified": True,
+                        "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+                    
+                    # 🔥 ENHANCED DECISION LOGIC BASED ON REAL BALANCE
+                    if real_balance >= stated_amount and stated_amount > 0:
+                        # SCENARIO A: USER HAS SUFFICIENT FUNDS
+                        success_message = (
+                            f"✅ **Account Verified Successfully!** ✅\n\n"
+                            f"**Account:** {account_number}\n"
+                            f"**Account Holder:** {account_name}\n"
+                            f"**Current Balance:** ${real_balance:,.2f} 💰\n"
+                            f"**Required:** ${stated_amount:,.2f}\n\n"
+                            f"🎉 **Excellent!** You have sufficient funds to access all our VIP services!\n\n"
+                            f"**You now have access to:**\n"
+                            f"• 🔔 Premium Trading Signals\n"
+                            f"• 📈 Advanced Trading Strategies\n"
+                            f"• 💰 Prop Capital Opportunities\n"
+                            f"• 👨‍💼 Personal Trading Support\n\n"
+                            f"Our team will set up your VIP access within the next few minutes!"
+                        )
                         
-                        # Show summary button
+                        # Create VIP access buttons
                         keyboard = [
-                            [InlineKeyboardButton("📋 View Profile Summary", callback_data="view_summary")],
-                            [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+                            [
+                                InlineKeyboardButton("🔔 Access VIP Signals", callback_data="access_vip_signals"),
+                                InlineKeyboardButton("📈 Access VIP Strategy", callback_data="access_vip_strategy")
+                            ],
+                            [
+                                InlineKeyboardButton("💰 Access Prop Capital", callback_data="access_vip_propcapital"),
+                                InlineKeyboardButton("👨‍💼 Speak to Advisor", callback_data="speak_advisor")
+                            ]
                         ]
                         reply_markup = InlineKeyboardMarkup(keyboard)
                         
-                        await update.message.reply_text(
-                            "<b>Account Verified:</b> ✅\n\n"
-                            "Thank you! Your MT5 account has been verified.\n\n"
-                            "Our team will set up your strategy based on your risk profile. "
-                            "You'll receive confirmation once everything is ready.",
-                            parse_mode='HTML',
-                            reply_markup=reply_markup
-                        )
+                        await update.message.reply_text(success_message, parse_mode='Markdown', reply_markup=reply_markup)
+                        
+                        # Mark user as fully verified and funded
+                        db.add_user({
+                            "user_id": user_id,
+                            "funding_status": "sufficient",
+                            "vip_eligible": True,
+                            "vip_access_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        })
                         
                         # Reset state after completion
                         context.bot_data.setdefault("user_states", {})
                         context.bot_data["user_states"][user_id] = "completed"
                         
-                        # Send profile summary to admins
-                        await send_profile_summary_to_admins(context, user_id)
+                        # Notify admins of successful verification
+                        await notify_admins_success_auto_welcome(context, user_id, account_info, stated_amount, real_balance)
                         
-                    else:
-                        # Account not verified
+                    elif real_balance > 0 and stated_amount > 0:
+                        # SCENARIO B: USER HAS PARTIAL FUNDS
+                        difference = stated_amount - real_balance
+                        percentage = (real_balance / stated_amount) * 100
+                        
+                        message = (
+                            f"✅ **Account Successfully Verified!**\n\n"
+                            f"**Account:** {account_number}\n"
+                            f"**Account Holder:** {account_name}\n"
+                            f"**Current Balance:** ${real_balance:,.2f}\n"
+                            f"**Your Goal:** ${stated_amount:,.2f}\n"
+                            f"**Remaining:** ${difference:,.2f}\n\n"
+                            f"📊 **You're {percentage:.1f}% of the way there!** 🎯\n\n"
+                            f"**What would you like to do?**"
+                        )
+                        
+                        # Create action buttons
                         keyboard = [
-                            [InlineKeyboardButton("Try Another Account", callback_data="edit_account")],
-                            [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+                            [InlineKeyboardButton(f"💳 Deposit ${difference:,.0f} Now", callback_data=f"deposit_exact_{difference}")],
+                            [InlineKeyboardButton(f"💰 Choose Deposit Amount", callback_data="choose_deposit_amount")],
+                            [InlineKeyboardButton("🚀 Start with Current Balance", callback_data="start_with_current")],
+                            [InlineKeyboardButton("⏰ I'll Deposit Later", callback_data="deposit_later")],
+                            [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
                         ]
                         reply_markup = InlineKeyboardMarkup(keyboard)
                         
-                        await update.message.reply_text(
-                            "<b>Account Not Found:</b> ⚠️\n\n"
-                            "We couldn't verify this account number in our system. "
-                            "Our team will review it manually, or you can try entering a different account number.",
-                            parse_mode='HTML',
-                            reply_markup=reply_markup
+                        await update.message.reply_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+                        
+                        # Store partial funding status
+                        db.add_user({
+                            "user_id": user_id,
+                            "funding_status": "partial",
+                            "funding_percentage": percentage,
+                            "remaining_amount": difference
+                        })
+                        
+                        # Reset state 
+                        context.bot_data.setdefault("user_states", {})
+                        context.bot_data["user_states"][user_id] = "awaiting_deposit_decision"
+                        
+                    else:
+                        # SCENARIO C: USER HAS NO FUNDS OR NO STATED AMOUNT
+                        target_amount = stated_amount if stated_amount > 0 else 1000  # Default if no amount stated
+                        
+                        message = (
+                            f"✅ **Account Successfully Verified!**\n\n"
+                            f"**Account:** {account_number}\n"
+                            f"**Account Holder:** {account_name}\n"
+                            f"**Current Balance:** ${real_balance:,.2f}\n"
+                            f"**Suggested Amount:** ${target_amount:,.2f}\n\n"
+                            f"🚀 **Ready to start your trading journey?**\n\n"
+                            f"To access our VIP services, you'll need to fund your account.\n\n"
+                            f"**Once funded, you'll get:**\n"
+                            f"• 🔔 Premium Trading Signals\n"
+                            f"• 📈 Advanced Strategies\n"
+                            f"• 💰 Prop Capital Access\n"
+                            f"• 👨‍💼 Personal Support\n\n"
+                            f"**How would you like to proceed?**"
                         )
                         
-                        # Stay in same state
+                        # Create funding options
+                        keyboard = [
+                            [InlineKeyboardButton(f"💳 Deposit ${target_amount:,.0f} Now", callback_data=f"deposit_exact_{target_amount}")],
+                            [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
+                            [InlineKeyboardButton("📚 Start with Free Resources", callback_data="free_resources")],
+                            [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+                        ]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        
+                        await update.message.reply_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+                        
+                        # Store no funding status
+                        db.add_user({
+                            "user_id": user_id,
+                            "funding_status": "none",
+                            "target_amount": target_amount
+                        })
+                        
+                        # Reset state
                         context.bot_data.setdefault("user_states", {})
-                        context.bot_data["user_states"][user_id] = "account_pending"
-                
-                # Notify admin
-                for admin_id in ADMIN_USER_ID:
-                    try:
-                        await context.bot.send_message(
-                            chat_id=admin_id,
-                            text=f"🔢 User {user_name} (ID: {user_id}) provided account: {message_text}\n"
-                                 f"Verified: {'✅' if is_valid and account_verified else '❌'}"
-                        )
-                    except Exception as e:
-                        print(f"Error notifying admin {admin_id}: {e}")
+                        context.bot_data["user_states"][user_id] = "awaiting_deposit_decision"
+                    
+                except Exception as e:
+                    print(f"Error in enhanced verification: {e}")
+                    await update.message.reply_text(
+                        f"⚠️ Error verifying account: {e}\n\nPlease try again or contact support."
+                    )
+                    return
+                    
             else:
                 # Not a valid account format
                 await update.message.reply_text(
@@ -3338,8 +3616,1805 @@ async def start_guided_callback(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception as e:
             print(f"Error notifying admin {admin_id}: {e}")
 
+async def generate_welcome_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Generate a welcome message with a deep link for users with privacy settings."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    if callback_data.startswith("gen_welcome_"):
+        user_id = int(callback_data.split("_")[2])
+        
+        # Get user info if available
+        auto_welcoming_users = context.bot_data.get("auto_welcoming_users", {})
+        user_name = auto_welcoming_users.get(user_id, {}).get("name", "there")
+        
+        # Create "start bot" deep link
+        bot_username = await context.bot.get_me()
+        bot_username = bot_username.username
+        start_link = f"https://t.me/{bot_username}?start=ref_{update.effective_user.id}"
+        
+        # Generate personalized welcome message
+        welcome_template = f"""Hello {user_name}! 👋
+
+Thank you for your interest in our VFX Trading solutions!
+
+To get started with your account setup and access our trading services, please click the link below:
+
+👉 {start_link}
+
+Once you click the link:
+1. You'll be connected with our automated assistant
+2. Answer a few quick questions about your trading preferences
+3. Verify your MT5 account number
+
+Our team will then set up your account with the optimal parameters based on your profile.
+
+Let me know if you have any questions!"""
+        
+        # Show the message with a copy button
+        await query.edit_message_text(
+            "✅ Here's your personalized welcome message to send to the user:\n\n"
+            f"{welcome_template}\n\n"
+            "Copy and paste this message to the user. After they click the link, "
+            "they will be able to complete the registration process with the bot.",
+            parse_mode='HTML'
+        )
+
+
+# -------------------------------------- MySQL Handles for Admin ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+
+async def test_mysql_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Test MySQL database connection and functionality."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    # Test connection
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database connection failed")
+        return
+    
+    # Test getting stats
+    try:
+        stats = mysql_db.get_account_stats()
+        if stats:
+            await update.message.reply_text(
+                f"✅ <b>MySQL Connection Active</b>\n\n"
+                f"📊 <b>Database Statistics:</b>\n"
+                f"Total Accounts: {stats['total_accounts']:,}\n"
+                f"Funded Accounts: {stats['funded_accounts']:,}\n"
+                f"Active Accounts: {stats['active_accounts']:,}\n"
+                f"Average Balance: ${stats['avg_balance']:,.2f}\n"
+                f"Maximum Balance: ${stats['max_balance']:,.2f}\n"
+                f"Total Balance: ${stats['total_balance']:,.2f}",
+                parse_mode='HTML'
+            )
+        else:
+            await update.message.reply_text("✅ Connected but couldn't retrieve stats")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error testing MySQL: {e}")
+
+async def search_account_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Search for accounts in the MySQL database."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /searchaccount <account_number_or_name>")
+        return
+    
+    search_term = " ".join(context.args)
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        results = mysql_db.search_accounts(search_term, limit=10)
+        
+        if results:
+            message = f"🔍 Search Results for '{search_term}':\n\n"
+            for account in results:
+                message += f"<b>Account:</b> {account['account_number']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Email:</b> {account['email']}\n"
+                message += f"<b>Balance:</b> ${account['balance']:.2f}\n"
+                message += f"<b>Group:</b> {account['account_group']}\n"
+                message += f"<b>Status:</b> {account['Status']}\n"
+                message += f"<b>Country:</b> {account['Country']}\n"
+                message += f"<b>Company:</b> {account['Company']}\n\n"
+            
+            # Split message if too long
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk, parse_mode='HTML')
+            else:
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text(f"No accounts found for '{search_term}'")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error searching accounts: {e}")
+
+async def recent_accounts_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show recently registered accounts."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Get accounts from last X days
+        days = int(context.args[0]) if context.args and context.args[0].isdigit() else 7
+        
+        # Try the original method first
+        try:
+            results = mysql_db.get_recent_registrations(days=days, limit=15)
+        except Exception as e:
+            print(f"Original method failed: {e}")
+            # Fall back to the safer method
+            results = mysql_db.get_recent_accounts(days=days, limit=15)
+        
+        if results:
+            message = f"📅 <b>Accounts Registered in Last {days} Days:</b>\n\n"
+            for account in results:
+                reg_date = account.get('registration_date')
+                if isinstance(reg_date, str):
+                    # Parse string date
+                    try:
+                        from datetime import datetime
+                        reg_dt = datetime.strptime(reg_date, '%Y-%m-%d %H:%M:%S')
+                        formatted_date = reg_dt.strftime('%Y-%m-%d %H:%M')
+                    except:
+                        formatted_date = str(reg_date)
+                elif reg_date:
+                    # It's already a datetime object
+                    formatted_date = reg_date.strftime('%Y-%m-%d %H:%M')
+                else:
+                    formatted_date = 'Unknown'
+                
+                message += f"<b>Account:</b> {account['account_number']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Email:</b> {account.get('Email', account.get('email', 'N/A'))}\n"
+                message += f"<b>Balance:</b> ${account['Balance']:.2f}\n"
+                message += f"<b>Group:</b> {account['account_group']}\n"
+                message += f"<b>Status:</b> {account.get('Status', 'Unknown')}\n"
+                message += f"<b>Country:</b> {account.get('Country', 'Unknown')}\n"
+                message += f"<b>Registered:</b> {formatted_date}\n"
+                if 'days_ago' in account and account['days_ago'] is not None:
+                    message += f"<b>Days Ago:</b> {account['days_ago']}\n"
+                message += "\n"
+            
+            # Split message if too long
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk, parse_mode='HTML')
+            else:
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text(f"No accounts registered in the last {days} days")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error getting recent accounts: {e}")
+
+async def check_table_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check the structure of the mt5_users table."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        structure = mysql_db.get_table_structure()
+        
+        if structure:
+            message = "📋 MT5_USERS Table Structure:\n\n"
+            for column in structure:
+                message += f"Column: {column['Field']}\n"
+                message += f"Type: {column['Type']}\n"
+                message += f"Null: {column['Null']}\n"
+                message += f"Key: {column['Key']}\n"
+                message += f"Default: {column['Default']}\n\n"
+            
+            # Split message if too long
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk)
+            else:
+                await update.message.reply_text(message)
+        else:
+            await update.message.reply_text("❌ Could not retrieve table structure")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error checking table: {e}")
+
+async def debug_registrations_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Debug registration dates to see the actual data format."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Get the most recent 10 accounts regardless of date
+        query = """
+        SELECT 
+            Login as account_number,
+            CONCAT(FirstName, ' ', LastName) as name,
+            Registration as registration_date,
+            NOW() as server_time,
+            DATEDIFF(NOW(), Registration) as days_ago
+        FROM mt5_users 
+        ORDER BY Login DESC
+        LIMIT 10
+        """
+        
+        results = mysql_db.execute_query(query)
+        
+        if results:
+            message = "🔍 <b>Recent Accounts Debug Info:</b>\n\n"
+            for account in results:
+                reg_date = account['registration_date']
+                server_time = account['server_time']
+                days_ago = account['days_ago']
+                
+                message += f"<b>Account:</b> {account['account_number']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Registration:</b> {reg_date}\n"
+                message += f"<b>Server Time:</b> {server_time}\n"
+                message += f"<b>Days Ago:</b> {days_ago}\n\n"
+            
+            # Split message if too long
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk, parse_mode='HTML')
+            else:
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No accounts found")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error debugging registrations: {e}")
+
+async def check_my_accounts_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check specific account numbers with balance and essential details (fixed datetime issues)."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: /checkmyaccounts <account1> <account2> ...\n\n"
+            "Example: /checkmyaccounts 300666 300700 300800"
+        )
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        message = "🔍 <b>Account Details Report:</b>\n\n"
+        
+        for account_num in context.args:
+            try:
+                account_int = int(account_num)
+                
+                # Simplified query that avoids problematic datetime operations
+                query = """
+                SELECT 
+                    Login,
+                    CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+                    FirstName,
+                    LastName,
+                    Email,
+                    COALESCE(Balance, 0) as balance,
+                    COALESCE(Credit, 0) as credit,
+                    `Group` as account_group,
+                    Status,
+                    Country,
+                    Company,
+                    Registration as raw_registration,
+                    LastAccess as raw_last_access,
+                    Timestamp,
+                    NOW() as server_time
+                FROM mt5_users 
+                WHERE Login = %s
+                """
+                
+                results = mysql_db.execute_query(query, (account_int,))
+                
+                if results and len(results) > 0:
+                    account = results[0]
+                    
+                    # Format balance with proper currency display
+                    balance = float(account['balance']) if account['balance'] else 0.0
+                    credit = float(account['credit']) if account['credit'] else 0.0
+                    
+                    # Color-code balance status
+                    if balance > 0:
+                        balance_status = "💰 Funded"
+                        balance_emoji = "✅"
+                    elif balance == 0:
+                        balance_status = "⚪ Zero Balance"
+                        balance_emoji = "⚠️"
+                    else:
+                        balance_status = "🔴 Negative"
+                        balance_emoji = "❌"
+                    
+                    # Safe datetime processing
+                    registration_display = "Unknown"
+                    last_access_display = "Unknown"
+                    account_age_display = "Unknown"
+                    
+                    # Process registration date safely
+                    raw_reg = account.get('raw_registration')
+                    if raw_reg and str(raw_reg) != '0000-00-00 00:00:00' and str(raw_reg) != 'None':
+                        try:
+                            if isinstance(raw_reg, str):
+                                reg_date = datetime.strptime(raw_reg, '%Y-%m-%d %H:%M:%S')
+                            else:
+                                reg_date = raw_reg
+                            registration_display = reg_date.strftime('%Y-%m-%d %H:%M:%S')
+                            
+                            # Calculate age
+                            age_days = (datetime.now() - reg_date).days
+                            age_hours = (datetime.now() - reg_date).total_seconds() / 3600
+                            account_age_display = f"{age_days} days ({int(age_hours)} hours)"
+                        except:
+                            registration_display = str(raw_reg)
+                    
+                    # Process last access safely
+                    raw_access = account.get('raw_last_access')
+                    if raw_access and str(raw_access) != '0000-00-00 00:00:00' and str(raw_access) != 'None':
+                        try:
+                            if isinstance(raw_access, str):
+                                access_date = datetime.strptime(raw_access, '%Y-%m-%d %H:%M:%S')
+                            else:
+                                access_date = raw_access
+                            last_access_display = access_date.strftime('%Y-%m-%d %H:%M:%S')
+                        except:
+                            last_access_display = str(raw_access)
+                    
+                    # Try to get creation date from timestamp if available
+                    timestamp_display = "Not available"
+                    if account.get('Timestamp') and account['Timestamp'] > 116444736000000000:
+                        try:
+                            # Convert FILETIME to readable datetime
+                            timestamp_unix = (account['Timestamp'] - 116444736000000000) / 10000000
+                            timestamp_date = datetime.fromtimestamp(timestamp_unix)
+                            timestamp_display = timestamp_date.strftime('%Y-%m-%d %H:%M:%S')
+                        except:
+                            timestamp_display = f"Raw: {account['Timestamp']}"
+                    
+                    # Build the account info message
+                    message += f"📊 <b>Account {account['Login']}</b> {balance_emoji}\n"
+                    message += f"👤 <b>Name:</b> {account['name'] or 'Unknown'}\n"
+                    message += f"📧 <b>Email:</b> {account['Email'] or 'Not provided'}\n"
+                    message += f"🏢 <b>Company:</b> {account['Company'] or 'N/A'}\n"
+                    message += f"🌍 <b>Country:</b> {account['Country'] or 'N/A'}\n\n"
+                    
+                    # Financial Information
+                    message += f"💵 <b>FINANCIAL STATUS:</b>\n"
+                    message += f"• Balance: ${balance:,.2f} ({balance_status})\n"
+                    if credit != 0:
+                        message += f"• Credit: ${credit:,.2f}\n"
+                    message += f"• Group: {account['account_group'] or 'Default'}\n"
+                    message += f"• Status: {account['Status'] or 'Unknown'}\n\n"
+                    
+                    # Account Timeline
+                    message += f"⏰ <b>TIMELINE:</b>\n"
+                    message += f"• Registration: {registration_display}\n"
+                    message += f"• Last Access: {last_access_display}\n"
+                    message += f"• Created (Timestamp): {timestamp_display}\n"
+                    message += f"• Account Age: {account_age_display}\n"
+                    message += f"• Server Time: {account['server_time']}\n"
+                    
+                    message += "\n" + "─" * 30 + "\n\n"
+                    
+                else:
+                    message += f"❌ <b>Account {account_num}:</b> Not found in database\n\n"
+                    
+            except ValueError:
+                message += f"❌ <b>Account {account_num}:</b> Invalid format (must be numeric)\n\n"
+            except Exception as account_error:
+                message += f"❌ <b>Account {account_num}:</b> Error - {str(account_error)[:100]}\n\n"
+                print(f"Error processing account {account_num}: {account_error}")
+        
+        # Add summary if multiple accounts
+        if len(context.args) > 1:
+            try:
+                # Get summary statistics using the same safe approach as quickbalance
+                account_ints = [int(acc) for acc in context.args if acc.isdigit()]
+                if account_ints:
+                    summary_query = """
+                    SELECT 
+                        COUNT(*) as total_found,
+                        COUNT(CASE WHEN COALESCE(Balance, 0) > 0 THEN 1 END) as funded_accounts,
+                        SUM(COALESCE(Balance, 0)) as total_balance,
+                        AVG(COALESCE(Balance, 0)) as avg_balance,
+                        MAX(COALESCE(Balance, 0)) as max_balance,
+                        MIN(COALESCE(Balance, 0)) as min_balance
+                    FROM mt5_users 
+                    WHERE Login IN ({})
+                    """.format(','.join(['%s'] * len(account_ints)))
+                    
+                    summary_results = mysql_db.execute_query(summary_query, account_ints)
+                    
+                    if summary_results and len(summary_results) > 0:
+                        summary = summary_results[0]
+                        message += f"📈 <b>SUMMARY ({len(context.args)} accounts requested):</b>\n"
+                        message += f"• Found in DB: {summary['total_found']}\n"
+                        message += f"• Funded Accounts: {summary['funded_accounts']}\n"
+                        message += f"• Total Balance: ${summary['total_balance']:,.2f}\n"
+                        message += f"• Average Balance: ${summary['avg_balance']:,.2f}\n"
+                        message += f"• Highest Balance: ${summary['max_balance']:,.2f}\n"
+                        message += f"• Lowest Balance: ${summary['min_balance']:,.2f}\n"
+                        
+            except Exception as summary_error:
+                print(f"Error generating summary: {summary_error}")
+        
+        # Split message if too long
+        if len(message) > 4000:
+            chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+            for chunk in chunks:
+                await update.message.reply_text(chunk, parse_mode='HTML')
+        else:
+            await update.message.reply_text(message, parse_mode='HTML')
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error checking accounts: {e}")
+        print(f"Error in check_my_accounts_command: {e}")
+
+async def quick_balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Quick balance check for specific accounts (simplified output)."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /quickbalance <account1> <account2> ...")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        message = "💰 <b>Quick Balance Check:</b>\n\n"
+        total_balance = 0
+        found_accounts = 0
+        
+        for account_num in context.args:
+            try:
+                account_int = int(account_num)
+                
+                # Simple balance query
+                query = """
+                SELECT 
+                    Login,
+                    CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+                    COALESCE(Balance, 0) as balance,
+                    Status
+                FROM mt5_users 
+                WHERE Login = %s
+                """
+                
+                results = mysql_db.execute_query(query, (account_int,))
+                
+                if results and len(results) > 0:
+                    account = results[0]
+                    balance = float(account['balance'])
+                    total_balance += balance
+                    found_accounts += 1
+                    
+                    # Status emoji
+                    if balance > 0:
+                        emoji = "✅"
+                    elif balance == 0:
+                        emoji = "⚪"
+                    else:
+                        emoji = "❌"
+                    
+                    message += f"{emoji} <b>{account['Login']}</b>: ${balance:,.2f} ({account['name'] or 'Unknown'})\n"
+                else:
+                    message += f"❌ <b>{account_num}:</b> Not found\n"
+                    
+            except ValueError:
+                message += f"❌ <b>{account_num}:</b> Invalid format\n"
+        
+        # Add totals
+        if found_accounts > 0:
+            message += f"\n📊 <b>Total:</b> {found_accounts} accounts, ${total_balance:,.2f}"
+        
+        await update.message.reply_text(message, parse_mode='HTML')
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error checking balances: {e}")
+
+async def simple_reg_check_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Simple check of registration dates."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Just get the registration dates without any fancy calculations
+        query = """
+        SELECT 
+            Login,
+            CONCAT(FirstName, ' ', LastName) as name,
+            Registration
+        FROM mt5_users 
+        ORDER BY Login DESC
+        LIMIT 15
+        """
+        
+        results = mysql_db.execute_query(query)
+        
+        if results:
+            message = "📅 <b>Raw Registration Dates:</b>\n\n"
+            for account in results:
+                message += f"<b>{account['Login']}:</b> {account['name']}\n"
+                message += f"<b>Registration:</b> {account['Registration']}\n\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No accounts found")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {e}")
+
+async def test_recent_fix_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Test the recent accounts fix with multiple approaches."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    await update.message.reply_text("🔄 Testing different approaches to handle date issues...")
+    
+    # Test 1: Safe method
+    try:
+        safe_results = mysql_db.get_recent_accounts(days=15, limit=5)
+        
+        if safe_results:
+            message = f"✅ <b>Safe Method Results (Last 15 Days):</b>\n\n"
+            for account in safe_results:
+                message += f"<b>Account:</b> {account['account_number']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Registration:</b> {account.get('registration_date', 'N/A')}\n"
+                message += f"<b>Days Ago:</b> {account.get('days_ago', 'N/A')}\n\n"
+                
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("✅ Safe method worked but found no recent results")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Safe method also failed: {e}")
+        
+    # Test 2: Very basic query
+    try:
+        basic_query = """
+        SELECT 
+            Login,
+            CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+            Registration
+        FROM mt5_users 
+        WHERE Login > 300000
+        ORDER BY Login DESC
+        LIMIT 10
+        """
+        
+        basic_results = mysql_db.execute_query(basic_query)
+        
+        if basic_results:
+            message = "✅ <b>Basic Query Results (Recent Logins):</b>\n\n"
+            for account in basic_results:
+                reg_date = account.get('Registration', 'N/A')
+                if reg_date == '0000-00-00 00:00:00':
+                    reg_date = 'Invalid Date'
+                    
+                message += f"<b>Account:</b> {account['Login']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Registration:</b> {reg_date}\n\n"
+                
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("Basic query returned no results")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Basic query failed: {e}")
+
+async def debug_zero_dates_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Debug command to understand the zero date issue."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Check how many records have zero dates
+        debug_query = """
+        SELECT 
+            COUNT(*) as total_records,
+            COUNT(CASE WHEN Registration = '0000-00-00 00:00:00' THEN 1 END) as zero_dates,
+            COUNT(CASE WHEN Registration IS NULL THEN 1 END) as null_dates,
+            COUNT(CASE WHEN Registration > '1970-01-01 00:00:00' THEN 1 END) as valid_dates,
+            MIN(Registration) as min_date,
+            MAX(Registration) as max_date
+        FROM mt5_users
+        """
+        
+        results = mysql_db.execute_query(debug_query)
+        
+        if results and len(results) > 0:
+            stats = results[0]
+            message = f"📊 <b>Registration Date Analysis:</b>\n\n"
+            message += f"<b>Total Records:</b> {stats['total_records']:,}\n"
+            message += f"<b>Zero Dates:</b> {stats['zero_dates']:,}\n"
+            message += f"<b>Null Dates:</b> {stats['null_dates']:,}\n"
+            message += f"<b>Valid Dates:</b> {stats['valid_dates']:,}\n"
+            message += f"<b>Min Date:</b> {stats['min_date']}\n"
+            message += f"<b>Max Date:</b> {stats['max_date']}\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("Could not retrieve date statistics")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error analyzing dates: {e}")
+
+async def check_mysql_mode_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check MySQL SQL mode and settings."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Check SQL mode
+        mode_results = mysql_db.execute_query("SELECT @@sql_mode as sql_mode")
+        timezone_results = mysql_db.execute_query("SELECT @@time_zone as time_zone")
+        version_results = mysql_db.execute_query("SELECT VERSION() as version")
+        
+        message = "⚙️ <b>MySQL Configuration:</b>\n\n"
+        
+        if mode_results:
+            message += f"<b>SQL Mode:</b> {mode_results[0]['sql_mode']}\n\n"
+        
+        if timezone_results:
+            message += f"<b>Time Zone:</b> {timezone_results[0]['time_zone']}\n\n"
+            
+        if version_results:
+            message += f"<b>Version:</b> {version_results[0]['version']}\n"
+        
+        await update.message.reply_text(message, parse_mode='HTML')
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error checking MySQL configuration: {e}")
+
+async def test_timestamp_approach(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Test using the Timestamp column instead of Registration."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Test the Timestamp column
+        test_query = """
+        SELECT 
+            Login,
+            Timestamp,
+            FROM_UNIXTIME(Timestamp) as readable_timestamp,
+            CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+            Registration
+        FROM mt5_users 
+        WHERE Timestamp > 0
+        ORDER BY Timestamp DESC
+        LIMIT 10
+        """
+        
+        results = mysql_db.execute_query(test_query)
+        
+        if results:
+            message = "🕒 <b>Testing Timestamp Column:</b>\n\n"
+            for account in results:
+                timestamp = account['Timestamp']
+                readable_time = account['readable_timestamp']
+                message += f"<b>Account:</b> {account['Login']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Timestamp:</b> {timestamp}\n"
+                message += f"<b>Readable:</b> {readable_time}\n"
+                message += f"<b>Registration:</b> {account['Registration']}\n\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No results from timestamp test")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error testing timestamp: {e}")
+
+async def recent_accounts_timestamp_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Get recent accounts using the safe Timestamp column."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        days = int(context.args[0]) if context.args and context.args[0].isdigit() else 7
+        
+        # Calculate Unix timestamp for X days ago
+        from datetime import datetime, timedelta
+        cutoff_date = datetime.now() - timedelta(days=days)
+        cutoff_timestamp = int(cutoff_date.timestamp())
+        
+        query = """
+        SELECT 
+            Login as account_number,
+            CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+            Email,
+            Timestamp,
+            FROM_UNIXTIME(Timestamp) as registration_date,
+            COALESCE(Balance, 0) as Balance,
+            `Group` as account_group,
+            Status,
+            Country,
+            ROUND((UNIX_TIMESTAMP() - Timestamp) / 86400) as days_ago
+        FROM mt5_users 
+        WHERE Timestamp > %s
+        AND Timestamp > 0
+        ORDER BY Timestamp DESC
+        LIMIT 20
+        """
+        
+        results = mysql_db.execute_query(query, (cutoff_timestamp,))
+        
+        if results:
+            message = f"📅 <b>Recent Accounts (Last {days} Days) - Using Timestamp:</b>\n\n"
+            for account in results:
+                reg_date = account['registration_date']
+                if reg_date:
+                    formatted_date = reg_date.strftime('%Y-%m-%d %H:%M:%S') if hasattr(reg_date, 'strftime') else str(reg_date)
+                else:
+                    formatted_date = 'Unknown'
+                
+                message += f"<b>Account:</b> {account['account_number']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Email:</b> {account.get('Email', 'N/A')}\n"
+                message += f"<b>Balance:</b> ${account['Balance']:.2f}\n"
+                message += f"<b>Group:</b> {account['account_group']}\n"
+                message += f"<b>Status:</b> {account['Status']}\n"
+                message += f"<b>Country:</b> {account['Country']}\n"
+                message += f"<b>Created:</b> {formatted_date}\n"
+                message += f"<b>Days Ago:</b> {account['days_ago']}\n\n"
+            
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk, parse_mode='HTML')
+            else:
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text(f"No accounts found in the last {days} days using Timestamp")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error getting recent accounts: {e}")
+
+async def recent_accounts_by_login_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Get recent accounts using Login ID (simplest approach)."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Get the number of recent accounts to show
+        limit = int(context.args[0]) if context.args and context.args[0].isdigit() else 20
+        
+        # Simple query using Login ID (higher = newer)
+        query = """
+        SELECT 
+            Login as account_number,
+            CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+            Email,
+            COALESCE(Balance, 0) as Balance,
+            `Group` as account_group,
+            Status,
+            Country,
+            CASE 
+                WHEN Registration != '0000-00-00 00:00:00' THEN Registration
+                ELSE 'No valid date'
+            END as registration_display
+        FROM mt5_users 
+        WHERE Login >= 300000
+        ORDER BY Login DESC
+        LIMIT %s
+        """
+        
+        results = mysql_db.execute_query(query, (limit,))
+        
+        if results:
+            message = f"📅 <b>Most Recent {limit} Accounts (by Login ID):</b>\n\n"
+            for account in results:
+                message += f"<b>Account:</b> {account['account_number']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Email:</b> {account.get('Email', 'N/A')}\n"
+                message += f"<b>Balance:</b> ${account['Balance']:.2f}\n"
+                message += f"<b>Group:</b> {account['account_group']}\n"
+                message += f"<b>Status:</b> {account['Status']}\n"
+                message += f"<b>Country:</b> {account['Country']}\n"
+                message += f"<b>Registration:</b> {account['registration_display']}\n\n"
+            
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk, parse_mode='HTML')
+            else:
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No recent accounts found")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error getting recent accounts: {e}")
+
+async def find_recent_login_threshold_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Find what Login ID represents 'recent' accounts."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Find Login ID ranges
+        query = """
+        SELECT 
+            MIN(Login) as min_login,
+            MAX(Login) as max_login,
+            COUNT(*) as total_accounts,
+            COUNT(CASE WHEN Login >= 300000 THEN 1 END) as accounts_over_300k,
+            COUNT(CASE WHEN Login >= 300500 THEN 1 END) as accounts_over_300_5k,
+            COUNT(CASE WHEN Login >= 300600 THEN 1 END) as accounts_over_300_6k,
+            COUNT(CASE WHEN Login >= 300700 THEN 1 END) as accounts_over_300_7k,
+            COUNT(CASE WHEN Login >= 300800 THEN 1 END) as accounts_over_300_8k
+        FROM mt5_users
+        """
+        
+        results = mysql_db.execute_query(query)
+        
+        if results and len(results) > 0:
+            stats = results[0]
+            message = f"📊 <b>Login ID Analysis:</b>\n\n"
+            message += f"<b>Total Accounts:</b> {stats['total_accounts']:,}\n"
+            message += f"<b>Login ID Range:</b> {stats['min_login']:,} to {stats['max_login']:,}\n\n"
+            message += f"<b>Accounts with Login >= 300,000:</b> {stats['accounts_over_300k']:,}\n"
+            message += f"<b>Accounts with Login >= 300,500:</b> {stats['accounts_over_300_5k']:,}\n"
+            message += f"<b>Accounts with Login >= 300,600:</b> {stats['accounts_over_300_6k']:,}\n\n"
+            message += f"<b>Accounts with Login >= 300,700:</b> {stats['accounts_over_300_7k']:,}\n\n"
+            message += f"<b>Accounts with Login >= 300,800:</b> {stats['accounts_over_300_8k']:,}\n\n"
+            
+            # Suggest threshold
+            if stats['accounts_over_300_6k'] > 0:
+                message += "💡 <b>Suggestion:</b> Use Login >= 300600 for very recent accounts\n"
+            elif stats['accounts_over_300_5k'] > 0:
+                message += "💡 <b>Suggestion:</b> Use Login >= 300500 for recent accounts\n"
+            else:
+                message += "💡 <b>Suggestion:</b> Use Login >= 300000 for recent accounts\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("Could not retrieve Login ID statistics")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error analyzing Login IDs: {e}")
+
+async def diagnose_account_access_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Diagnose what accounts we can actually see."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Test 1: Check if we can see specific account you mentioned
+        specific_accounts = [300790, 300800, 300666, 300665]
+        
+        message = "🔍 <b>Account Access Diagnostic:</b>\n\n"
+        
+        for account_id in specific_accounts:
+            try:
+                query = "SELECT Login, FirstName, LastName FROM mt5_users WHERE Login = %s"
+                result = mysql_db.execute_query(query, (account_id,))
+                
+                if result:
+                    message += f"<b>Account {account_id}:</b> ✅ Found - {result[0]['FirstName']} {result[0]['LastName']}\n"
+                else:
+                    message += f"<b>Account {account_id}:</b> ❌ Not found\n"
+            except Exception as e:
+                message += f"<b>Account {account_id}:</b> Error - {str(e)[:50]}\n"
+        
+        # Test 2: Check highest Login IDs we can actually see
+        try:
+            query = "SELECT Login FROM mt5_users ORDER BY Login DESC LIMIT 10"
+            results = mysql_db.execute_query(query)
+            
+            if results:
+                message += f"\n<b>🔝 Highest Login IDs visible:</b>\n"
+                for result in results:
+                    message += f"  {result['Login']}\n"
+            else:
+                message += f"\n<b>Highest Login IDs:</b> None found\n"
+        except Exception as e:
+            message += f"\n<b>Highest Login IDs:</b> Error - {e}\n"
+        
+        await update.message.reply_text(message, parse_mode='HTML')
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Diagnostic error: {e}")
+
+async def test_safe_login_query_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Test a completely safe query that avoids datetime columns."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Ultra-safe query that completely avoids datetime columns
+        safe_query = """
+        SELECT 
+            Login,
+            CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+            Email,
+            COALESCE(Balance, 0) as Balance,
+            `Group`,
+            Status,
+            Country
+        FROM mt5_users 
+        WHERE Login >= 300000
+        ORDER BY Login DESC
+        LIMIT 20
+        """
+        
+        results = mysql_db.execute_query(safe_query)
+        
+        if results:
+            message = f"✅ <b>Safe Query Results (No Datetime Columns):</b>\n\n"
+            for account in results:
+                message += f"<b>Login:</b> {account['Login']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Balance:</b> ${account['Balance']:.2f}\n"
+                message += f"<b>Status:</b> {account['Status']}\n\n"
+            
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk, parse_mode='HTML')
+            else:
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No results from safe query")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Safe query also failed: {e}")
+
+async def decode_mt5_timestamp_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Try to decode the MT5 timestamp format."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Get some timestamps to analyze
+        query = """
+        SELECT 
+            Login,
+            Timestamp,
+            CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name
+        FROM mt5_users 
+        WHERE Timestamp > 0
+        ORDER BY Login DESC
+        LIMIT 5
+        """
+        
+        results = mysql_db.execute_query(query)
+        
+        if results:
+            message = "🕒 <b>MT5 Timestamp Analysis:</b>\n\n"
+            
+            for account in results:
+                timestamp = account['Timestamp']
+                
+                # Try different timestamp interpretations
+                try:
+                    # Method 1: Treat as Windows FILETIME (100-nanosecond intervals since 1601-01-01)
+                    # Convert to Unix timestamp: (filetime - 116444736000000000) / 10000000
+                    unix_timestamp = (timestamp - 116444736000000000) / 10000000
+                    if unix_timestamp > 0:
+                        from datetime import datetime
+                        converted_date = datetime.fromtimestamp(unix_timestamp)
+                        filetime_result = converted_date.strftime('%Y-%m-%d %H:%M:%S')
+                    else:
+                        filetime_result = "Invalid"
+                except:
+                    filetime_result = "Error"
+                
+                # Method 2: Treat as microseconds since epoch
+                try:
+                    microsecond_timestamp = timestamp / 1000000
+                    micro_date = datetime.fromtimestamp(microsecond_timestamp)
+                    microsecond_result = micro_date.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    microsecond_result = "Error"
+                
+                # Method 3: Treat as milliseconds since epoch  
+                try:
+                    millisecond_timestamp = timestamp / 1000
+                    milli_date = datetime.fromtimestamp(millisecond_timestamp)
+                    millisecond_result = milli_date.strftime('%Y-%m-%d %H:%M:%S')
+                except:
+                    millisecond_result = "Error"
+                
+                message += f"<b>Account {account['Login']}:</b> {account['name']}\n"
+                message += f"<b>Raw Timestamp:</b> {timestamp}\n"
+                message += f"<b>As FILETIME:</b> {filetime_result}\n"
+                message += f"<b>As Microseconds:</b> {microsecond_result}\n"
+                message += f"<b>As Milliseconds:</b> {millisecond_result}\n\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No timestamp data found")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Timestamp analysis error: {e}")
+
+async def check_user_permissions_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check what permissions our database user has."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Check current user and permissions
+        queries = [
+            ("Current User", "SELECT USER() as current_user"),
+            ("Current Database", "SELECT DATABASE() as current_db"),
+            ("User Grants", "SHOW GRANTS"),
+            ("Table Count Check", "SELECT COUNT(*) as total_rows FROM mt5_users"),
+        ]
+        
+        message = "🔐 <b>Database Permissions Check:</b>\n\n"
+        
+        for check_name, query in queries:
+            try:
+                results = mysql_db.execute_query(query)
+                if results:
+                    if check_name == "User Grants":
+                        message += f"<b>{check_name}:</b>\n"
+                        for grant in results:
+                            grant_text = list(grant.values())[0]
+                            message += f"  {grant_text}\n"
+                        message += "\n"
+                    else:
+                        result_value = list(results[0].values())[0]
+                        message += f"<b>{check_name}:</b> {result_value}\n"
+                else:
+                    message += f"<b>{check_name}:</b> No results\n"
+            except Exception as e:
+                message += f"<b>{check_name}:</b> Error - {str(e)[:100]}\n"
+        
+        await update.message.reply_text(message, parse_mode='HTML')
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Permissions check error: {e}")
+        
+async def recent_accounts_final_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Final working version - get recent accounts using FILETIME."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        days = int(context.args[0]) if context.args and context.args[0].isdigit() else 7
+        
+        # Use FILETIME timestamp for accurate recent account filtering
+        from datetime import datetime, timedelta
+        cutoff_date = datetime.now() - timedelta(days=days)
+        cutoff_filetime = int((cutoff_date.timestamp() * 10000000) + 116444736000000000)
+        
+        query = """
+        SELECT 
+            Login as account_number,
+            CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+            Email,
+            Timestamp,
+            FROM_UNIXTIME((Timestamp - 116444736000000000) / 10000000) as registration_date,
+            COALESCE(Balance, 0) as Balance,
+            `Group` as account_group,
+            Status,
+            Country,
+            ROUND((UNIX_TIMESTAMP() * 10000000 + 116444736000000000 - Timestamp) / 864000000000) as days_ago
+        FROM mt5_users 
+        WHERE Timestamp > %s
+        AND Timestamp > 116444736000000000
+        ORDER BY Timestamp DESC
+        LIMIT 20
+        """
+        
+        results = mysql_db.execute_query(query, (cutoff_filetime,))
+        
+        if results:
+            message = f"📅 <b>Recent Accounts (Last {days} Days) - FINAL VERSION:</b>\n\n"
+            for account in results:
+                reg_date = account['registration_date']
+                formatted_date = reg_date.strftime('%Y-%m-%d %H:%M:%S') if reg_date else 'Unknown'
+                
+                message += f"<b>Account:</b> {account['account_number']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Email:</b> {account.get('Email', 'N/A')}\n"
+                message += f"<b>Balance:</b> ${account['Balance']:.2f}\n"
+                message += f"<b>Group:</b> {account['account_group']}\n"
+                message += f"<b>Status:</b> {account['Status']}\n"
+                message += f"<b>Country:</b> {account['Country']}\n"
+                message += f"<b>Created:</b> {formatted_date}\n"
+                message += f"<b>Days Ago:</b> {account['days_ago']}\n\n"
+            
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk, parse_mode='HTML')
+            else:
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text(f"No accounts created in the last {days} days")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error getting recent accounts: {e}")
+
+async def newest_accounts_simple_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Ultra-simple version - just get the newest accounts by Login ID."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        limit = int(context.args[0]) if context.args and context.args[0].isdigit() else 10
+        
+        # Completely safe query - no datetime columns at all
+        query = """
+        SELECT 
+            Login as account_number,
+            CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name,
+            Email,
+            COALESCE(Balance, 0) as Balance,
+            `Group` as account_group,
+            Status,
+            Country,
+            FROM_UNIXTIME((Timestamp - 116444736000000000) / 10000000) as created_date
+        FROM mt5_users 
+        WHERE Timestamp > 116444736000000000
+        ORDER BY Login DESC
+        LIMIT %s
+        """
+        
+        results = mysql_db.execute_query(query, (limit,))
+        
+        if results:
+            message = f"📅 <b>Newest {limit} Accounts (by Login ID):</b>\n\n"
+            for account in results:
+                created_date = account['created_date']
+                formatted_date = created_date.strftime('%Y-%m-%d %H:%M:%S') if created_date else 'Unknown'
+                
+                message += f"<b>Account:</b> {account['account_number']}\n"
+                message += f"<b>Name:</b> {account['name']}\n"
+                message += f"<b>Email:</b> {account.get('Email', 'N/A')}\n"
+                message += f"<b>Balance:</b> ${account['Balance']:.2f}\n"
+                message += f"<b>Status:</b> {account['Status']}\n"
+                message += f"<b>Created:</b> {formatted_date}\n\n"
+            
+            if len(message) > 4000:
+                chunks = [message[i:i+4000] for i in range(0, len(message), 4000)]
+                for chunk in chunks:
+                    await update.message.reply_text(chunk, parse_mode='HTML')
+            else:
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No accounts found")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error getting newest accounts: {e}")
+
+async def show_all_tables_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show all tables in the current database."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Show all tables in current database
+        tables_query = "SHOW TABLES"
+        results = mysql_db.execute_query(tables_query)
+        
+        if results:
+            message = "📋 <b>All Tables in 'metatrader5' Database:</b>\n\n"
+            
+            for table in results:
+                table_name = list(table.values())[0]  # Get the table name
+                
+                # Get row count for each table
+                try:
+                    count_query = f"SELECT COUNT(*) as count FROM `{table_name}`"
+                    count_result = mysql_db.execute_query(count_query)
+                    row_count = count_result[0]['count'] if count_result else 0
+                    
+                    message += f"📊 <b>{table_name}</b>: {row_count:,} rows\n"
+                except Exception as e:
+                    message += f"📊 <b>{table_name}</b>: Error counting - {str(e)[:50]}\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No tables found")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error showing tables: {e}")
+        
+async def show_all_databases_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show all databases available."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Show all databases
+        databases_query = "SHOW DATABASES"
+        results = mysql_db.execute_query(databases_query)
+        
+        if results:
+            message = "🗄️ <b>All Available Databases:</b>\n\n"
+            
+            for db in results:
+                db_name = list(db.values())[0]  # Get the database name
+                
+                # Check if we can access it
+                try:
+                    use_query = f"SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = '{db_name}'"
+                    table_count_result = mysql_db.execute_query(use_query)
+                    table_count = table_count_result[0]['table_count'] if table_count_result else 0
+                    
+                    message += f"🗂️ <b>{db_name}</b>: {table_count} tables\n"
+                except Exception as e:
+                    message += f"🗂️ <b>{db_name}</b>: Access error\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No databases found")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error showing databases: {e}")
+        
+        
+async def search_user_tables_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Search for tables that might contain user/account data."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Search for tables with user/account-related names
+        search_query = """
+        SELECT 
+            table_schema as database_name,
+            table_name,
+            table_rows as estimated_rows
+        FROM information_schema.tables 
+        WHERE table_name LIKE '%user%' 
+           OR table_name LIKE '%account%' 
+           OR table_name LIKE '%mt5%'
+           OR table_name LIKE '%client%'
+           OR table_name LIKE '%trader%'
+           OR table_name LIKE '%login%'
+        ORDER BY table_schema, table_name
+        """
+        
+        results = mysql_db.execute_query(search_query)
+        
+        if results:
+            message = "🔍 <b>Tables That Might Contain Account Data:</b>\n\n"
+            
+            current_db = None
+            for table in results:
+                db_name = table['database_name']
+                table_name = table['table_name']
+                row_count = table['estimated_rows'] or 0
+                
+                if db_name != current_db:
+                    message += f"\n📂 <b>Database: {db_name}</b>\n"
+                    current_db = db_name
+                
+                message += f"  📊 {table_name}: ~{row_count:,} rows\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No user/account tables found")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error searching tables: {e}")
+        
+async def check_table_for_high_accounts_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check a specific table for high account numbers."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    # Get table name from command arguments
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: /checktable <table_name>\n\n"
+            "Example: /checktable mt5_users\n"
+            "Use /showtables first to see available tables"
+        )
+        return
+    
+    table_name = context.args[0]
+    
+    try:
+        # First, check if table exists and has a Login column
+        describe_query = f"DESCRIBE `{table_name}`"
+        table_structure = mysql_db.execute_query(describe_query)
+        
+        if not table_structure:
+            await update.message.reply_text(f"❌ Table '{table_name}' not found")
+            return
+        
+        # Check if Login column exists
+        columns = [col['Field'] for col in table_structure]
+        if 'Login' not in columns:
+            await update.message.reply_text(
+                f"❌ Table '{table_name}' doesn't have a 'Login' column\n\n"
+                f"Available columns: {', '.join(columns)}"
+            )
+            return
+        
+        # Check for high account numbers
+        high_accounts_query = f"""
+        SELECT 
+            MIN(Login) as min_login,
+            MAX(Login) as max_login,
+            COUNT(*) as total_accounts,
+            COUNT(CASE WHEN Login >= 300700 THEN 1 END) as accounts_over_300700,
+            COUNT(CASE WHEN Login >= 300800 THEN 1 END) as accounts_over_300800
+        FROM `{table_name}`
+        """
+        
+        results = mysql_db.execute_query(high_accounts_query)
+        
+        if results:
+            stats = results[0]
+            message = f"📊 <b>Account Analysis for Table '{table_name}':</b>\n\n"
+            message += f"<b>Total Accounts:</b> {stats['total_accounts']:,}\n"
+            message += f"<b>Login Range:</b> {stats['min_login']:,} to {stats['max_login']:,}\n"
+            message += f"<b>Accounts >= 300,700:</b> {stats['accounts_over_300700']:,}\n"
+            message += f"<b>Accounts >= 300,800:</b> {stats['accounts_over_300800']:,}\n\n"
+            
+            # If we found high accounts, show some examples
+            if stats['max_login'] > 300700:
+                sample_query = f"""
+                SELECT Login, 
+                       CONCAT(COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name
+                FROM `{table_name}` 
+                WHERE Login >= 300700 
+                ORDER BY Login DESC 
+                LIMIT 5
+                """
+                
+                sample_results = mysql_db.execute_query(sample_query)
+                if sample_results:
+                    message += "<b>🎯 High Account Numbers Found:</b>\n"
+                    for account in sample_results:
+                        message += f"  {account['Login']}: {account['name']}\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text(f"No data found in table '{table_name}'")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error checking table '{table_name}': {e}")
+
+async def compare_current_table_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show info about the current table we're using."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        message = "📋 <b>Current Table Information:</b>\n\n"
+        message += f"<b>Database:</b> metatrader5\n"
+        message += f"<b>Table:</b> mt5_users\n\n"
+        
+        # Get basic stats
+        stats_query = """
+        SELECT 
+            COUNT(*) as total_accounts,
+            MIN(Login) as min_login,
+            MAX(Login) as max_login
+        FROM mt5_users
+        """
+        
+        results = mysql_db.execute_query(stats_query)
+        if results:
+            stats = results[0]
+            message += f"<b>Total Accounts:</b> {stats['total_accounts']:,}\n"
+            message += f"<b>Login Range:</b> {stats['min_login']:,} to {stats['max_login']:,}\n\n"
+        
+        message += "<b>This is the table that contains accounts up to 300666</b>\n"
+        message += "<b>Accounts 300700+ might be in a different table</b>"
+        
+        await update.message.reply_text(message, parse_mode='HTML')
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error getting current table info: {e}")
+
+
+async def check_mt5_accounts_table_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Check the mt5_accounts table structure and content."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # First, check the structure of mt5_accounts
+        structure_query = "DESCRIBE mt5_accounts"
+        structure_results = mysql_db.execute_query(structure_query)
+        
+        if structure_results:
+            message = "📋 <b>MT5_ACCOUNTS Table Structure:</b>\n\n"
+            for column in structure_results[:10]:  # Show first 10 columns
+                message += f"<b>{column['Field']}</b>: {column['Type']}\n"
+            
+            if len(structure_results) > 10:
+                message += f"... and {len(structure_results) - 10} more columns\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        
+        # Check if it has a Login column and get stats
+        columns = [col['Field'] for col in structure_results]
+        if 'Login' in columns:
+            stats_query = """
+            SELECT 
+                COUNT(*) as total_accounts,
+                MIN(Login) as min_login,
+                MAX(Login) as max_login,
+                COUNT(CASE WHEN Login >= 300700 THEN 1 END) as accounts_over_300700,
+                COUNT(CASE WHEN Login >= 300800 THEN 1 END) as accounts_over_300800
+            FROM mt5_accounts
+            """
+            
+            stats_results = mysql_db.execute_query(stats_query)
+            
+            if stats_results:
+                stats = stats_results[0]
+                message = f"📊 <b>MT5_ACCOUNTS Table Analysis:</b>\n\n"
+                message += f"<b>Total Accounts:</b> {stats['total_accounts']:,}\n"
+                message += f"<b>Login Range:</b> {stats['min_login']:,} to {stats['max_login']:,}\n"
+                message += f"<b>Accounts >= 300,700:</b> {stats['accounts_over_300700']:,}\n"
+                message += f"<b>Accounts >= 300,800:</b> {stats['accounts_over_300800']:,}\n\n"
+                
+                # Check if this table has higher accounts
+                if stats['max_login'] > 300700:
+                    message += "🎯 <b>FOUND IT! This table has higher account numbers!</b>\n\n"
+                    
+                    # Show some examples of high accounts
+                    sample_query = """
+                    SELECT Login, 
+                           CONCAT(COALESCE(Name, ''), ' ', COALESCE(FirstName, ''), ' ', COALESCE(LastName, '')) as name
+                    FROM mt5_accounts 
+                    WHERE Login >= 300700 
+                    ORDER BY Login DESC 
+                    LIMIT 10
+                    """
+                    
+                    sample_results = mysql_db.execute_query(sample_query)
+                    if sample_results:
+                        message += "<b>Sample High Account Numbers:</b>\n"
+                        for account in sample_results:
+                            message += f"  {account['Login']}: {account['name']}\n"
+                else:
+                    message += "❌ This table also only goes up to 300666\n"
+                
+                await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("❌ mt5_accounts table doesn't have a Login column")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error checking mt5_accounts table: {e}")
+
+async def compare_users_vs_accounts_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Compare mt5_users vs mt5_accounts tables."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Get structure of both tables
+        users_structure = mysql_db.execute_query("DESCRIBE mt5_users")
+        accounts_structure = mysql_db.execute_query("DESCRIBE mt5_accounts")
+        
+        message = "🔍 <b>MT5_USERS vs MT5_ACCOUNTS Comparison:</b>\n\n"
+        
+        # Compare column counts
+        users_cols = len(users_structure) if users_structure else 0
+        accounts_cols = len(accounts_structure) if accounts_structure else 0
+        
+        message += f"<b>MT5_USERS:</b> {users_cols} columns\n"
+        message += f"<b>MT5_ACCOUNTS:</b> {accounts_cols} columns\n\n"
+        
+        # Check if both have Login column
+        users_columns = [col['Field'] for col in users_structure] if users_structure else []
+        accounts_columns = [col['Field'] for col in accounts_structure] if accounts_structure else []
+        
+        message += f"<b>MT5_USERS has Login column:</b> {'✅' if 'Login' in users_columns else '❌'}\n"
+        message += f"<b>MT5_ACCOUNTS has Login column:</b> {'✅' if 'Login' in accounts_columns else '❌'}\n\n"
+        
+        # Show unique columns in each table
+        if users_columns and accounts_columns:
+            users_only = set(users_columns) - set(accounts_columns)
+            accounts_only = set(accounts_columns) - set(users_columns)
+            common = set(users_columns) & set(accounts_columns)
+            
+            message += f"<b>Common columns:</b> {len(common)}\n"
+            message += f"<b>Only in MT5_USERS:</b> {len(users_only)}\n"
+            message += f"<b>Only in MT5_ACCOUNTS:</b> {len(accounts_only)}\n\n"
+            
+            if accounts_only:
+                message += f"<b>Unique to MT5_ACCOUNTS:</b>\n"
+                for col in sorted(list(accounts_only)[:10]):  # Show first 10
+                    message += f"  • {col}\n"
+        
+        await update.message.reply_text(message, parse_mode='HTML')
+        
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error comparing tables: {e}")
+
+async def check_accounts_table_sample_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Get a sample of data from mt5_accounts table."""
+    if update.effective_user.id not in ADMIN_USER_ID:
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    mysql_db = get_mysql_connection()
+    
+    if not mysql_db.is_connected():
+        await update.message.reply_text("❌ MySQL database not available")
+        return
+    
+    try:
+        # Get structure first to see what columns are available
+        structure_query = "DESCRIBE mt5_accounts"
+        structure_results = mysql_db.execute_query(structure_query)
+        
+        if not structure_results:
+            await update.message.reply_text("❌ Could not access mt5_accounts table")
+            return
+        
+        columns = [col['Field'] for col in structure_results]
+        
+        # Build a safe query based on available columns
+        select_columns = []
+        if 'Login' in columns:
+            select_columns.append('Login')
+        if 'Name' in columns:
+            select_columns.append('Name')
+        if 'FirstName' in columns:
+            select_columns.append('FirstName')
+        if 'LastName' in columns:
+            select_columns.append('LastName')
+        if 'Balance' in columns:
+            select_columns.append('COALESCE(Balance, 0) as Balance')
+        if 'Group' in columns:
+            select_columns.append('`Group`')
+        if 'Status' in columns:
+            select_columns.append('Status')
+        
+        if not select_columns:
+            await update.message.reply_text("❌ No recognizable columns found in mt5_accounts")
+            return
+        
+        # Get sample data
+        sample_query = f"""
+        SELECT {', '.join(select_columns)}
+        FROM mt5_accounts 
+        ORDER BY Login DESC 
+        LIMIT 10
+        """
+        
+        results = mysql_db.execute_query(sample_query)
+        
+        if results:
+            message = "📊 <b>MT5_ACCOUNTS Sample Data (Top 10 by Login):</b>\n\n"
+            
+            for account in results:
+                message += f"<b>Login:</b> {account.get('Login', 'N/A')}\n"
+                
+                # Build name from available fields
+                name_parts = []
+                if 'Name' in account and account['Name']:
+                    name_parts.append(account['Name'])
+                if 'FirstName' in account and account['FirstName']:
+                    name_parts.append(account['FirstName'])
+                if 'LastName' in account and account['LastName']:
+                    name_parts.append(account['LastName'])
+                
+                name = ' '.join(name_parts) if name_parts else 'N/A'
+                message += f"<b>Name:</b> {name}\n"
+                
+                if 'Balance' in account:
+                    message += f"<b>Balance:</b> ${account['Balance']:.2f}\n"
+                if 'Group' in account:
+                    message += f"<b>Group:</b> {account.get('Group', 'N/A')}\n"
+                if 'Status' in account:
+                    message += f"<b>Status:</b> {account.get('Status', 'N/A')}\n"
+                
+                message += "\n"
+            
+            await update.message.reply_text(message, parse_mode='HTML')
+        else:
+            await update.message.reply_text("No data found in mt5_accounts table")
+            
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error getting sample from mt5_accounts: {e}")
+
+
 # -------------------------------------- SIGNALS HANDLERS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
+
 signal_dispatcher = None
 signal_system_initialized = False
 async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
@@ -3455,6 +5530,9 @@ async def check_and_send_signal_updates(context: ContextTypes.DEFAULT_TYPE) -> N
     if signal_dispatcher:
         await signal_dispatcher.send_signal_updates()
 
+
+
+
 # -------------------------------------- MAIN ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 (RISK_APPETITE_MANUAL, DEPOSIT_AMOUNT_MANUAL, TRADING_ACCOUNT_MANUAL) = range(100, 103)  # Using different ranges to avoid conflicts
@@ -3549,44 +5627,46 @@ async def silent_update_logger(update: Update, context: ContextTypes.DEFAULT_TYP
         f.write(f"{datetime.now()}: {chat_title} - {chat_id} ({chat_type})\n")
 
 
-(RISK_APPETITE, DEPOSIT_AMOUNT, TRADING_INTEREST, TRADING_ACCOUNT, CAPTCHA_RESPONSE) = range(5)
-async def deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Store deposit amount and ask for trading interests."""
-    try:
-        amount = int(update.message.text)
-        if 100 <= amount <= 10000:
-            user_id = update.effective_user.id
+(RISK_APPETITE, DEPOSIT_AMOUNT, TRADING_ACCOUNT, CAPTCHA_RESPONSE, 
+ AWAITING_DEPOSIT_DECISION, PAYMENT_METHOD_SELECTION, DEPOSIT_CONFIRMATION) = range(7)
+
+# async def deposit_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     """Store deposit amount and ask for trading interests."""
+#     try:
+#         amount = int(update.message.text)
+#         if 100 <= amount <= 10000:
+#             user_id = update.effective_user.id
             
-            # Store in user_data for conversation
-            context.user_data["user_info"]["deposit_amount"] = amount
+#             # Store in user_data for conversation
+#             context.user_data["user_info"]["deposit_amount"] = amount
             
-            # Update in database
-            db.add_user({
-                "user_id": user_id,
-                "deposit_amount": amount
-            })
+#             # Update in database
+#             db.add_user({
+#                 "user_id": user_id,
+#                 "deposit_amount": amount
+#             })
             
-            # Ask for trading interests with buttons
-            keyboard = [
-                [InlineKeyboardButton("Trading Signals", callback_data="interest_signals")],
-                [InlineKeyboardButton("Trading Strategy", callback_data="interest_strategy")],
-                [InlineKeyboardButton("Prop Capital", callback_data="interest_propcapital")],
-                [InlineKeyboardButton("All Services", callback_data="interest_all")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+#             # Ask for trading interests with buttons
+#             keyboard = [
+#                 [InlineKeyboardButton("Trading Signals", callback_data="interest_signals")],
+#                 [InlineKeyboardButton("Trading Strategy", callback_data="interest_strategy")],
+#                 [InlineKeyboardButton("Prop Capital", callback_data="interest_propcapital")],
+#                 [InlineKeyboardButton("All Services", callback_data="interest_all")]
+#             ]
+#             reply_markup = InlineKeyboardMarkup(keyboard)
             
-            await update.message.reply_text(
-                "Great! Which of our VIP services are you interested in?",
-                reply_markup=reply_markup
-            )
+#             await update.message.reply_text(
+#                 "Great! Which of our VIP services are you interested in?",
+#                 reply_markup=reply_markup
+#             )
             
-            return TRADING_INTEREST
-        else:
-            await update.message.reply_text("Please enter an amount between 100 and 10,000.")
-            return DEPOSIT_AMOUNT
-    except ValueError:
-        await update.message.reply_text("Please enter a valid amount between 100 and 10,000.")
-        return DEPOSIT_AMOUNT
+#             return TRADING_INTEREST
+#         else:
+#             await update.message.reply_text("Please enter an amount between 100 and 10,000.")
+#             return DEPOSIT_AMOUNT
+#     except ValueError:
+#         await update.message.reply_text("Please enter a valid amount between 100 and 10,000.")
+#         return DEPOSIT_AMOUNT
 
 async def trading_interest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Handle selection of trading interests and route to appropriate VIP channels."""
@@ -3639,7 +5719,1421 @@ async def trading_interest_callback(update: Update, context: ContextTypes.DEFAUL
     
     return TRADING_ACCOUNT
 
+async def enhanced_trading_account(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Enhanced trading account verification with real-time balance checking."""
+    account_number = update.message.text.strip()
+    user_id = update.effective_user.id
+    
+    print(f"===== ENHANCED ACCOUNT VERIFICATION =====")
+    print(f"Account: {account_number}, User: {user_id}")
+    
+    # Get user's stated deposit intention from conversation context
+    user_info = context.user_data.get("user_info", {})
+    stated_amount = user_info.get("deposit_amount", 0)
+    
+    print(f"User stated deposit intention: ${stated_amount}")
+    
+    await update.message.reply_text("🔍 Verifying your account and checking balance...")
+    
+    # Validate account format first
+    if not auth.validate_account_format(account_number):
+        await update.message.reply_text(
+            "❌ Invalid account format. Please enter a valid trading account number."
+        )
+        return TRADING_ACCOUNT
+    
+    # Connect to MySQL and verify account
+    mysql_db = get_mysql_connection()
+    if not mysql_db.is_connected():
+        await update.message.reply_text(
+            "⚠️ Unable to verify account at the moment. Please try again later."
+        )
+        return TRADING_ACCOUNT
+    
+    # Get real account information including balance
+    try:
+        account_int = int(account_number)
+        account_info = mysql_db.verify_account_exists(account_number)
+        
+        if not account_info['exists']:
+            await update.message.reply_text(
+                f"❌ Account {account_number} not found in our system.\n\n"
+                f"Please check the account number or contact support if you believe this is an error."
+            )
+            return TRADING_ACCOUNT
+        
+        # Extract account details
+        real_balance = float(account_info.get('balance', 0))
+        account_name = account_info.get('name', 'Unknown')
+        account_status = account_info.get('status', 'Unknown')
+        
+        print(f"Account found: {account_name}, Balance: ${real_balance}, Status: {account_status}")
+        
+        # Store account info in context for later use
+        context.user_data["verified_account"] = {
+            "account_number": account_number,
+            "name": account_name,
+            "balance": real_balance,
+            "status": account_status,
+            "full_info": account_info
+        }
+        
+        # Store in database
+        db.add_user({
+            "user_id": user_id,
+            "trading_account": account_number,
+            "account_owner": account_name,
+            "account_balance": real_balance,
+            "account_status": account_status,
+            "is_verified": True,
+            "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        # Decision logic based on balance vs stated amount
+        if real_balance >= stated_amount:
+            return await handle_sufficient_funds(update, context, account_info, stated_amount, real_balance)
+        elif real_balance > 0:
+            return await handle_partial_funds(update, context, account_info, stated_amount, real_balance)
+        else:
+            return await handle_no_funds(update, context, account_info, stated_amount)
+            
+    except Exception as e:
+        print(f"Error verifying account: {e}")
+        await update.message.reply_text(
+            f"⚠️ Error verifying account: {e}\n\nPlease try again or contact support."
+        )
+        return TRADING_ACCOUNT
 
+async def handle_sufficient_funds(update, context, account_info, stated_amount, real_balance):
+    """Handle users who already have sufficient balance."""
+    print(f"User has sufficient funds: ${real_balance} >= ${stated_amount}")
+    
+    success_message = (
+        f"✅ **Account Verified Successfully!** ✅\n\n"
+        f"**Account:** {account_info['account_number']}\n"
+        f"**Account Holder:** {account_info['name']}\n"
+        f"**Current Balance:** ${real_balance:,.2f} 💰\n"
+        f"**Required:** ${stated_amount:,.2f}\n\n"
+        f"🎉 **Excellent!** You have sufficient funds to access all our VIP services!\n\n"
+        f"**You now have access to:**\n"
+        f"• 🔔 Premium Trading Signals\n"
+        f"• 📈 Advanced Trading Strategies\n"
+        f"• 💰 Prop Capital Opportunities\n"
+        f"• 👨‍💼 Personal Trading Support\n"
+        f"• 📞 Priority Customer Service\n\n"
+        f"Our team will set up your VIP access within the next few minutes!"
+    )
+    
+    # Create VIP access buttons
+    keyboard = [
+        [
+            InlineKeyboardButton("🔔 Access VIP Signals", callback_data="access_vip_signals"),
+            InlineKeyboardButton("📈 Access VIP Strategy", callback_data="access_vip_strategy")
+        ],
+        [
+            InlineKeyboardButton("💰 Access Prop Capital", callback_data="access_vip_propcapital"),
+            InlineKeyboardButton("👨‍💼 Speak to Advisor", callback_data="speak_advisor")
+        ],
+        [InlineKeyboardButton("📋 View My Profile", callback_data="view_summary")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(success_message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Mark user as fully verified and funded
+    db.add_user({
+        "user_id": update.effective_user.id,
+        "funding_status": "sufficient",
+        "vip_eligible": True,
+        "vip_access_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    # Notify admins of successful verification
+    await notify_admins_success(context, update.effective_user.id, account_info, stated_amount, real_balance)
+    
+    return ConversationHandler.END
+
+async def handle_partial_funds(update, context, account_info, stated_amount, real_balance):
+    """Handle users with some funds but less than stated amount."""
+    difference = stated_amount - real_balance
+    percentage = (real_balance / stated_amount) * 100
+    
+    print(f"User has partial funds: ${real_balance} of ${stated_amount} ({percentage:.1f}%)")
+    
+    message = (
+        f"✅ **Account Successfully Verified!**\n\n"
+        f"**Account:** {account_info['account_number']}\n"
+        f"**Account Holder:** {account_info['name']}\n"
+        f"**Current Balance:** ${real_balance:,.2f}\n"
+        f"**Your Goal:** ${stated_amount:,.2f}\n"
+        f"**Remaining:** ${difference:,.2f}\n\n"
+        f"📊 **You're {percentage:.1f}% of the way there!** 🎯\n\n"
+        f"**What would you like to do?**"
+    )
+    
+    # Create action buttons
+    keyboard = [
+        [InlineKeyboardButton(f"💳 Deposit ${difference:,.0f} Now", callback_data=f"deposit_exact_{difference}")],
+        [InlineKeyboardButton(f"💰 Choose Deposit Amount", callback_data="choose_deposit_amount")],
+        [InlineKeyboardButton("🚀 Start with Current Balance", callback_data="start_with_current")],
+        [InlineKeyboardButton("⏰ I'll Deposit Later", callback_data="deposit_later")],
+        [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Store partial funding status
+    db.add_user({
+        "user_id": update.effective_user.id,
+        "funding_status": "partial",
+        "funding_percentage": percentage,
+        "remaining_amount": difference
+    })
+    
+    return AWAITING_DEPOSIT_DECISION
+
+async def handle_no_funds(update, context, account_info, stated_amount):
+    """Handle users with empty accounts."""
+    print(f"User has no funds, needs ${stated_amount}")
+    
+    message = (
+        f"✅ **Account Successfully Verified!**\n\n"
+        f"**Account:** {account_info['account_number']}\n"
+        f"**Account Holder:** {account_info['name']}\n"
+        f"**Current Balance:** $0.00\n"
+        f"**Target Amount:** ${stated_amount:,.2f}\n\n"
+        f"🚀 **Ready to start your trading journey?**\n\n"
+        f"To access our VIP services, you'll need to fund your account with ${stated_amount:,.2f}.\n\n"
+        f"**Once funded, you'll get:**\n"
+        f"• 🔔 Premium Trading Signals\n"
+        f"• 📈 Advanced Strategies\n"
+        f"• 💰 Prop Capital Access\n"
+        f"• 👨‍💼 Personal Support\n\n"
+        f"**How would you like to proceed?**"
+    )
+    
+    # Create funding options
+    keyboard = [
+        [InlineKeyboardButton(f"💳 Deposit ${stated_amount:,.0f} Now", callback_data=f"deposit_exact_{stated_amount}")],
+        [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
+        [InlineKeyboardButton("📚 Start with Free Resources", callback_data="free_resources")],
+        [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Store no funding status
+    db.add_user({
+        "user_id": update.effective_user.id,
+        "funding_status": "none",
+        "target_amount": stated_amount
+    })
+    
+    return AWAITING_DEPOSIT_DECISION
+
+async def handle_deposit_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle deposit-related button callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = update.effective_user.id
+    
+    print(f"Deposit callback received: {callback_data}")
+    
+    if callback_data.startswith("deposit_exact_"):
+        # User wants to deposit exact amount
+        amount = float(callback_data.split("_")[2])
+        return await initiate_deposit_process(query, context, amount)
+        
+    elif callback_data == "choose_deposit_amount":
+        # User wants to choose different amount
+        return await show_deposit_amount_options(query, context)
+        
+    elif callback_data == "start_with_current":
+        # User wants to start with current balance
+        return await start_with_current_balance(query, context)
+        
+    elif callback_data == "deposit_later":
+        # User will deposit later
+        return await handle_deposit_later(query, context)
+        
+    elif callback_data.startswith("access_vip_"):
+        # User accessing VIP services
+        service = callback_data.split("_")[2]
+        return await handle_vip_access(query, context, service)
+    
+    return AWAITING_DEPOSIT_DECISION
+
+async def initiate_deposit_process(query, context, amount):
+    """Start the deposit process for specified amount."""
+    user_id = query.from_user.id
+    verified_account = context.user_data.get("verified_account", {})
+    
+    message = (
+        f"💳 **Deposit ${amount:,.2f}**\n\n"
+        f"**To Account:** {verified_account.get('account_number', 'Unknown')}\n"
+        f"**Account Holder:** {verified_account.get('name', 'Unknown')}\n\n"
+        f"**Choose your preferred payment method:**"
+    )
+    
+    # Payment method buttons
+    keyboard = [
+        [
+            InlineKeyboardButton("💳 Credit/Debit Card", callback_data=f"pay_card_{amount}"),
+            InlineKeyboardButton("🏦 Bank Transfer", callback_data=f"pay_bank_{amount}")
+        ],
+        [
+            InlineKeyboardButton("₿ Cryptocurrency", callback_data=f"pay_crypto_{amount}"),
+            InlineKeyboardButton("📱 PayPal", callback_data=f"pay_paypal_{amount}")
+        ],
+        [
+            InlineKeyboardButton("📋 Manual Deposit Instructions", callback_data=f"pay_manual_{amount}"),
+            InlineKeyboardButton("🔙 Back", callback_data="back_to_options")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Store deposit attempt
+    db.add_user({
+        "user_id": user_id,
+        "deposit_attempt_amount": amount,
+        "deposit_attempt_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    return PAYMENT_METHOD_SELECTION
+
+async def show_deposit_amount_options(query, context):
+    """Show different deposit amount options."""
+    
+    message = (
+        f"💰 **Choose Your Deposit Amount**\n\n"
+        f"Select the amount you'd like to deposit to access our VIP services:"
+    )
+    
+    # Deposit amount options
+    keyboard = [
+        [
+            InlineKeyboardButton("$100", callback_data="deposit_exact_100"),
+            InlineKeyboardButton("$300", callback_data="deposit_exact_300")
+        ],
+        [
+            InlineKeyboardButton("$500", callback_data="deposit_exact_500"),
+            InlineKeyboardButton("$1,000", callback_data="deposit_exact_1000")
+        ],
+        [
+            InlineKeyboardButton("$2,000", callback_data="deposit_exact_2000"),
+            InlineKeyboardButton("💬 Custom Amount", callback_data="custom_amount")
+        ],
+        [InlineKeyboardButton("🔙 Back", callback_data="back_to_options")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    return AWAITING_DEPOSIT_DECISION
+# =========================================================================== #
+# ======================= PAYMENT METHODS
+# =========================================================================== #
+async def handle_payment_methods(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle payment method selection."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    parts = callback_data.split('_')
+    
+    if len(parts) >= 3:
+        payment_method = parts[1]  # card, bank, crypto, paypal, manual
+        amount = float(parts[2])
+        
+        print(f"Payment method selected: {payment_method}, Amount: ${amount}")
+        
+        if payment_method == "card":
+            return await handle_card_payment(query, context, amount)
+        elif payment_method == "bank":
+            return await handle_bank_payment(query, context, amount)
+        elif payment_method == "crypto":
+            return await handle_crypto_payment(query, context, amount)
+        elif payment_method == "paypal":
+            return await handle_paypal_payment(query, context, amount)
+        elif payment_method == "manual":
+            return await handle_manual_deposit(query, context, amount)
+    
+    return PAYMENT_METHOD_SELECTION
+
+async def handle_card_payment(query, context, amount):
+    """Handle credit/debit card payment."""
+    user_id = query.from_user.id
+    
+    # Generate payment link (you'll need to integrate with your payment processor)
+    payment_link = generate_stripe_payment_link(amount, user_id)
+    
+    message = (
+        f"💳 **Credit/Debit Card Payment**\n\n"
+        f"**Amount:** ${amount:,.2f}\n\n"
+        f"Click the button below to complete your secure payment.\n\n"
+        f"🔒 **Secure Payment Processing by Stripe**\n"
+        f"• Your card details are never stored\n"
+        f"• SSL encrypted transaction\n"
+        f"• Instant deposit confirmation\n\n"
+        f"After payment, funds will appear in your MT5 account within 5-10 minutes."
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton(f"💳 Pay ${amount:,.0f} Securely", url=payment_link)],
+        [InlineKeyboardButton("❓ Payment Help", callback_data="payment_help")],
+        [InlineKeyboardButton("🔙 Choose Different Method", callback_data=f"deposit_exact_{amount}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Schedule balance check
+    schedule_balance_check(context, user_id, amount, 5)  # Check in 5 minutes
+    
+    return DEPOSIT_CONFIRMATION
+
+async def handle_bank_payment(query, context, amount):
+    """Handle bank transfer payment."""
+    user_id = query.from_user.id
+    verified_account = context.user_data.get("verified_account", {})
+    
+    # Generate unique reference number
+    reference = f"VFX-{user_id}-{int(datetime.now().timestamp())}"
+    
+    message = (
+        f"🏦 **Bank Transfer Instructions**\n\n"
+        f"**Amount:** ${amount:,.2f}\n"
+        f"**Reference:** {reference}\n\n"
+        f"**💰 Bank Details:**\n"
+        f"Bank Name: Your Bank Name\n"
+        f"Account Name: VFX Trading Ltd\n"
+        f"Account Number: 1234567890\n"
+        f"Routing Number: 123456789\n"
+        f"SWIFT Code: ABCD1234\n\n"
+        f"**📋 Important Instructions:**\n"
+        f"• Use reference code: {reference}\n"
+        f"• Transfer exactly ${amount:,.2f}\n"
+        f"• Processing time: 1-3 business days\n"
+        f"• Send confirmation screenshot after transfer\n\n"
+        f"**Target Account:** {verified_account.get('account_number', 'Unknown')}"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("📸 Send Transfer Confirmation", callback_data=f"confirm_transfer_{reference}")],
+        [InlineKeyboardButton("❓ Transfer Help", callback_data="transfer_help")],
+        [InlineKeyboardButton("🔙 Choose Different Method", callback_data=f"deposit_exact_{amount}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Store transfer reference
+    db.add_user({
+        "user_id": user_id,
+        "transfer_reference": reference,
+        "transfer_amount": amount,
+        "transfer_status": "pending"
+    })
+    
+    return DEPOSIT_CONFIRMATION
+
+async def handle_paypal_payment(query, context, amount):
+    """Handle PayPal payment."""
+    user_id = query.from_user.id
+    verified_account = context.user_data.get("verified_account", {})
+    
+    # Generate PayPal payment link (you'll need to integrate with your PayPal account)
+    paypal_link = generate_paypal_payment_link(amount, user_id)
+    
+    # Generate unique reference for tracking
+    reference = f"VFX-PP-{user_id}-{int(datetime.now().timestamp())}"
+    
+    message = (
+        f"📱 **PayPal Payment**\n\n"
+        f"**Amount:** ${amount:,.2f}\n"
+        f"**To Account:** {verified_account.get('account_number', 'Unknown')}\n"
+        f"**Reference:** {reference}\n\n"
+        f"🔒 **Secure PayPal Processing**\n"
+        f"• Pay with your PayPal account or card\n"
+        f"• Buyer protection included\n"
+        f"• Instant payment confirmation\n"
+        f"• Funds transferred within 1-2 hours\n\n"
+        f"**Steps:**\n"
+        f"1. Click 'Pay with PayPal' below\n"
+        f"2. Complete payment on PayPal\n"
+        f"3. Return here for confirmation\n"
+        f"4. Funds will appear in your MT5 account\n\n"
+        f"**Processing Time:** 1-2 hours maximum"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton(f"📱 Pay ${amount:,.0f} with PayPal", url=paypal_link)],
+        [InlineKeyboardButton("✅ I've Completed Payment", callback_data=f"paypal_completed_{reference}")],
+        [InlineKeyboardButton("❓ PayPal Help", callback_data="paypal_help")],
+        [InlineKeyboardButton("🔙 Choose Different Method", callback_data=f"deposit_exact_{amount}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Store PayPal payment attempt
+    db.add_user({
+        "user_id": user_id,
+        "paypal_reference": reference,
+        "paypal_amount": amount,
+        "paypal_status": "pending",
+        "paypal_initiated_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    # Schedule balance checks for PayPal payments (faster than bank transfers)
+    schedule_balance_check(context, user_id, amount, 15)  # Check in 15 minutes
+    schedule_balance_check(context, user_id, amount, 60)  # Check in 1 hour
+    schedule_balance_check(context, user_id, amount, 120) # Check in 2 hours
+    
+    return DEPOSIT_CONFIRMATION
+
+async def handle_crypto_payment(query, context, amount):
+    """Handle cryptocurrency payment."""
+    user_id = query.from_user.id
+    
+    # Generate crypto addresses (you'll need to integrate with your crypto processor)
+    btc_address = generate_btc_address(user_id)
+    eth_address = generate_eth_address(user_id)
+    
+    message = (
+        f"₿ **Cryptocurrency Payment**\n\n"
+        f"**Amount:** ${amount:,.2f}\n\n"
+        f"**Choose your cryptocurrency:**"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("₿ Bitcoin (BTC)", callback_data=f"crypto_btc_{amount}")],
+        [InlineKeyboardButton("⟠ Ethereum (ETH)", callback_data=f"crypto_eth_{amount}")],
+        [InlineKeyboardButton("₮ Tether (USDT)", callback_data=f"crypto_usdt_{amount}")],
+        [InlineKeyboardButton("🔙 Choose Different Method", callback_data=f"deposit_exact_{amount}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    return PAYMENT_METHOD_SELECTION
+
+async def handle_manual_deposit(query, context, amount):
+    """Handle manual deposit instructions."""
+    user_id = query.from_user.id
+    verified_account = context.user_data.get("verified_account", {})
+    
+    message = (
+        f"📋 **Manual Deposit Instructions**\n\n"
+        f"**Amount:** ${amount:,.2f}\n"
+        f"**To Account:** {verified_account.get('account_number')}\n\n"
+        f"**How to deposit directly to your MT5 account:**\n\n"
+        f"**Option 1: MT5 Platform**\n"
+        f"1. Open your MT5 trading platform\n"
+        f"2. Go to 'Deposit' or 'Fund Account'\n"
+        f"3. Select your preferred payment method\n"
+        f"4. Enter amount: ${amount:,.2f}\n"
+        f"5. Complete the deposit process\n\n"
+        f"**Option 2: Client Portal**\n"
+        f"1. Log into your VortexFX's client portal\n"
+        f"2. Navigate to 'Deposits' section\n"
+        f"3. Choose payment method and amount\n"
+        f"4. Complete the transaction\n\n"
+        f"**⏰ Processing Time:** 5-30 minutes\n"
+        f"**💡 Tip:** Take a screenshot of your deposit confirmation\n\n"
+        f"Once completed, click 'Check Balance' to verify your deposit!"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔄 Check My Balance Now", callback_data="check_balance_now")],
+        [InlineKeyboardButton("📸 Upload Deposit Proof", callback_data="upload_proof")],
+        [InlineKeyboardButton("❓ Need Help?", callback_data="deposit_help")],
+        [InlineKeyboardButton("🔙 Other Payment Methods", callback_data=f"deposit_exact_{amount}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Schedule periodic balance checks
+    schedule_balance_check(context, user_id, amount, 10)  # Check in 10 minutes
+    schedule_balance_check(context, user_id, amount, 30)  # Check in 30 minutes
+    schedule_balance_check(context, user_id, amount, 60)  # Check in 1 hour
+    
+    return DEPOSIT_CONFIRMATION
+
+def generate_stripe_payment_link(amount, user_id):
+    """Generate Stripe payment link (you'll need to implement this with your Stripe account)."""
+    # Example implementation - replace with your actual Stripe integration
+    
+    # import stripe
+    # stripe.api_key = "your_stripe_secret_key"
+    # 
+    # session = stripe.checkout.Session.create(
+    #     payment_method_types=['card'],
+    #     line_items=[{
+    #         'price_data': {
+    #             'currency': 'usd',
+    #             'product_data': {
+    #                 'name': f'VFX Trading Account Deposit',
+    #             },
+    #             'unit_amount': int(amount * 100),  # Stripe uses cents
+    #         },
+    #         'quantity': 1,
+    #     }],
+    #     mode='payment',
+    #     success_url=f'https://your-website.com/payment-success?user_id={user_id}',
+    #     cancel_url=f'https://your-website.com/payment-cancel?user_id={user_id}',
+    #     metadata={'user_id': str(user_id)}
+    # )
+    # return session.url
+    
+    # For now, return a placeholder link
+    return f"https://your-payment-processor.com/pay?amount={amount}&user={user_id}"
+
+def generate_paypal_payment_link(amount, user_id):
+    """Generate PayPal payment link (you'll need to implement this with your PayPal account)."""
+    # Example implementation - replace with your actual PayPal integration
+    
+    # Option 1: PayPal SDK Integration
+    # import paypalrestsdk
+    # 
+    # paypalrestsdk.configure({
+    #     "mode": "sandbox",  # Change to "live" for production
+    #     "client_id": "your_paypal_client_id",
+    #     "client_secret": "your_paypal_client_secret"
+    # })
+    # 
+    # payment = paypalrestsdk.Payment({
+    #     "intent": "sale",
+    #     "payer": {"payment_method": "paypal"},
+    #     "redirect_urls": {
+    #         "return_url": f"https://your-website.com/paypal-success?user_id={user_id}",
+    #         "cancel_url": f"https://your-website.com/paypal-cancel?user_id={user_id}"
+    #     },
+    #     "transactions": [{
+    #         "item_list": {
+    #             "items": [{
+    #                 "name": "VFX Trading Account Deposit",
+    #                 "sku": f"deposit_{user_id}",
+    #                 "price": str(amount),
+    #                 "currency": "USD",
+    #                 "quantity": 1
+    #             }]
+    #         },
+    #         "amount": {
+    #             "total": str(amount),
+    #             "currency": "USD"
+    #         },
+    #         "description": f"VFX Trading deposit for user {user_id}"
+    #     }]
+    # })
+    # 
+    # if payment.create():
+    #     for link in payment.links:
+    #         if link.rel == "approval_url":
+    #             return link.href
+    
+    # Option 2: PayPal Simple Payment Link (easier to implement)
+    paypal_business_email = "your-paypal-business@email.com"  # Replace with your PayPal business email
+    return_url = f"https://your-website.com/paypal-success?user_id={user_id}"
+    cancel_url = f"https://your-website.com/paypal-cancel?user_id={user_id}"
+    
+    paypal_url = (
+        f"https://www.paypal.com/cgi-bin/webscr?"
+        f"cmd=_xclick&"
+        f"business={paypal_business_email}&"
+        f"item_name=VFX Trading Account Deposit&"
+        f"amount={amount}&"
+        f"currency_code=USD&"
+        f"custom={user_id}&"
+        f"return={return_url}&"
+        f"cancel_return={cancel_url}&"
+        f"notify_url=https://your-website.com/paypal-ipn"
+    )
+    
+    return paypal_url
+
+def generate_btc_address(user_id):
+    """Generate Bitcoin address for user (implement with your crypto processor)."""
+    # Placeholder - implement with your crypto payment processor
+    return f"bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
+
+def generate_eth_address(user_id):
+    """Generate Ethereum address for user."""
+    # Placeholder - implement with your crypto payment processor
+    return f"0x742d35Cc6634C0532925a3b8D64322d2E2b6Ea81"
+
+def schedule_balance_check(context, user_id, expected_amount, delay_minutes):
+    """Schedule a balance check after specified delay."""
+    from datetime import datetime, timedelta
+    
+    # Schedule job to check balance
+    run_time = datetime.now() + timedelta(minutes=delay_minutes)
+    
+    context.job_queue.run_once(
+        lambda context: check_user_balance_update(context, user_id, expected_amount),
+        when=delay_minutes * 60,  # Convert to seconds
+        name=f"balance_check_{user_id}_{int(datetime.now().timestamp())}"
+    )
+    
+    print(f"Scheduled balance check for user {user_id} in {delay_minutes} minutes")
+
+async def check_user_balance_update(context, user_id, expected_amount):
+    """Check if user's balance has been updated."""
+    try:
+        # Get user's account info
+        user_info = db.get_user(user_id)
+        if not user_info or not user_info.get("trading_account"):
+            print(f"No account info found for user {user_id}")
+            return
+        
+        account_number = user_info["trading_account"]
+        previous_balance = user_info.get("account_balance", 0)
+        
+        # Check current balance
+        mysql_db = get_mysql_connection()
+        if not mysql_db.is_connected():
+            print("MySQL not connected for balance check")
+            return
+        
+        current_info = mysql_db.verify_account_exists(account_number)
+        if not current_info['exists']:
+            print(f"Account {account_number} not found during balance check")
+            return
+        
+        current_balance = float(current_info.get('balance', 0))
+        
+        print(f"Balance check - Previous: ${previous_balance}, Current: ${current_balance}")
+        
+        # Check if balance increased significantly
+        if current_balance >= (previous_balance + expected_amount * 0.9):  # Allow for small variations
+            # Deposit detected!
+            await handle_deposit_detected(context, user_id, current_balance, expected_amount)
+        elif current_balance > previous_balance:
+            # Partial deposit detected
+            await handle_partial_deposit_detected(context, user_id, current_balance, expected_amount)
+        
+        # Update stored balance
+        db.add_user({
+            "user_id": user_id,
+            "account_balance": current_balance,
+            "last_balance_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+    except Exception as e:
+        print(f"Error checking balance for user {user_id}: {e}")
+
+async def handle_deposit_detected(context, user_id, new_balance, expected_amount):
+    """Handle when a deposit is detected."""
+    print(f"🎉 Deposit detected for user {user_id}: ${new_balance}")
+    
+    congratulations_message = (
+        f"🎉 **DEPOSIT CONFIRMED!** 🎉\n\n"
+        f"**New Balance:** ${new_balance:,.2f}\n"
+        f"**Expected:** ${expected_amount:,.2f}\n\n"
+        f"✅ **Your VIP access has been activated!**\n\n"
+        f"You now have access to:\n"
+        f"• 🔔 Premium Trading Signals\n"
+        f"• 📈 Advanced Trading Strategies\n"
+        f"• 💰 Prop Capital Opportunities\n\n"
+        f"Welcome to VFX Trading VIP! 🚀"
+    )
+    
+    # Create VIP access buttons
+    keyboard = [
+        [
+            InlineKeyboardButton("🔔 Access VIP Signals", callback_data="access_vip_signals"),
+            InlineKeyboardButton("📈 Access VIP Strategy", callback_data="access_vip_strategy")
+        ],
+        [
+            InlineKeyboardButton("💰 Access Prop Capital", callback_data="access_vip_propcapital"),
+            InlineKeyboardButton("👨‍💼 Personal Advisor", callback_data="speak_advisor")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=congratulations_message,
+        parse_mode='Markdown',
+        reply_markup=reply_markup
+    )
+    
+    # Update user status
+    db.add_user({
+        "user_id": user_id,
+        "funding_status": "completed",
+        "vip_eligible": True,
+        "vip_activated_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "actual_deposit_amount": new_balance
+    })
+    
+    # Notify admins
+    await notify_admins_deposit_success(context, user_id, new_balance, expected_amount)
+
+async def handle_partial_deposit_detected(context, user_id, current_balance, expected_amount):
+    """Handle when a partial deposit is detected."""
+    remaining = expected_amount - current_balance
+    
+    message = (
+        f"💰 **Deposit Detected!**\n\n"
+        f"**Current Balance:** ${current_balance:,.2f}\n"
+        f"**Target Amount:** ${expected_amount:,.2f}\n"
+        f"**Remaining:** ${remaining:,.2f}\n\n"
+        f"Great progress! You're getting closer to full VIP access.\n\n"
+        f"Would you like to complete the remaining deposit?"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton(f"💳 Deposit Remaining ${remaining:,.0f}", callback_data=f"deposit_exact_{remaining}")],
+        [InlineKeyboardButton("🚀 Start with Current Balance", callback_data="start_with_current")],
+        [InlineKeyboardButton("⏰ I'll Complete Later", callback_data="complete_later")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=message,
+        parse_mode='Markdown',
+        reply_markup=reply_markup
+    )
+
+
+async def check_balance_now_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle check balance button callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    # Get user's account info
+    user_info = db.get_user(user_id)
+    if not user_info or not user_info.get("trading_account"):
+        await query.edit_message_text(
+            "⚠️ No account information found. Please complete verification first."
+        )
+        return
+    
+    account_number = user_info["trading_account"]
+    
+    await query.edit_message_text("🔍 Checking your current balance...")
+    
+    # Check current balance
+    mysql_db = get_mysql_connection()
+    if not mysql_db.is_connected():
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="⚠️ Unable to check balance at the moment. Please try again later."
+        )
+        return
+    
+    try:
+        current_info = mysql_db.verify_account_exists(account_number)
+        
+        if not current_info['exists']:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text="⚠️ Account not found. Please contact support."
+            )
+            return
+        
+        current_balance = float(current_info.get('balance', 0))
+        previous_balance = user_info.get("account_balance", 0)
+        
+        # Check if balance increased
+        if current_balance > previous_balance:
+            balance_change = current_balance - previous_balance
+            status_emoji = "📈"
+            status_text = f"Increased by ${balance_change:,.2f}!"
+            
+            # Check if they now qualify for VIP
+            target_amount = user_info.get("deposit_amount", 0)
+            if current_balance >= target_amount and not user_info.get("vip_eligible"):
+                # They now qualify!
+                await handle_deposit_detected(context, user_id, current_balance, target_amount)
+                return
+                
+        elif current_balance < previous_balance:
+            balance_change = previous_balance - current_balance
+            status_emoji = "📉"
+            status_text = f"Decreased by ${balance_change:,.2f}"
+        else:
+            status_emoji = "💰"
+            status_text = "No change since last check"
+        
+        # Update stored balance
+        db.add_user({
+            "user_id": user_id,
+            "account_balance": current_balance,
+            "last_balance_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        # Format response
+        balance_message = (
+            f"{status_emoji} **Balance Update**\n\n"
+            f"**Account:** {account_number}\n"
+            f"**Current Balance:** ${current_balance:,.2f}\n"
+            f"**Status:** {status_text}\n"
+            f"**Last Checked:** {datetime.now().strftime('%H:%M:%S')}\n\n"
+        )
+        
+        # Add appropriate buttons based on balance
+        target_amount = user_info.get("deposit_amount", 0)
+        if current_balance >= target_amount:
+            balance_message += "🎉 **You qualify for VIP access!**"
+            keyboard = [
+                [InlineKeyboardButton("🚀 Activate VIP Access", callback_data="activate_vip")],
+                [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")]
+            ]
+        else:
+            remaining = target_amount - current_balance
+            balance_message += f"💡 **${remaining:,.2f} more needed for VIP access**"
+            keyboard = [
+                [InlineKeyboardButton(f"💳 Deposit ${remaining:,.0f}", callback_data=f"deposit_exact_{remaining}")],
+                [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")]
+            ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=balance_message,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+        
+    except Exception as e:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"⚠️ Error checking balance: {e}"
+        )
+async def handle_paypal_completion(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle PayPal payment completion callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = query.from_user.id
+    
+    if callback_data.startswith("paypal_completed_"):
+        reference = callback_data.replace("paypal_completed_", "")
+        
+        message = (
+            f"✅ **PayPal Payment Submitted**\n\n"
+            f"**Reference:** {reference}\n\n"
+            f"Thank you for completing your PayPal payment! Here's what happens next:\n\n"
+            f"**⏰ Processing Timeline:**\n"
+            f"• PayPal confirmation: Immediate\n"
+            f"• Funds transfer to MT5: 1-2 hours\n"
+            f"• VIP access activation: Automatic upon deposit\n\n"
+            f"**📧 You'll receive:**\n"
+            f"• PayPal payment confirmation email\n"
+            f"• MT5 deposit notification\n"
+            f"• VIP access confirmation from us\n\n"
+            f"We're monitoring your account balance and will notify you immediately when the deposit is confirmed!"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("🔄 Check Balance Now", callback_data="check_balance_now")],
+            [InlineKeyboardButton("📧 Resend Confirmation", callback_data=f"resend_paypal_{reference}")],
+            [InlineKeyboardButton("❓ Payment Status Help", callback_data="paypal_status_help")],
+            [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+        
+        # Update payment status
+        db.add_user({
+            "user_id": user_id,
+            "paypal_status": "completed",
+            "paypal_completed_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        # Notify admins of PayPal completion
+        await notify_admins_paypal_completion(context, user_id, reference)
+        
+        return DEPOSIT_CONFIRMATION
+
+async def handle_payment_help_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle various payment help callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    
+    if callback_data == "paypal_help":
+        await show_paypal_help(query, context)
+    elif callback_data == "paypal_status_help":
+        await show_paypal_status_help(query, context)
+    elif callback_data.startswith("resend_paypal_"):
+        reference = callback_data.replace("resend_paypal_", "")
+        await resend_paypal_confirmation(query, context, reference)
+
+async def show_paypal_help(query, context):
+    """Show PayPal payment help."""
+    
+    help_message = (
+        f"📱 **PayPal Payment Help**\n\n"
+        f"**❓ Common Questions:**\n\n"
+        f"**Q: Is PayPal payment secure?**\n"
+        f"A: Yes! PayPal provides buyer protection and secure payment processing.\n\n"
+        f"**Q: How long does it take?**\n"
+        f"A: PayPal payment is instant, MT5 deposit takes 1-2 hours.\n\n"
+        f"**Q: What if I don't have a PayPal account?**\n"
+        f"A: You can pay with credit/debit card through PayPal checkout.\n\n"
+        f"**Q: Can I get a refund?**\n"
+        f"A: Yes, contact our support team within 24 hours.\n\n"
+        f"**Q: What currencies are accepted?**\n"
+        f"A: USD, EUR, GBP, and other major currencies.\n\n"
+        f"**🔍 Payment Status:**\n"
+        f"You can track your payment status in your PayPal account and we'll notify you when funds reach your MT5 account."
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")],
+        [InlineKeyboardButton("🔄 Check Balance", callback_data="check_balance_now")],
+        [InlineKeyboardButton("🔙 Back to Payment", callback_data="back_to_payment")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(help_message, parse_mode='Markdown', reply_markup=reply_markup)
+
+async def show_paypal_status_help(query, context):
+    """Show PayPal payment status help."""
+    
+    status_help = (
+        f"📊 **PayPal Payment Status Guide**\n\n"
+        f"**🔍 How to Check Your Payment Status:**\n\n"
+        f"**1. In PayPal:**\n"
+        f"• Log into your PayPal account\n"
+        f"• Go to 'Activity' or 'Transaction History'\n"
+        f"• Look for 'VFX Trading Account Deposit'\n"
+        f"• Status should show 'Completed'\n\n"
+        f"**2. In Your Email:**\n"
+        f"• Check for PayPal confirmation email\n"
+        f"• Look for MT5 deposit notification\n"
+        f"• Wait for our VIP access confirmation\n\n"
+        f"**3. Processing Times:**\n"
+        f"• PayPal payment: Instant ⚡\n"
+        f"• Fund transfer: 1-2 hours ⏱️\n"
+        f"• VIP activation: Automatic 🚀\n\n"
+        f"**⚠️ If Payment is Pending:**\n"
+        f"• Check your PayPal account verification\n"
+        f"• Verify your payment method\n"
+        f"• Contact PayPal customer service\n\n"
+        f"**🚨 If Payment Failed:**\n"
+        f"• Try a different payment method\n"
+        f"• Check your account limits\n"
+        f"• Contact our support team"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔄 Check Balance Now", callback_data="check_balance_now")],
+        [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")],
+        [InlineKeyboardButton("💳 Try Different Payment", callback_data="back_to_payment")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(status_help, parse_mode='Markdown', reply_markup=reply_markup)
+    
+async def resend_paypal_confirmation(query, context, reference):
+    """Resend PayPal payment confirmation details."""
+    user_id = query.from_user.id
+    
+    # Get user's PayPal payment details
+    user_info = db.get_user(user_id)
+    if not user_info:
+        await query.edit_message_text("⚠️ User information not found.")
+        return
+    
+    paypal_amount = user_info.get("paypal_amount", 0)
+    paypal_date = user_info.get("paypal_initiated_date", "Unknown")
+    
+    confirmation_message = (
+        f"📧 **PayPal Payment Confirmation Resent**\n\n"
+        f"**Payment Details:**\n"
+        f"• Reference: {reference}\n"
+        f"• Amount: ${paypal_amount:,.2f}\n"
+        f"• Date: {paypal_date}\n"
+        f"• Status: Payment Submitted\n\n"
+        f"**Next Steps:**\n"
+        f"1. ✅ PayPal payment completed\n"
+        f"2. ⏳ Waiting for MT5 deposit (1-2 hours)\n"
+        f"3. 🚀 VIP access will activate automatically\n\n"
+        f"**Tracking:**\n"
+        f"• Check your PayPal account for transaction details\n"
+        f"• Monitor your MT5 account balance\n"
+        f"• We'll notify you when VIP access is ready\n\n"
+        f"**Questions?** Contact our support team anytime!"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔄 Check Balance", callback_data="check_balance_now")],
+        [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(confirmation_message, parse_mode='Markdown', reply_markup=reply_markup)
+
+# =============================================================================
+# ============== VIP ACCESS HANDLERS
+# =============================================================================
+
+async def handle_vip_access(query, context, service):
+    """Handle VIP service access requests."""
+    user_id = query.from_user.id
+    
+    # Verify user is eligible
+    user_info = db.get_user(user_id)
+    if not user_info or not user_info.get("vip_eligible"):
+        await query.edit_message_text(
+            "⚠️ VIP access not available. Please complete your deposit first.",
+            reply_markup=None
+        )
+        return
+    
+    # Service mapping
+    service_mapping = {
+        "signals": {
+            "name": "VIP Trading Signals",
+            "channel_id": SIGNALS_CHANNEL_ID,
+            #"group_id": SIGNALS_GROUP_ID,
+            "emoji": "🔔"
+        },
+        "strategy": {
+            "name": "VIP Trading Strategy",
+            "channel_id": STRATEGY_CHANNEL_ID,
+            #"group_id": STRATEGY_GROUP_ID,
+            "emoji": "📈"
+        },
+        "propcapital": {
+            "name": "VIP Prop Capital",
+            "channel_id": PROP_CHANNEL_ID,
+            #"group_id": PROP_GROUP_ID,
+            "emoji": "💰"
+        }
+    }
+    
+    if service not in service_mapping:
+        await query.edit_message_text("⚠️ Invalid service requested.")
+        return
+    
+    service_info = service_mapping[service]
+    
+    try:
+        # Create invite links
+        channel_invite = await context.bot.create_chat_invite_link(
+            chat_id=service_info["channel_id"],
+            member_limit=1,
+            name=f"{service_info['name']} invite for user {user_id}"
+        )
+        
+        # group_invite = await context.bot.create_chat_invite_link(
+        #     chat_id=service_info["group_id"],
+        #     member_limit=1,
+        #     name=f"{service_info['name']} group invite for user {user_id}"
+        # )
+        
+        # Success message
+        access_message = (
+            f"✅ **{service_info['name']} Access Granted!** {service_info['emoji']}\n\n"
+            f"**Channel:** {channel_invite.invite_link}\n"
+            #f"**Discussion Group:** {group_invite.invite_link}\n\n"
+            f"**Important Instructions:**\n"
+            f"• Click both links to join\n"
+            f"• Links expire after one use\n"
+            f"• Enable notifications for updates\n"
+            f"• Read pinned messages for guidelines\n\n"
+            f"Welcome to {service_info['name']}! 🚀"
+        )
+        
+        await query.edit_message_text(access_message, parse_mode='Markdown')
+        
+        # Update database
+        current_vip = user_info.get('vip_channels', '') or ''
+        new_vip = f"{current_vip},{service}".strip(',')
+        
+        db.add_user({
+            "user_id": user_id,
+            "vip_channels": new_vip,
+            f"vip_{service}_added": True,
+            f"vip_{service}_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        # Notify admins
+        await notify_admins_vip_access(context, user_id, service_info["name"])
+        
+    except Exception as e:
+        await query.edit_message_text(
+            f"⚠️ Error creating access links for {service_info['name']}: {e}"
+        )
+
+async def handle_deposit_later(query, context):
+    """Handle when user chooses to deposit later."""
+    user_id = query.from_user.id
+    
+    message = (
+        f"⏰ **No Problem!**\n\n"
+        f"We understand you'd like to deposit later. Here's what happens next:\n\n"
+        f"✅ Your account is verified and ready\n"
+        f"✅ We'll monitor your balance automatically\n"
+        f"✅ You'll get VIP access immediately upon deposit\n"
+        f"✅ Our team will follow up with you\n\n"
+        f"**In the meantime:**\n"
+        f"• 📚 Access our free educational content\n"
+        f"• 📊 Join our community discussions\n"
+        f"• 📧 Receive market updates and tips\n\n"
+        f"When you're ready to deposit, just let us know!"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("📚 Free Educational Content", callback_data="free_resources")],
+        [InlineKeyboardButton("💬 Join Community", callback_data="join_community")],
+        [InlineKeyboardButton("🔔 Set Deposit Reminder", callback_data="set_reminder")],
+        [InlineKeyboardButton("👨‍💼 Speak to Advisor", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    # Mark user for follow-up
+    db.add_user({
+        "user_id": user_id,
+        "deposit_status": "deferred",
+        "followup_required": True,
+        "followup_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    # Schedule follow-up messages
+    schedule_followup_messages(context, user_id)
+    
+    return ConversationHandler.END
+
+async def start_with_current_balance(query, context):
+    """Handle starting with current balance."""
+    user_id = query.from_user.id
+    verified_account = context.user_data.get("verified_account", {})
+    current_balance = verified_account.get("balance", 0)
+    
+    message = (
+        f"🚀 **Let's Get Started!**\n\n"
+        f"**Current Balance:** ${current_balance:,.2f}\n\n"
+        f"Based on your current balance, here's what you can access:\n\n"
+    )
+    
+    # Determine what they can access with current balance
+    if current_balance >= 100:
+        message += (
+            f"✅ **Full VIP Access Available:**\n"
+            f"• 🔔 Premium Trading Signals\n"
+            f"• 📈 Advanced Trading Strategies\n"
+            f"• 💰 Prop Capital Opportunities\n"
+        )
+        keyboard = [
+            [InlineKeyboardButton("🔔 Access VIP Signals", callback_data="access_vip_signals")],
+            [InlineKeyboardButton("📈 Access VIP Strategy", callback_data="access_vip_strategy")],
+            [InlineKeyboardButton("💰 Access Prop Capital", callback_data="access_vip_propcapital")]
+        ]
+    else:
+        message += (
+            f"✅ **Basic Access Available:**\n"
+            f"• 🔔 Basic Trading Signals\n"
+            f"• 📚 Educational Content\n"
+        )
+        keyboard = [
+            [InlineKeyboardButton("🔔 Access Basic Signals", callback_data="access_basic_signals")],
+            [InlineKeyboardButton("📚 Educational Content", callback_data="access_education")],
+            [InlineKeyboardButton("⬆️ Upgrade Account", callback_data="upgrade_account")]
+        ]
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    
+    return ConversationHandler.END
+
+# =============================================================================
+# =============  NOTIFICATION FUNCTIONS
+# =============================================================================
+
+async def notify_admins_success(context, user_id, account_info, stated_amount, real_balance):
+    """Notify admins of successful verification with sufficient funds."""
+    
+    admin_message = (
+        f"🎉 **USER VERIFIED WITH SUFFICIENT FUNDS** 🎉\n\n"
+        f"**User ID:** {user_id}\n"
+        f"**Account:** {account_info['account_number']}\n"
+        f"**Account Holder:** {account_info['name']}\n"
+        f"**Stated Amount:** ${stated_amount:,.2f}\n"
+        f"**Actual Balance:** ${real_balance:,.2f}\n"
+        f"**Status:** ✅ VIP Access Granted\n\n"
+        f"User has been automatically granted VIP access to all services."
+    )
+    
+    # Send to all admins
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=admin_message,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+async def notify_admins_deposit_success(context, user_id, new_balance, expected_amount):
+    """Notify admins when a deposit is detected."""
+    
+    admin_message = (
+        f"💰 **DEPOSIT DETECTED!** 💰\n\n"
+        f"**User ID:** {user_id}\n"
+        f"**New Balance:** ${new_balance:,.2f}\n"
+        f"**Expected:** ${expected_amount:,.2f}\n"
+        f"**Status:** ✅ Deposit Confirmed\n\n"
+        f"User has been automatically upgraded to VIP access!"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("👤 View User Profile", callback_data=f"view_profile_{user_id}")],
+        [InlineKeyboardButton("💬 Contact User", callback_data=f"start_conv_{user_id}")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=admin_message,
+                parse_mode='Markdown',
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+async def notify_admins_vip_access(context, user_id, service_name):
+    """Notify admins when user accesses VIP service."""
+    
+    admin_message = (
+        f"🚀 **VIP ACCESS GRANTED**\n\n"
+        f"**User ID:** {user_id}\n"
+        f"**Service:** {service_name}\n"
+        f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        f"User has been added to {service_name}."
+    )
+    
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=admin_message,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
+def schedule_followup_messages(context, user_id):
+    """Schedule follow-up messages for users who defer deposits."""
+    
+    # Schedule follow-up messages at different intervals
+    followup_times = [
+        (24, "Thanks for verifying your account! Ready to start trading with us?"),
+        (72, "Don't miss out on today's trading opportunities! Your account is ready for funding."),
+        (168, "Weekly market wrap-up! See what profits our VIP members made this week."),
+    ]
+    
+    for hours, message in followup_times:
+        context.job_queue.run_once(
+            lambda context, msg=message: send_followup_message(context, user_id, msg),
+            when=hours * 3600,  # Convert hours to seconds
+            name=f"followup_{user_id}_{hours}h"
+        )
+
+async def send_followup_message(context, user_id, message):
+    """Send a follow-up message to user."""
+    try:
+        keyboard = [
+            [InlineKeyboardButton("💳 Ready to Deposit", callback_data="ready_to_deposit")],
+            [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=message,
+            reply_markup=reply_markup
+        )
+    except Exception as e:
+        print(f"Error sending follow-up message to user {user_id}: {e}")
+
+async def notify_admins_paypal_completion(context, user_id, reference):
+    """Notify admins when user completes PayPal payment."""
+    
+    user_info = db.get_user(user_id)
+    amount = user_info.get("paypal_amount", 0) if user_info else 0
+    
+    admin_message = (
+        f"📱 **PAYPAL PAYMENT COMPLETED** 📱\n\n"
+        f"**User ID:** {user_id}\n"
+        f"**Reference:** {reference}\n"
+        f"**Amount:** ${amount:,.2f}\n"
+        f"**Status:** User confirmed payment completion\n"
+        f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        f"⏳ **Next Steps:**\n"
+        f"• Monitor MT5 account for deposit\n"
+        f"• Auto-upgrade user when funds arrive\n"
+        f"• PayPal processing: 1-2 hours expected\n\n"
+        f"💡 **Action Required:** Verify PayPal payment in your PayPal business account."
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("👤 View User Profile", callback_data=f"view_profile_{user_id}")],
+        [InlineKeyboardButton("💬 Contact User", callback_data=f"start_conv_{user_id}")],
+        [InlineKeyboardButton("💰 Check PayPal Account", url="https://www.paypal.com/businessmanage/")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=admin_message,
+                parse_mode='Markdown',
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id} about PayPal completion: {e}")
+
+async def notify_admins_success_auto_welcome(context, user_id, account_info, stated_amount, real_balance):
+    """Notify admins of successful verification with sufficient funds (auto welcome flow)."""
+    
+    admin_message = (
+        f"🎉 **USER VERIFIED WITH SUFFICIENT FUNDS** 🎉\n"
+        f"**(Auto Welcome Flow)**\n\n"
+        f"**User ID:** {user_id}\n"
+        f"**Account:** {account_info['account_number']}\n"
+        f"**Account Holder:** {account_info['name']}\n"
+        f"**Stated Amount:** ${stated_amount:,.2f}\n"
+        f"**Actual Balance:** ${real_balance:,.2f}\n"
+        f"**Status:** ✅ VIP Access Granted\n\n"
+        f"User has been automatically granted VIP access to all services."
+    )
+    
+    # Send to all admins
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=admin_message,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
 
 # ********************************************************** #
 
@@ -3648,8 +7142,14 @@ def main() -> None:
     # Create the Application
     print("Starting bot...")
     print("Setting up VFX message scheduler...")
-    
     print(f"Admin ID is set to {ADMIN_USER_ID}")
+    
+    mysql_db = get_mysql_connection()
+    if mysql_db.is_connected():
+        print("✅ MySQL database ready for real-time account verification")
+    else:
+        print("⚠️ MySQL connection failed - will use CSV fallback")
+    
     try:
         # Try to initialize schedulers
         from vfx_Scheduler import VFXMessageScheduler
@@ -3704,23 +7204,22 @@ def main() -> None:
         pattern=r"^forward_copier_"
     ))
     
-    # Add callback handlers for all button types
     application.add_handler(CallbackQueryHandler(
-        start_user_conversation_callback,
-        pattern=r"^start_conv_\d+$"
-    ))
-    
-    application.add_handler(CallbackQueryHandler(
-        send_instructions_callback,
-        pattern=r"^instr_"
-    ))
-    
-    # Add callback handlers for all button types
-    application.add_handler(CallbackQueryHandler(
-        start_user_conversation_callback,
-        pattern=r"^start_conv_\d+$"
+        copier_team_action_callback,
+        pattern=r"^copier_(added|rejected)_\d+$"
     ))
 
+    application.add_handler(CallbackQueryHandler(
+        copier_team_action_callback,
+        pattern=r"^contact_user_\d+$"
+    ))
+    
+    # Add callback handlers for all button types
+    application.add_handler(CallbackQueryHandler(
+        start_user_conversation_callback,
+        pattern=r"^start_conv_\d+$"
+    ))
+    
     application.add_handler(CallbackQueryHandler(
         send_instructions_callback,
         pattern=r"^instr_"
@@ -3809,6 +7308,20 @@ def main() -> None:
         block=False  
     ))
     
+    application.add_handler(CallbackQueryHandler(
+        generate_welcome_link_callback,
+        pattern=r"^gen_welcome_"
+    ))
+    
+    application.add_handler(CallbackQueryHandler(
+        handle_deposit_callbacks, 
+        pattern=r"^(deposit_|start_with_|deposit_later|free_resources|access_vip_)"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        handle_payment_methods, 
+        pattern=r"^pay_"
+    ))
     # Add conversation handler for manual entry
     manual_entry_handler = ConversationHandler(
         entry_points=[
@@ -3833,8 +7346,40 @@ def main() -> None:
     application.add_handler(CommandHandler("testaccount", test_account_command))
     application.add_handler(CommandHandler("signalstatus", signal_status_command))
     application.add_handler(CommandHandler("debugdb", debug_db_command))
+    
+    application.add_handler(CommandHandler("testmysql", test_mysql_command))
+    application.add_handler(CommandHandler("searchaccount", search_account_command))
+    application.add_handler(CommandHandler("checktable", check_table_command))
+    application.add_handler(CommandHandler("debugreg", debug_registrations_command))
+    application.add_handler(CommandHandler("checkmyaccounts", check_my_accounts_command))
+    application.add_handler(CommandHandler("quickbalance", quick_balance_command))
+    application.add_handler(CommandHandler("simpleregcheck", simple_reg_check_command))
+    application.add_handler(CommandHandler("testrecent", test_recent_fix_command))
+    application.add_handler(CommandHandler("testtimestamp", test_timestamp_approach))
+    application.add_handler(CommandHandler("recentbylogin", recent_accounts_by_login_command))
+    application.add_handler(CommandHandler("recentbytime", recent_accounts_timestamp_command))
+    application.add_handler(CommandHandler("newest", newest_accounts_simple_command))
 
-
+    
+    application.add_handler(CommandHandler("debugzero", debug_zero_dates_command))
+    application.add_handler(CommandHandler("checkmysqlmode", check_mysql_mode_command))
+    application.add_handler(CommandHandler("findthreshold", find_recent_login_threshold_command))
+    application.add_handler(CommandHandler("checkperms", check_user_permissions_command))
+    application.add_handler(CommandHandler("diagnoseaccess", diagnose_account_access_command))
+    application.add_handler(CommandHandler("testsafe", test_safe_login_query_command))  
+    application.add_handler(CommandHandler("decodetimestamp", decode_mt5_timestamp_command))
+    application.add_handler(CommandHandler("recentaccounts", recent_accounts_final_command))  # Replace the old one
+    application.add_handler(CommandHandler("currenttable", compare_current_table_command))
+    application.add_handler(CommandHandler("showtables", show_all_tables_command))
+    application.add_handler(CommandHandler("searchusertables", search_user_tables_command))
+    application.add_handler(CommandHandler("showdatabases", show_all_databases_command))
+    application.add_handler(CommandHandler("checktable", check_table_for_high_accounts_command))
+    application.add_handler(CommandHandler("checkaccounts", check_mt5_accounts_table_command))
+    application.add_handler(CommandHandler("compareusers", compare_users_vs_accounts_command))
+    application.add_handler(CommandHandler("sampleaccounts", check_accounts_table_sample_command))
+    
+        
+    
     application.add_handler(MessageHandler(filters.ALL, silent_update_logger), group=999)
     
     
@@ -3864,8 +7409,14 @@ def main() -> None:
         states={
             RISK_APPETITE: [MessageHandler(filters.TEXT & ~filters.COMMAND, risk_appetite)],
             DEPOSIT_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, deposit_amount)],
-            TRADING_INTEREST: [CallbackQueryHandler(trading_interest_callback, pattern=r"^interest_")],
-            TRADING_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, trading_account)],
+            TRADING_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, enhanced_trading_account)],
+            AWAITING_DEPOSIT_DECISION: [CallbackQueryHandler(handle_deposit_callbacks)],
+            PAYMENT_METHOD_SELECTION: [CallbackQueryHandler(handle_payment_methods)],
+            DEPOSIT_CONFIRMATION: [
+                CallbackQueryHandler(check_balance_now_callback),
+                CallbackQueryHandler(handle_paypal_completion),
+                CallbackQueryHandler(handle_payment_help_callbacks)
+            ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
@@ -3948,19 +7499,19 @@ def main() -> None:
      # 17:00 - Daily giveaway announcement
     job_queue.run_daily(
         send_giveaway_message,
-        time=time(hour=17, minute=0)
+        time=time(hour=15, minute=0)
     )
     
     # 18:00 - Countdown to giveaway
     job_queue.run_daily(
         send_giveaway_message,
-        time=time(hour=18, minute=0)
+        time=time(hour=16, minute=0)
     )
     
     # 19:00 - Giveaway winner announcement
     job_queue.run_daily(
         send_giveaway_message,
-        time=time(hour=19, minute=0)
+        time=time(hour=17, minute=0)
     )
      
     
@@ -4054,6 +7605,12 @@ def main() -> None:
         first=seconds_until_strategy
     )
     
+    # job_queue.run_repeating(
+    #     lambda context: check_all_pending_deposits(context),
+    #     interval=600,  # Every 10 minutes
+    #     first=60
+    # )
+    
     """---------------------------------
          Signal Jobs
     ------------------------------------"""
@@ -4061,11 +7618,11 @@ def main() -> None:
     job_queue.run_once(init_signal_system, 30)
     
     # Schedule regular signal checks - run every hour
-    job_queue.run_repeating(
-        check_and_send_signals,
-        interval=300,  # 5 Min
-        first=60  # First check 1 minute after bot start
-    )
+    # job_queue.run_repeating(
+    #     check_and_send_signals,
+    #     interval=300,  # 5 Min
+    #     first=60  # First check 1 minute after bot start
+    # )
     
     job_queue.run_repeating(
         report_signal_system_status,

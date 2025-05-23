@@ -13,7 +13,7 @@
         "username": "300740",
         "password": "Abcdefg@1",
         "server": "VortexFX-Servers",
-        "risk_percent": 1.0,
+        "risk_percent": 0.8,
         "terminal_path": "C:\\Program Files\\Vortex FX MT5 Terminal\\terminal64.exe",
         "enabled": true
     }

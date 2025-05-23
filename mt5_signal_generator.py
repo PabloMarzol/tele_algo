@@ -43,8 +43,7 @@ class MT5SignalGenerator:
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M15,   
-                    mt5.TIMEFRAME_M30   
+                    mt5.TIMEFRAME_M15   
                 ],
                 'params': {'rsi_length': 2, 'overbought': 95, 'oversold': 10}
             },
@@ -76,9 +75,9 @@ class MT5SignalGenerator:
         self.signal_history = {}
         
         # Signal frequency control parameters
-        self.max_signals_per_hour = 4   
+        self.max_signals_per_hour = 5   
         self.max_signals_per_day = 30    
-        self.min_minutes_between_signals = 15
+        self.min_minutes_between_signals = 5
     
     def initialize_mt5(self, username=None, password=None, server=None):
         """Connect to MetaTrader5 terminal with detailed logging"""
@@ -222,9 +221,9 @@ class MT5SignalGenerator:
         # If crossover detected, confirm with 3min timeframe
         confirmation_timeframe = self.strategies['ma_crossover'].get('confirmation_timeframe', mt5.TIMEFRAME_M3)
         
-        # Get confirmation timeframe data
-        conf_df = self.get_price_data(symbol, confirmation_timeframe, bars=fast_length*2)
-        if conf_df is None or conf_df.height < fast_length:
+        # Get confirmation timeframe data - FIX: Request more bars
+        conf_df = self.get_price_data(symbol, confirmation_timeframe, bars=slow_length*3)
+        if conf_df is None or conf_df.height < slow_length:
             self.logger.warning(f"Could not get confirmation data for {symbol} on {confirmation_timeframe}")
             return None
         
@@ -234,18 +233,19 @@ class MT5SignalGenerator:
             pl.col("close").rolling_mean(slow_length).alias("slow_ma")
         ])
         
-        # Get latest relationship on confirmation timeframe
-        latest_conf = conf_df.tail(1)
-        if latest_conf.height == 0:
+        # Find the last row with non-null MA values
+        valid_conf_df = conf_df.filter(
+            pl.col("fast_ma").is_not_null() & pl.col("slow_ma").is_not_null()
+        )
+        
+        if valid_conf_df.height == 0:
+            self.logger.warning(f"No valid MA values in confirmation timeframe for {symbol}")
             return None
             
+        # Get latest valid MA values
+        latest_conf = valid_conf_df.tail(1)
         latest_fast = latest_conf["fast_ma"][0]
         latest_slow = latest_conf["slow_ma"][0]
-        
-        # Check for None values - THIS FIXES THE ERROR
-        if latest_fast is None or latest_slow is None:
-            self.logger.warning(f"Missing MA values in confirmation timeframe for {symbol}")
-            return None
         
         # Confirm the signal based on direction
         if direction == "BUY" and latest_fast > latest_slow:

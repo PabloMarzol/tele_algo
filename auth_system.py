@@ -1,39 +1,27 @@
 import os
 import re
-import polars as pl
 import hashlib
 import random
 import string
 from datetime import datetime, timedelta
+from mysql_manager import get_mysql_connection
 
 class TradingAccountAuth:
     def __init__(self, db_path=None):
-        """Initialize the authentication system with an optional database path."""
+        """Initialize the authentication system with MySQL support."""
         self.verified_users = {}
         self.auth_attempts = {}
         self.max_attempts = 3
         self.db_path = db_path
         
-        # If a database is provided, load verified accounts
-        if db_path and os.path.exists(db_path):
-            try:
-                self.trading_accounts = pl.read_csv(db_path)
-            except Exception as e:
-                print(f"Error loading trading accounts database: {e}")
-                self.create_empty_trading_accounts()
+        # Initialize MySQL connection
+        self.mysql_db = get_mysql_connection()
+        
+        # Test connection
+        if self.mysql_db.is_connected():
+            print("✅ MySQL authentication system initialized")
         else:
-            # Create an empty DataFrame with the correct schema
-            self.create_empty_trading_accounts()
-    
-    
-    def create_empty_trading_accounts(self):
-        """Create an empty trading accounts DataFrame with the correct schema."""
-        self.trading_accounts = pl.DataFrame({
-            "account_number": [],
-            "user_id": [],
-            "verified": [],
-            "verification_date": []
-        })
+            print("⚠️ MySQL connection failed, falling back to CSV method")
     
     def validate_account_format(self, account_number):
         """Check if the account number matches the expected format."""
@@ -41,9 +29,8 @@ class TradingAccountAuth:
             # First try to convert to integer to see if it's numeric
             account_int = int(account_number)
             
-            # Now check if it's a valid account number format
-            # For Vortex FX, accounts appear to be 6-digit numbers based on Accounts_List.csv
-            if 100000 <= account_int <= 999999:
+            # For MT5 accounts, they're typically 6-7 digit numbers
+            if 100000 <= account_int <= 9999999:  # Expanded range for MT5
                 print(f"Account {account_number} validation: SUCCESS")
                 return True
             else:
@@ -53,170 +40,97 @@ class TradingAccountAuth:
             print(f"Account {account_number} validation: FAILED - not numeric")
             return False
 
-    # def verify_account(self, account_number, user_id):
-    #     """Verify if the account number exists in the real Accounts_List.csv."""
-    #     try:
-    #         # Convert to integer
-    #         account_int = int(account_number)
-            
-    #         # Load the accounts CSV
-    #         try:
-    #             accounts_df = pl.read_csv("./bot_data/Accounts_List.csv")
-                
-    #             # Check if account exists
-    #             account_match = accounts_df.filter(pl.col("Account") == account_int)
-                
-    #             if account_match.height > 0:
-    #                 # Account exists in the list
-    #                 account_owner = account_match.select("Name")[0, 0]
-    #                 print(f"Account {account_number} verified: belongs to {account_owner}")
-                    
-    #                 # Record verification in our system
-    #                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    
-    #                 # Initialize the trading_accounts DataFrame if it doesn't exist
-    #                 if not hasattr(self, 'trading_accounts') or self.trading_accounts is None:
-    #                     self.trading_accounts = pl.DataFrame({
-    #                         "account_number": [account_number],
-    #                         "user_id": [user_id],
-    #                         "verified": [True],
-    #                         "verification_date": [now]
-    #                     })
-    #                 else:
-    #                     # Check if account already exists in our tracking dataframe
-    #                     try:
-    #                         account_exists = self.trading_accounts.filter(pl.col("account_number") == account_number)
-    #                     except Exception as e:
-    #                         print(f"Error checking if account exists: {e}")
-    #                         account_exists = None
-                        
-    #                     if account_exists is not None and account_exists.height > 0:
-    #                         # Update existing record
-    #                         try:
-    #                             self.trading_accounts = self.trading_accounts.with_columns([
-    #                                 pl.when(pl.col("account_number") == account_number)
-    #                                 .then(pl.lit(user_id))
-    #                                 .otherwise(pl.col("user_id"))
-    #                                 .alias("user_id"),
-                                    
-    #                                 pl.when(pl.col("account_number") == account_number)
-    #                                 .then(pl.lit(True))
-    #                                 .otherwise(pl.col("verified"))
-    #                                 .alias("verified"),
-                                    
-    #                                 pl.when(pl.col("account_number") == account_number)
-    #                                 .then(pl.lit(now))
-    #                                 .otherwise(pl.col("verification_date"))
-    #                                 .alias("verification_date")
-    #                             ])
-    #                         except Exception as e:
-    #                             print(f"Error updating existing account: {e}")
-    #                     else:
-    #                         # Add new record - make sure all columns match
-    #                         try:
-    #                             new_record = pl.DataFrame({
-    #                                 "account_number": [account_number],
-    #                                 "user_id": [user_id],
-    #                                 "verified": [True],
-    #                                 "verification_date": [now]
-    #                             })
-                                
-    #                             # Ensure new_record has the same schema as trading_accounts
-    #                             for col in self.trading_accounts.columns:
-    #                                 if col not in new_record.columns:
-    #                                     # Add missing column with default value
-    #                                     new_record = new_record.with_columns(pl.lit(None).alias(col))
-                                
-    #                             # Select only columns that are in trading_accounts
-    #                             new_record = new_record.select(self.trading_accounts.columns)
-                                
-    #                             self.trading_accounts = pl.concat([self.trading_accounts, new_record])
-    #                         except Exception as e:
-    #                             print(f"Error adding new account record: {e}")
-                    
-    #                 # Add to verified users dictionary for quick lookup
-    #                 self.verified_users[user_id] = {
-    #                     "account_number": account_number,
-    #                     "verified_at": now,
-    #                     "account_owner": account_owner
-    #                 }
-                    
-    #                 return True
-    #             else:
-    #                 print(f"Account {account_number} not found in Accounts_List.csv")
-    #                 return False
-                    
-    #         except Exception as e:
-    #             print(f"Error loading or processing Accounts_List.csv: {e}")
-    #             # Fall back to a more basic verification method
-    #             print("Falling back to basic verification method")
-                
-    #             # Just record the attempt for now
-    #             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    #             self.verified_users[user_id] = {
-    #                 "account_number": account_number,
-    #                 "verified_at": now,
-    #                 "verified": False
-    #             }
-    #             return False
-                    
-    #     except ValueError:
-    #         print(f"Could not convert account number to integer for verification")
-    #         return False
-    #     except Exception as e:
-    #         print(f"Unexpected error in verify_account: {e}")
-    #         return False
-    
     def verify_account(self, account_number, user_id):
-        """Verify if the account number exists in the real Accounts_List.csv."""
+        """Verify if the account number exists in the real-time MySQL database."""
         try:
-            # Convert to integer
-            account_int = int(account_number)
+            print(f"Verifying account {account_number} against MySQL database")
             
-            # Load the accounts CSV
-            try:
-                accounts_df = pl.read_csv("./bot_data/Accounts_List.csv")
+            # First check if MySQL is available
+            if not self.mysql_db or not self.mysql_db.is_connected():
+                print("MySQL not available, falling back to CSV method")
+                return self._verify_account_csv_fallback(account_number, user_id)
+            
+            # Verify account exists in MySQL
+            verification_result = self.mysql_db.verify_account_exists(account_number)
+            
+            if verification_result['exists']:
+                account_owner = verification_result['name']
+                account_email = verification_result.get('email', '')
+                account_balance = verification_result.get('balance', 0)
+                account_group = verification_result.get('group', '')
                 
-                # Check if account exists
-                account_match = accounts_df.filter(pl.col("Account") == account_int)
+                print(f"Account {account_number} verified: belongs to {account_owner} (Balance: ${account_balance})")
                 
-                if account_match.height > 0:
-                    # Account exists in the list
-                    account_owner = account_match.select("Name")[0, 0]
-                    print(f"Account {account_number} verified: belongs to {account_owner}")
-                    
-                    # Just store in verified_users dict without trying to update the DataFrame
-                    self.verified_users[user_id] = {
-                        "account_number": account_number,
-                        "verified_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "account_owner": account_owner
-                    }
-                    
-                    return True
-                else:
-                    print(f"Account {account_number} not found in Accounts_List.csv")
-                    return False
-                    
-            except Exception as e:
-                print(f"Error loading or processing Accounts_List.csv: {e}")
-                # Fall back to a more basic verification method
-                print("Falling back to basic verification method")
+                # Record verification in our system
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                # Just record the attempt for now
+                # Add to verified users dictionary for quick lookup
+                self.verified_users[user_id] = {
+                    "account_number": account_number,
+                    "verified_at": now,
+                    "account_owner": account_owner,
+                    "account_email": account_email,
+                    "account_balance": account_balance,
+                    "account_group": account_group,
+                    "verification_method": "mysql"
+                }
+                
+                return True
+            else:
+                error_msg = verification_result.get('error', 'Account not found')
+                print(f"Account {account_number} not found in MySQL database: {error_msg}")
+                return False
+                
+        except Exception as e:
+            print(f"Error verifying account against DataBase: {e}")
+            # Fall back to CSV method
+            return self._verify_account_csv_fallback(account_number, user_id)
+    
+    def _verify_account_csv_fallback(self, account_number, user_id):
+        """Fallback method using CSV file if MySQL is unavailable."""
+        try:
+            import polars as pl
+            
+            # Load the accounts CSV as fallback
+            accounts_df = pl.read_csv("./bot_data/Accounts_List.csv")
+            
+            # Convert account_number to integer for comparison
+            account_int = int(account_number)
+            account_match = accounts_df.filter(pl.col("Account") == account_int)
+            
+            if account_match.height > 0:
+                account_owner = account_match.select("Name")[0, 0]
+                print(f"Account {account_number} verified via CSV: belongs to {account_owner}")
+                
+                # Record verification
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 self.verified_users[user_id] = {
                     "account_number": account_number,
                     "verified_at": now,
-                    "verified": False
+                    "account_owner": account_owner,
+                    "verification_method": "csv_fallback"
                 }
+                
+                return True
+            else:
+                print(f"Account {account_number} not found in CSV")
                 return False
-                    
-        except ValueError:
-            print(f"Could not convert account number to integer for verification")
-            return False
+                
         except Exception as e:
-            print(f"Unexpected error in verify_account: {e}")
+            print(f"CSV fallback verification also failed: {e}")
             return False
+    
+    def get_account_info(self, account_number):
+        """Get detailed account information from MySQL."""
+        if not self.mysql_db or not self.mysql_db.is_connected():
+            return None
+        
+        try:
+            account_int = int(account_number)
+            return self.mysql_db.get_account_by_login(account_int)
+        except Exception as e:
+            print(f"Error getting account info: {e}")
+            return None
     
     def is_user_verified(self, user_id):
         """Check if the user is already verified."""
@@ -300,3 +214,6 @@ if __name__ == "__main__":
     # Generate CAPTCHA
     question, answer = auth.generate_captcha()
     print(f"CAPTCHA: {question}, Answer: {answer}")
+    
+    
+    

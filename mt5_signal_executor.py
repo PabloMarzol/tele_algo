@@ -17,7 +17,7 @@ class MT5SignalExecutor:
         """Initialize the MT5 signal executor."""
         self.logger = logging.getLogger('MT5SignalExecutor')
         self.connected = False
-        self.risk_percent = risk_percent  # Risk per trade (percentage of account balance)
+        self.risk_percent = risk_percent  
         self.executed_signals = {}  # Track signals that have been executed
         self.initialized = False
         self.terminal_path = terminal_path
@@ -27,10 +27,10 @@ class MT5SignalExecutor:
         
         # Parameters for signal execution
         self.max_spread_multiplier = 1.5  # Max allowed spread as multiplier of average
-        self.slippage_pips = 3  # Allowed slippage in pips
-        self.use_limit_orders = True  # Whether to use limit orders (True) or market orders (False)
-        self.retry_attempts = 3  # Number of retries for failed orders
-        self.retry_delay = 5  # Delay between retries in seconds
+        self.slippage_pips = 3  
+        self.use_limit_orders = True  
+        self.retry_attempts = 3  
+        self.retry_delay = 5  
         
         # Default lot sizing by symbol
         self.default_lot_sizes = {
@@ -979,13 +979,13 @@ class MT5SignalExecutor:
             # Where X is the multiplier to convert standard pips to appropriate size for this instrument
             "XAUUSD": {"pip_multiplier": 10.0, "min_profit_pips": 200, "trailing_pips": 500},  # Gold needs wider stops
             "BTCUSD": {"pip_multiplier": 100.0, "min_profit_pips": 5000, "trailing_pips": 10000},  # Bitcoin needs much wider stops
-            "US30": {"pip_multiplier": 5.0, "min_profit_pips": 900, "trailing_pips": 550},  # Dow Jones
+            "US30": {"pip_multiplier": 5.0, "min_profit_pips": 1100, "trailing_pips": 550},  # Dow Jones
             "US500": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # S&P 500
-            "NAS100": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # Nasdaq
+            "NAS100": {"pip_multiplier": 5.0, "min_profit_pips": 1150, "trailing_pips": 850},  # Nasdaq
             "UK100": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # FTSE 100
             "FRA40": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # CAC 40
-            "GER40": {"pip_multiplier": 5.0, "min_profit_pips": 900, "trailing_pips": 550},  # DAX
-            "default": {"pip_multiplier": 1.0, "min_profit_pips": 20, "trailing_pips": 50}  # Default for forex pairs
+            "GER40": {"pip_multiplier": 5.0, "min_profit_pips": 1100, "trailing_pips": 850},  # DAX
+            "default": {"pip_multiplier": 1.0, "min_profit_pips": 5, "trailing_pips": 3}  # Default for forex pairs
         }
         
         # Set defaults if not provided
