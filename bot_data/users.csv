@@ -1,2 +1,3 @@
 user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_account,is_verified,join_date,last_active,banned,notes,trading_interest,vip_channels,vip_added_date,copier_forwarded,copier_forwarded_date,source_channel,first_contact_date,auto_welcomed,auto_welcome_date,risk_profile_text,last_response,last_response_time
-1127393419,MagusQuant,Magus,Quant,5,300,300848,true,2025-05-23 18:35:01,2025-05-23 18:35:01,false,"","",signals,2025-05-23 18:31:06,false,"",main_channel,2025-05-23 18:42:09,true,2025-05-23 18:42:09,medium,300,2025-05-23 18:42:37
+1127393419,MagusQuant,Magus,Quant,5,100,300739,true,2025-05-25 00:02:23,2025-05-25 00:02:23,false,"",all,"signals,signals",2025-05-24 23:31:25,true,2025-05-25 00:01:36,main_channel,2025-05-25 00:51:54,true,2025-05-25 00:51:54,medium,100,2025-05-25 00:53:38
+7823596188,VFX_FX2,VFX,Quant-Researcher,0,0,"",false,2025-05-24 21:23:05,2025-05-24 21:23:05,false,"","","","",false,"","","",false,"","","",""
