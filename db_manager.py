@@ -655,3 +655,54 @@ class TradingBotDatabase:
         except Exception as e:
             print(f"Error getting active users: {e}")
             return 0
+        
+    def is_user_already_registered(self, user_id):
+        """Check if user has already completed successful registration."""
+        try:
+            user_info = self.get_user(user_id)
+            if not user_info:
+                return False
+            
+            # Check multiple criteria for successful registration
+            has_verified_account = user_info.get("is_verified", False)
+            has_trading_account = bool(user_info.get("trading_account"))
+            registration_confirmed = user_info.get("registration_confirmed", False)
+            vip_access_granted = user_info.get("vip_access_granted", False)
+            
+            # User is considered "successfully registered" if they have:
+            # 1. Verified trading account, OR
+            # 2. Confirmed registration, OR  
+            # 3. Been granted VIP access
+            return (has_verified_account and has_trading_account) or registration_confirmed or vip_access_granted
+            
+        except Exception as e:
+            print(f"Error checking registration status for user {user_id}: {e}")
+            return False
+
+    def get_user_registration_summary(self, user_id):
+        """Get detailed registration status for user."""
+        try:
+            user_info = self.get_user(user_id)
+            if not user_info:
+                return None
+                
+            return {
+                "user_id": user_id,
+                "first_name": user_info.get("first_name", "Unknown"),
+                "is_verified": user_info.get("is_verified", False),
+                "trading_account": user_info.get("trading_account"),
+                "registration_confirmed": user_info.get("registration_confirmed", False),
+                "vip_access_granted": user_info.get("vip_access_granted", False),
+                "join_date": user_info.get("join_date"),
+                "last_active": user_info.get("last_active"),
+                "registration_status": "completed" if self.is_user_already_registered(user_id) else "incomplete"
+            }
+        except Exception as e:
+            print(f"Error getting registration summary for user {user_id}: {e}")
+            return None   
+        
+        
+        
+        
+        
+    

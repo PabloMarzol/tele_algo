@@ -298,9 +298,13 @@ async def handle_account_verification(update: Update, context: ContextTypes.DEFA
 async def private_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """HTML styled private message handler."""
     user = update.effective_user
+    user_id = user.id
     
     # Check if this is a direct message to the bot
     if update.effective_chat.type == "private":
+        # SECURITY CHECK: Prevent duplicate registrations
+        if await check_existing_registration(update, context, user_id):
+            return ConversationHandler.END
         # Update user activity
         db.update_user_activity(user.id)
         
@@ -868,19 +872,19 @@ async def forward_to_copier_callback(update: Update, context: ContextTypes.DEFAU
             
             # Format copier team message with more details
             copier_message = (
-                f"🔄 **NEW ACCOUNT FOR COPIER SYSTEM** 🔄\n\n"
-                f"📋 **USER DETAILS:**\n"
+                f"<b>🔄 NEW ACCOUNT FOR COPIER SYSTEM 🔄</b>\n\n"
+                f"<b>📋 USER DETAILS:</b>\n"
                 f"• Name: {user_name} {last_name}\n"
                 f"• Username: @{username}\n"
                 f"• User ID: {user_id}\n"
                 f"• Trading Account: {trading_account} {'✅' if is_verified else '⚠️'}\n\n"
-                f"📊 **TRADING PROFILE:**\n"
+                f"<b>📊 TRADING PROFILE:</b>\n"
                 f"• Risk Level: {risk_appetite}/10\n"
                 f"• Deposit Amount: ${deposit_amount}\n"
                 f"• VIP Services: {vip_channels}\n"
                 f"• Account Status: {'Verified' if is_verified else 'Pending Verification'}\n\n"
-                f"⏰ **Date Added:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                f"👉 **ACTION REQUIRED:** Please add this account to the copier system and configure the appropriate risk parameters."
+                f"<b>⏰ Date Added:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"<b>👉 ACTION REQUIRED:</b> Please add this account to the copier system and configure the appropriate risk parameters."
             )
             
             # Create action buttons for the copier team
@@ -899,7 +903,7 @@ async def forward_to_copier_callback(update: Update, context: ContextTypes.DEFAU
                 copier_team_message = await context.bot.send_message(
                     chat_id=SUPPORT_GROUP_ID,
                     text=copier_message,
-                    parse_mode='Markdown',
+                    parse_mode='HTML',
                     reply_markup=copier_reply_markup
                 )
                 
@@ -915,24 +919,24 @@ async def forward_to_copier_callback(update: Update, context: ContextTypes.DEFAU
                 
                 # Update the original admin message to confirm it was sent
                 await query.edit_message_text(
-                    text=f"✅ **Account Successfully Forwarded to Copier Team**\n\n"
-                         f"**User:** {user_name} {last_name}\n"
-                         f"**Account:** {trading_account}\n"
-                         f"**Risk Level:** {risk_appetite}/10\n"
-                         f"**Deposit:** ${deposit_amount}\n\n"
-                         f"📤 **Message sent to Support Group**\n"
-                         f"🕒 **Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                         f"The copier team will be able to take action on this account using the buttons provided.",
-                    parse_mode='Markdown',
+                    text=f"<b>✅ Account Successfully Forwarded to Copier Team</b>\n\n"
+                        f"<b>User:</b> {user_name} {last_name}\n"
+                        f"<b>Account:</b> {trading_account}\n"
+                        f"<b>Risk Level:</b> {risk_appetite}/10\n"
+                        f"<b>Deposit:</b> ${deposit_amount}\n\n"
+                        f"<b>📤 Message sent to Support Group</b>\n"
+                        f"<b>🕒 Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                        f"The copier team will be able to take action on this account using the buttons provided.",
+                    parse_mode='HTML',
                     reply_markup=None
                 )
                 
             except Exception as e:
                 print(f"Error sending message to support group: {e}")
                 await query.edit_message_text(
-                    text=f"⚠️ **Error sending to copier team:** {e}\n\n"
-                         f"Please manually forward this information:\n\n{copier_message}",
-                    parse_mode='Markdown',
+                    text=f"<b>⚠️ Error sending to copier team:</b> {e}\n\n"
+                        f"Please manually forward this information:\n\n{copier_message}",
+                    parse_mode='HTML',
                     reply_markup=None
                 )
                 return
@@ -940,20 +944,20 @@ async def forward_to_copier_callback(update: Update, context: ContextTypes.DEFAU
             # Also notify the user
             try:
                 user_notification = (
-                    f"📊 **Your trading account has been forwarded to our copier team!**\n\n"
-                    f"**Account:** {trading_account}\n"
-                    f"**Risk Level:** {risk_appetite}/10\n"
-                    f"**Deposit Amount:** ${deposit_amount}\n\n"
+                    f"<b>📊 Your trading account has been forwarded to our copier team!</b>\n\n"
+                    f"<b>Account:</b> {trading_account}\n"
+                    f"<b>Risk Level:</b> {risk_appetite}/10\n"
+                    f"<b>Deposit Amount:</b> ${deposit_amount}\n\n"
                     f"Our copier team will review your account and set up the optimal trading parameters based on your risk profile. "
                     f"You'll receive confirmation once your account is connected to our automated trading system.\n\n"
-                    f"**Expected Setup Time:** 24 hours\n"
-                    f"**Next Steps:** Our team will contact you with setup details and login credentials for your copier dashboard."
+                    f"<b>Expected Setup Time:</b> 24 hours\n"
+                    f"<b>Next Steps:</b> Our team will contact you with setup details and login credentials for your copier dashboard."
                 )
                 
                 await context.bot.send_message(
                     chat_id=user_id,
                     text=user_notification,
-                    parse_mode='Markdown'
+                    parse_mode='HTML'
                 )
                 print(f"Successfully sent notification to user {user_id}")
             except Exception as e:
@@ -1008,37 +1012,41 @@ async def copier_team_action_callback(update: Update, context: ContextTypes.DEFA
                 
                 # Update the message to show it's been handled
                 await query.edit_message_text(
-                    text=f"✅ **ACCOUNT ADDED TO COPIER SYSTEM**\n\n"
-                         f"**User:** {user_name}\n"
-                         f"**Account:** {trading_account}\n"
-                         f"**Status:** Active in copier system\n"
-                         f"**Added by:** {query.from_user.first_name}\n"
-                         f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                         f"✅ User has been notified of successful setup.",
-                    parse_mode='Markdown',
+                    text=f"<b>✅ ACCOUNT ADDED TO COPIER SYSTEM</b>\n\n"
+                        f"<b>User:</b> {user_name}\n"
+                        f"<b>Account:</b> {trading_account}\n"
+                        f"<b>Status:</b> Active in copier system\n"
+                        f"<b>Added by:</b> {query.from_user.first_name}\n"
+                        f"<b>Date:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                        f"✅ User has been notified of successful setup.",
+                    parse_mode='HTML',
                     reply_markup=None
                 )
                 
                 # Notify the user
                 try:
                     user_success_message = (
-                        f"🎉 **Congratulations! Your account has been successfully added to our copier system!**\n\n"
-                        f"**Account:** {trading_account}\n"
-                        f"**Status:** Active\n"
-                        f"**Setup Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                        f"Your account is now automatically copying our professional trading signals. "
-                        f"You can monitor your performance through your MT5 platform.\n\n"
-                        f"**Important Notes:**\n"
-                        f"• Trades will be executed automatically based on your risk settings\n"
-                        f"• You can monitor performance 24/7 through MT5\n"
-                        f"• Our team monitors all accounts during market hours\n\n"
-                        f"Welcome to our automated trading system! 🚀"
+                        f"<b>🎉 Congratulations! Your account has been successfully added to our copier system! ✅</b>\n\n"
+                        f"<b>📊 Account:</b> {trading_account}\n"
+                        f"<b>🟢 Status:</b> Active\n"
+                        f"<b>📅 Setup Date:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                        f"🤖 Your account is now automatically copying our professional trading signals! "
+                        f"📱 Monitor your performance through your Vortex-FX MT5 platform.\n\n"
+                        f"<b>📝 Important Notes:</b>\n"
+                        f"• ⚡ Trades execute automatically based on your risk settings\n"
+                        f"• 📈 Monitor performance 24/7 through MT5\n"
+                        f"• 👥 Our team monitors all accounts during market hours\n"
+                        f"• 🔑 Keep your master password as default for optimal system performance\n\n"
+                        f"<b>⚠️ Master Password Notice:</b>\n"
+                        f"🔐 Your master password enables our copier system to execute trades efficiently. "
+                        f"Changing it will automatically deactivate copy trading on your account.\n\n"
+                        f"🚀 Welcome to our automated trading system! Let's grow your portfolio together! 💰"
                     )
                     
                     await context.bot.send_message(
                         chat_id=user_id,
                         text=user_success_message,
-                        parse_mode='Markdown'
+                        parse_mode='HTML'
                     )
                 except Exception as e:
                     print(f"Error notifying user of copier activation: {e}")
@@ -1059,14 +1067,14 @@ async def copier_team_action_callback(update: Update, context: ContextTypes.DEFA
                 rejection_reply_markup = InlineKeyboardMarkup(rejection_keyboard)
                 
                 await query.edit_message_text(
-                    text=f"❌ **ACCOUNT REJECTED FROM COPIER SYSTEM**\n\n"
-                         f"**User:** {user_name}\n"
-                         f"**Account:** {trading_account}\n"
-                         f"**Status:** Rejected\n"
-                         f"**Rejected by:** {query.from_user.first_name}\n"
-                         f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                         f"⚠️ Please contact the user to resolve any issues.",
-                    parse_mode='Markdown',
+                    text=f"<b>❌ ACCOUNT REJECTED FROM COPIER SYSTEM</b>\n\n"
+                        f"<b>User:</b> {user_name}\n"
+                        f"<b>Account:</b> {trading_account}\n"
+                        f"<b>Status:</b> Rejected\n"
+                        f"<b>Rejected by:</b> {query.from_user.first_name}\n"
+                        f"<b>Date:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                        f"⚠️ Please contact the user to resolve any issues.",
+                    parse_mode='HTML',
                     reply_markup=rejection_reply_markup
                 )
                 
@@ -1079,12 +1087,12 @@ async def copier_team_action_callback(update: Update, context: ContextTypes.DEFA
                 contact_reply_markup = InlineKeyboardMarkup(contact_keyboard)
                 
                 await query.edit_message_text(
-                    text=f"📞 **CONTACT USER: {user_name}**\n\n"
-                         f"**User ID:** {user_id}\n"
-                         f"**Account:** {trading_account}\n"
-                         f"**Username:** @{user_info.get('username', 'None')}\n\n"
-                         f"Choose how you'd like to contact this user:",
-                    parse_mode='Markdown',
+                    text=f"<b>📞 CONTACT USER: {user_name}</b>\n\n"
+                        f"<b>User ID:</b> {user_id}\n"
+                        f"<b>Account:</b> {trading_account}\n"
+                        f"<b>Username:</b> @{user_info.get('username', 'None')}\n\n"
+                        f"Choose how you'd like to contact this user:",
+                    parse_mode='HTML',
                     reply_markup=contact_reply_markup
                 )
                 
@@ -1410,6 +1418,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     # Debug output to console only
     print(f"User ID {user_id} ({user.first_name}) started the bot")
+    
+    # SECURITY CHECK: Prevent duplicate registrations
+    if await check_existing_registration(update, context, user_id):
+        return
     
     # Handle referral parameter in a separate async function to avoid message leakage
     referral_admin = None
@@ -1854,6 +1866,40 @@ async def debug_db_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     except Exception as e:
         await update.message.reply_text(f"⚠️ Database check failed: {e}")
 
+async def reset_user_registration_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to reset a user's registration status."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /resetuser <user_id>")
+        return
+    
+    try:
+        user_id = int(context.args[0])
+        
+        # Reset user's registration status
+        db.add_user({
+            "user_id": user_id,
+            "is_verified": False,
+            "registration_confirmed": False,
+            "vip_access_granted": False,
+            "trading_account": None,
+            "reset_by_admin": True,
+            "reset_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        await update.message.reply_text(
+            f"✅ User {user_id} registration status has been reset. They can now register again."
+        )
+        
+    except ValueError:
+        await update.message.reply_text("Invalid user ID format.")
+    except Exception as e:
+        await update.message.reply_text(f"Error resetting user: {e}")
+
+
 # -------------------------------------- MANUAL FUNCTIONS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 
@@ -2186,9 +2232,6 @@ async def send_ed_interval_message(context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.error(f"Failed to send strategy interval message: {e}")
         print(f"Error in send_strategy_interval_message: {e}")
 
-
-
-# Admin command to manage scheduled messages
 async def manage_messages_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Admin command to manage scheduled messages."""
     if not await is_user_admin(update, context):
@@ -2559,7 +2602,6 @@ async def start_user_conversation_callback(update: Update, context: ContextTypes
                 parse_mode='HTML'
             )
 
-
 async def send_registration_form_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the 'Send Registration Form' button callback."""
     query = update.callback_query
@@ -2685,6 +2727,11 @@ async def copy_template_callback(update: Update, context: ContextTypes.DEFAULT_T
 async def handle_auto_welcome_response(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """INTEGRATED: Handle all registration flow - buttons and text messages."""
     user_id = update.effective_user.id
+    
+    
+    # SECURITY CHECK: Block duplicate registrations at any entry point
+    if await check_existing_registration(update, context, user_id):
+        return
     
     # HANDLE BUTTON CALLBACKS
     if update.callback_query:
@@ -2888,47 +2935,47 @@ async def risk_profile_callback(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception as e:
             print(f"Error notifying admin {admin_id}: {e}")
 
-async def restart_process_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle restart process button."""
-    query = update.callback_query
-    await query.answer()
+# async def restart_process_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+#     """Handle restart process button."""
+#     query = update.callback_query
+#     await query.answer()
     
-    user_id = update.effective_user.id
+#     user_id = update.effective_user.id
     
-    # Clear conversation state
-    if "user_states" in context.bot_data and user_id in context.bot_data["user_states"]:
-        del context.bot_data["user_states"][user_id]
+#     # Clear conversation state
+#     if "user_states" in context.bot_data and user_id in context.bot_data["user_states"]:
+#         del context.bot_data["user_states"][user_id]
     
-    # Start over with risk profile buttons
-    keyboard = [
-        [
-            InlineKeyboardButton("Low Risk", callback_data="risk_low"),
-            InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
-            InlineKeyboardButton("High Risk", callback_data="risk_high")
-        ],
-        [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+#     # Start over with risk profile buttons
+#     keyboard = [
+#         [
+#             InlineKeyboardButton("Low Risk", callback_data="risk_low"),
+#             InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
+#             InlineKeyboardButton("High Risk", callback_data="risk_high")
+#         ],
+#         [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
+#     ]
+#     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await query.edit_message_text(
-        "<b>Process restarted!</b>\n\nWhat risk profile would you like on your account?",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
+#     await query.edit_message_text(
+#         "<b>Process restarted!</b>\n\nWhat risk profile would you like on your account?",
+#         parse_mode='HTML',
+#         reply_markup=reply_markup
+#     )
     
-    # Set state to risk_profile
-    context.bot_data.setdefault("user_states", {})
-    context.bot_data["user_states"][user_id] = "risk_profile"
+#     # Set state to risk_profile
+#     context.bot_data.setdefault("user_states", {})
+#     context.bot_data["user_states"][user_id] = "risk_profile"
     
-    # Notify admin of restart
-    for admin_id in ADMIN_USER_ID:
-        try:
-            await context.bot.send_message(
-                chat_id=admin_id,
-                text=f"🔄 User {user_id} has restarted the registration process"
-            )
-        except Exception as e:
-            print(f"Error notifying admin {admin_id}: {e}")
+#     # Notify admin of restart
+#     for admin_id in ADMIN_USER_ID:
+#         try:
+#             await context.bot.send_message(
+#                 chat_id=admin_id,
+#                 text=f"🔄 User {user_id} has restarted the registration process"
+#             )
+#         except Exception as e:
+#             print(f"Error notifying admin {admin_id}: {e}")
 
 async def experience_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle previous experience button selection."""
@@ -3288,22 +3335,21 @@ async def generate_welcome_link_callback(update: Update, context: ContextTypes.D
         start_link = f"https://t.me/{bot_username}?start=ref_{update.effective_user.id}"
         
         # Generate personalized welcome message
-        welcome_template = f"""Hello {user_name}! 👋
-
-Thank you for your interest in our VFX Trading solutions!
-
-To get started with your account setup and access our trading services, please click the link below:
-
-👉 {start_link}
-
-Once you click the link:
-1. You'll be connected with our automated assistant
-2. Answer a few quick questions about your trading preferences
-3. Verify your MT5 account number
-
-Our team will then set up your account with the optimal parameters based on your profile.
-
-Let me know if you have any questions!"""
+        welcome_template = (
+    f"<b>Hello {user_name}! 👋</b>\n\n"
+    f"🎉 <b>Thank you for your interest in VFX Trading solutions!</b>\n\n"
+    f"🚀 <b>Ready to get started?</b>\n\n"
+    f"To begin your account setup and access our premium trading services, please click the link below:\n\n"
+    f"👉 <a href='{start_link}'>Connect with VFX - REGISTRATION</a>\n\n"
+    f"<b>📋 Quick Setup Process:</b>\n\n"
+    f"<b>1.</b> 🤖 Connect with our automated assistant\n"
+    f"<b>2.</b> 📊 Answer quick questions about your trading preferences\n" 
+    f"<b>3.</b> ✅ Verify your Vortex-FX MT5 account number\n\n"
+    f"<b>🎯 What happens next?</b>\n"
+    f"Our expert team will configure your account with optimal parameters based on your unique trading profile.\n\n"
+    f"💬 <b>Questions? We're here to help!</b>\n\n"
+    f"🔥 <b>Let's build your trading success together!</b> 📈"
+)
         
         # Show the message with a copy button
         await query.edit_message_text(
@@ -5226,7 +5272,6 @@ async def handle_deposit_selection(query, context, user_id, callback_data):
     # Update state
     context.bot_data["user_states"][user_id] = "deposit_instructions_shown"
     
-
 async def show_deposit_amount_options(query, context, user_id):
     """Show deposit amount selection options."""
     message = (
@@ -6511,13 +6556,13 @@ async def handle_sufficient_funds(update, context, account_info, stated_amount, 
     print(f"User has sufficient funds: ${real_balance} >= ${stated_amount}")
     
     success_message = (
-        f"✅ **Account Verified Successfully!** ✅\n\n"
-        f"**Account:** {account_info['account_number']}\n"
-        f"**Account Holder:** {account_info['name']}\n"
-        f"**Current Balance:** ${real_balance:,.2f} 💰\n"
-        f"**Required:** ${stated_amount:,.2f}\n\n"
-        f"🎉 **Excellent!** You have sufficient funds to access all our VIP services!\n\n"
-        f"**You now have access to:**\n"
+        f"<b>✅ Account Verified Successfully! ✅</b>\n\n"
+        f"<b>Account:</b> {account_info['account_number']}\n"
+        f"<b>Account Holder:</b> {account_info['name']}\n"
+        f"<b>Current Balance:</b> ${real_balance:,.2f} 💰\n"
+        f"<b>Required:</b> ${stated_amount:,.2f}\n\n"
+        f"<b>🎉 Excellent!</b> You have sufficient funds to access all our VIP services!\n\n"
+        f"<b>You now have access to:</b>\n"
         f"• 🔔 Premium Trading Signals\n"
         f"• 📈 Advanced Trading Strategies\n"
         f"• 💰 Prop Capital Opportunities\n"
@@ -6540,7 +6585,7 @@ async def handle_sufficient_funds(update, context, account_info, stated_amount, 
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text(success_message, parse_mode='Markdown', reply_markup=reply_markup)
+    await update.message.reply_text(success_message, parse_mode='HTML', reply_markup=reply_markup)
     
     # Mark user as fully verified and funded
     db.add_user({
@@ -6563,14 +6608,14 @@ async def handle_partial_funds(update, context, account_info, stated_amount, rea
     print(f"User has partial funds: ${real_balance} of ${stated_amount} ({percentage:.1f}%)")
     
     message = (
-        f"✅ **Account Successfully Verified!**\n\n"
-        f"**Account:** {account_info['account_number']}\n"
-        f"**Account Holder:** {account_info['name']}\n"
-        f"**Current Balance:** ${real_balance:,.2f}\n"
-        f"**Your Goal:** ${stated_amount:,.2f}\n"
-        f"**Remaining:** ${difference:,.2f}\n\n"
-        f"📊 **You're {percentage:.1f}% of the way there!** 🎯\n\n"
-        f"**What would you like to do?**"
+        f"<b>✅ Account Successfully Verified!</b>\n\n"
+        f"<b>Account:</b> {account_info['account_number']}\n"
+        f"<b>Account Holder:</b> {account_info['name']}\n"
+        f"<b>Current Balance:</b> ${real_balance:,.2f}\n"
+        f"<b>Your Goal:</b> ${stated_amount:,.2f}\n"
+        f"<b>Remaining:</b> ${difference:,.2f}\n\n"
+        f"<b>📊 You're {percentage:.1f}% of the way there!</b> 🎯\n\n"
+        f"<b>What would you like to do?</b>"
     )
     
     # Create action buttons
@@ -6583,7 +6628,7 @@ async def handle_partial_funds(update, context, account_info, stated_amount, rea
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
     
     # Store partial funding status
     db.add_user({
@@ -6600,31 +6645,30 @@ async def handle_no_funds(update, context, account_info, stated_amount):
     print(f"User has no funds, needs ${stated_amount}")
     
     message = (
-        f"✅ **Account Successfully Verified!**\n\n"
-        f"**Account:** {account_info['account_number']}\n"
-        f"**Account Holder:** {account_info['name']}\n"
-        f"**Current Balance:** $0.00\n"
-        f"**Target Amount:** ${stated_amount:,.2f}\n\n"
-        f"🚀 **Ready to start your trading journey?**\n\n"
+        f"<b>✅ Account Successfully Verified!</b>\n\n"
+        f"<b>Account:</b> {account_info['account_number']}\n"
+        f"<b>Account Holder:</b> {account_info['name']}\n"
+        f"<b>Current Balance:</b> $0.00\n"
+        f"<b>Target Amount:</b> ${stated_amount:,.2f}\n\n"
+        f"<b>🚀 Ready to start your trading journey?</b>\n\n"
         f"To access our VIP services, you'll need to fund your account with ${stated_amount:,.2f}.\n\n"
-        f"**Once funded, you'll get:**\n"
+        f"<b>Once funded, you'll get:</b>\n"
         f"• 🔔 Premium Trading Signals\n"
         f"• 📈 Advanced Strategies\n"
         f"• 💰 Prop Capital Access\n"
         f"• 👨‍💼 Personal Support\n\n"
-        f"**How would you like to proceed?**"
+        f"<b>How would you like to proceed?</b>"
     )
     
     # Create funding options
     keyboard = [
         [InlineKeyboardButton(f"💳 Deposit ${stated_amount:,.0f} Now", callback_data=f"deposit_exact_{stated_amount}")],
         [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
-        [InlineKeyboardButton("📚 Start with Free Resources", callback_data="free_resources")],
         [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text(message, parse_mode='Markdown', reply_markup=reply_markup)
+    await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
     
     # Store no funding status
     db.add_user({
@@ -6733,11 +6777,11 @@ async def handle_deposit_flow_callbacks(update: Update, context: ContextTypes.DE
         
     elif callback_data == "restart_process":
         # ALWAYS allow restart
-        await restart_process_callback(query, context)
+        await restart_process(query, context)
         
     elif callback_data == "speak_advisor":  
         # Fixed advisor request
-        await handle_advisor_request_simplified(query, context)
+        await handle_advisor_request(query, context)
 
 async def show_broker_deposit_instructions(query, context, amount):
     """Show VortexFX client portal deposit instructions only."""
@@ -6783,526 +6827,95 @@ async def show_broker_deposit_instructions(query, context, amount):
     
 
 
-async def handle_advisor_request_simplified(query, context):
-    """FIXED: Simplified advisor connection - direct connection only."""
-    user_id = query.from_user.id
-    
-    # Get user info
-    user_info = db.get_user(user_id) or {}
-    user_name = user_info.get("first_name", "User")
-    account_number = user_info.get("trading_account", "Unknown")
-    
-    # User side: Simple confirmation with HTML styling
-    await query.edit_message_text(
-        "<b>🔄 Connecting you with an advisor...</b>\n\n"
-        "✅ <b>Your request has been sent to our team</b>\n"
-        "✅ <b>An advisor will contact you shortly</b>\n"
-        "✅ <b>Average response time: 5-15 minutes</b>\n\n"
-        "Please keep this chat open to receive their message! 💬",
-        parse_mode='HTML'
-    )
-    
-    # Admin side: DIRECT CONNECTION ONLY (NO TEMPLATE COPYING)
-    admin_message = (
-        f"<b>💬 ADVISOR REQUEST</b>\n\n"
-        f"<b>👤 User:</b> {user_name}\n"
-        f"<b>🆔 User ID:</b> {user_id}\n"
-        f"<b>📊 Account:</b> {account_number}\n"
-        f"<b>🕒 Time:</b> {datetime.now().strftime('%H:%M:%S')}\n\n"
-        f"<b>🎯 User wants to speak with an advisor</b>\n\n"
-        f"Click <b>'Start Conversation'</b> to connect directly with the user."
-    )
-    
-    # SIMPLIFIED admin keyboard - ONLY direct connection
-    admin_keyboard = [
-        [InlineKeyboardButton("💬 Start Conversation Now", callback_data=f"start_conv_{user_id}")],
-        [InlineKeyboardButton("👤 View User Profile", callback_data=f"view_profile_{user_id}")]
-    ]
-    admin_reply_markup = InlineKeyboardMarkup(admin_keyboard)
-    
-    # Send to all admins
-    for admin_id in ADMIN_USER_ID:
-        try:
-            await context.bot.send_message(
-                chat_id=admin_id,
-                text=admin_message,
-                parse_mode='HTML',
-                reply_markup=admin_reply_markup
-            )
-            print(f"Sent DIRECT advisor request to admin {admin_id}")
-        except Exception as e:
-            print(f"Error notifying admin {admin_id}: {e}")
-    
-    # Store advisor request
-    db.add_user({
-        "user_id": user_id,
-        "advisor_requested": True,
-        "advisor_request_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
-
-async def initiate_deposit_process(query, context, amount):
-    """Start the deposit process for specified amount."""
-    user_id = query.from_user.id
-    verified_account = context.user_data.get("verified_account", {})
-    
-    message = (
-        f"💳 **Deposit ${amount:,.2f}**\n\n"
-        f"**To Account:** {verified_account.get('account_number', 'Unknown')}\n"
-        f"**Account Holder:** {verified_account.get('name', 'Unknown')}\n\n"
-        f"**Choose your preferred payment method:**"
-    )
-    
-    # Payment method buttons
-    keyboard = [
-        [
-            InlineKeyboardButton("💳 Credit/Debit Card", callback_data=f"pay_card_{amount}"),
-            InlineKeyboardButton("🏦 Bank Transfer", callback_data=f"pay_bank_{amount}")
-        ],
-        [
-            InlineKeyboardButton("₿ Cryptocurrency", callback_data=f"pay_crypto_{amount}"),
-            InlineKeyboardButton("📱 PayPal", callback_data=f"pay_paypal_{amount}")
-        ],
-        [
-            InlineKeyboardButton("📋 Manual Deposit Instructions", callback_data=f"pay_manual_{amount}"),
-            InlineKeyboardButton("🔙 Back", callback_data="back_to_options")
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
-    
-    # Store deposit attempt
-    db.add_user({
-        "user_id": user_id,
-        "deposit_attempt_amount": amount,
-        "deposit_attempt_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
-    
-    return PAYMENT_METHOD_SELECTION
-
-
-
 # =========================================================================== #
-# ======================= PAYMENT METHODS
+# ======================= Local DB Functions
 # =========================================================================== #
-async def handle_payment_methods(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle payment method selection."""
-    query = update.callback_query
-    await query.answer()
-    
-    callback_data = query.data
-    parts = callback_data.split('_')
-    
-    if len(parts) >= 3:
-        payment_method = parts[1]  # card, bank, crypto, paypal, manual
-        amount = float(parts[2])
-        
-        print(f"Payment method selected: {payment_method}, Amount: ${amount}")
-        
-        if payment_method == "manual":
-            return await handle_manual_deposit(query, context, amount)
-    
-    return PAYMENT_METHOD_SELECTION
-
-async def handle_manual_deposit(query, context, amount):
-    """Handle manual deposit instructions."""
-    user_id = query.from_user.id
-    verified_account = context.user_data.get("verified_account", {})
-    
-    message = (
-        f"📋 **Manual Deposit Instructions**\n\n"
-        f"**Amount:** ${amount:,.2f}\n"
-        f"**To Account:** {verified_account.get('account_number')}\n\n"
-        f"**How to deposit directly to your MT5 account:**\n\n"
-        f"**Option 1: MT5 Platform**\n"
-        f"1. Open your MT5 trading platform\n"
-        f"2. Go to 'Deposit' or 'Fund Account'\n"
-        f"3. Select your preferred payment method\n"
-        f"4. Enter amount: ${amount:,.2f}\n"
-        f"5. Complete the deposit process\n\n"
-        f"**Option 2: Client Portal**\n"
-        f"1. Log into your VortexFX's client portal\n"
-        f"2. Navigate to 'Deposits' section\n"
-        f"3. Choose payment method and amount\n"
-        f"4. Complete the transaction\n\n"
-        f"**⏰ Processing Time:** 5-30 minutes\n"
-        f"**💡 Tip:** Take a screenshot of your deposit confirmation\n\n"
-        f"Once completed, click 'Check Balance' to verify your deposit!"
-    )
-    
-    keyboard = [
-        [InlineKeyboardButton("🔄 Check My Balance Now", callback_data="check_balance_now")],
-        [InlineKeyboardButton("📸 Upload Deposit Proof", callback_data="upload_proof")],
-        [InlineKeyboardButton("❓ Need Help?", callback_data="deposit_help")],
-        [InlineKeyboardButton("🔙 Other Payment Methods", callback_data=f"deposit_exact_{amount}")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
-
-    
-    return DEPOSIT_CONFIRMATION
-
-async def check_balance_now_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """FIXED: Handle check balance button callback."""
-    query = update.callback_query
-    await query.answer()
-    
-    user_id = query.from_user.id
-    
-    # Get user's account info
-    user_info = db.get_user(user_id)
-    if not user_info or not user_info.get("trading_account"):
-        await query.edit_message_text(
-            "<b>⚠️ Account Information Missing</b>\n\n"
-            "No account information found. Please complete verification first.",
-            parse_mode='HTML',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-            ])
-        )
-        return
-    
-    account_number = user_info["trading_account"]
-    
-    # Show loading message
-    await query.edit_message_text(
-        "<b>🔍 Checking Your Balance...</b>\n\n"
-        "Please wait while we verify your current account balance...",
-        parse_mode='HTML'
-    )
-    
-    # Check current balance
-    mysql_db = get_mysql_connection()
-    if not mysql_db.is_connected():
-        await context.bot.send_message(
-            chat_id=user_id,
-            text="<b>⚠️ Connection Issue</b>\n\n"
-                 "Unable to check balance at the moment. Please try again later.",
-            parse_mode='HTML',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-            ])
-        )
-        return
-    
+async def check_existing_registration(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int) -> bool:
+    """
+    Check if user has already completed registration successfully.
+    Returns True if user should be blocked from re-registering.
+    """
     try:
-        current_info = mysql_db.verify_account_exists(account_number)
-        
-        if not current_info['exists']:
-            await context.bot.send_message(
-                chat_id=user_id,
-                text="<b>⚠️ Account Not Found</b>\n\n"
-                     "Please contact support for assistance.",
+        # Check local database first
+        if db.is_user_already_registered(user_id):
+            registration_summary = db.get_user_registration_summary(user_id)
+            
+            # Send user their existing registration status
+            existing_account = registration_summary.get("trading_account", "Unknown")
+            join_date = registration_summary.get("join_date", "Unknown")
+            
+            await update.message.reply_text(
+                f"<b>⚠️ Registration Already Completed</b>\n\n"
+                f"<b>👤 Name:</b> {registration_summary.get('first_name', 'Unknown')}\n"
+                f"<b>📊 Trading Account:</b> {existing_account}\n"
+                f"<b>📅 Registered:</b> {join_date}\n"
+                f"<b>✅ Status:</b> Account verified and active\n\n"
+                f"<b>🎯 You already have access to our services!</b>\n\n"
+                f"If you need assistance, please contact our support team.",
                 parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+                    [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")],
+                    [InlineKeyboardButton("📋 Check My Status", callback_data="check_my_status")]
                 ])
             )
-            return
-        
-        current_balance = float(current_info.get('balance', 0))
-        previous_balance = user_info.get("account_balance", 0)
-        account_name = current_info.get('name', 'Unknown')
-        
-        # Check if balance increased
-        if current_balance > previous_balance:
-            balance_change = current_balance - previous_balance
-            status_emoji = "📈"
-            status_text = f"<b>Increased by ${balance_change:,.2f}!</b> 🎉"
             
-                
-        elif current_balance < previous_balance:
-            balance_change = previous_balance - current_balance  
-            status_emoji = "📉"
-            status_text = f"<b>Decreased by ${balance_change:,.2f}</b>"
-        else:
-            status_emoji = "💰"
-            status_text = "<b>No change since last check</b>"
-        
-        # Update stored balance
-        db.add_user({
-            "user_id": user_id,
-            "account_balance": current_balance,
-            "last_balance_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
-        
-        # Format response
-        balance_message = (
-            f"<b>{status_emoji} Balance Update</b>\n\n"
-            f"<b>📋 Account:</b> {account_number}\n"
-            f"<b>👤 Holder:</b> {account_name}\n"
-            f"<b>💰 Current Balance:</b> ${current_balance:,.2f}\n"
-            f"<b>📊 Status:</b> {status_text}\n"
-            f"<b>🕒 Last Checked:</b> {datetime.now().strftime('%H:%M:%S')}\n\n"
-        )
-        
-        # Add appropriate buttons
-        target_amount = user_info.get("target_deposit_amount", 0) or user_info.get("deposit_amount", 0)
-        if current_balance >= target_amount and target_amount > 0:
-            balance_message += "<b>🎉 You qualify for VIP access!</b>"
-            keyboard = [
-                [InlineKeyboardButton("🎯 Request VIP Access", callback_data="request_vip_services")],
-                [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")]
-            ]
-        elif target_amount > 0:
-            remaining = target_amount - current_balance
-            balance_message += f"<b>💡 ${remaining:,.2f} more needed for VIP access</b>"
-            keyboard = [
-                [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")],
-                [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-            ]
-        else:
-            keyboard = [
-                [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")],
-                [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-            ]
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=balance_message,
-            parse_mode='HTML',
-            reply_markup=reply_markup
-        )
-        
+            # Notify admins of duplicate registration attempt
+            await notify_admins_duplicate_attempt(context, user_id, registration_summary)
+            
+            return True  # Block re-registration
+    
     except Exception as e:
-        print(f"Error in check_balance_now_callback: {e}")
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=f"<b>⚠️ Balance Check Error</b>\n\n"
-                 f"Error checking balance: {str(e)[:100]}",
-            parse_mode='HTML',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-            ])
+        print(f"Error in check_existing_registration: {e}")
+        # On error, allow registration to proceed (fail-open approach)
+        return False
+    
+    return False
+
+async def check_my_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle check my status button."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    registration_summary = db.get_user_registration_summary(user_id)
+    
+    if not registration_summary:
+        await query.edit_message_text(
+            "<b>⚠️ No Registration Found</b>\n\n"
+            "No registration information found in our system.",
+            parse_mode='HTML'
         )
+        return
+    
+    # Format detailed status
+    status_message = (
+        f"<b>📋 Your Registration Status</b>\n\n"
+        f"<b>👤 Name:</b> {registration_summary.get('first_name', 'Unknown')}\n"
+        f"<b>🆔 User ID:</b> {user_id}\n"
+        f"<b>📊 Trading Account:</b> {registration_summary.get('trading_account', 'Not provided')}\n"
+        f"<b>✅ Account Verified:</b> {'Yes' if registration_summary.get('is_verified') else 'No'}\n"
+        f"<b>🎯 VIP Access:</b> {'Granted' if registration_summary.get('vip_access_granted') else 'Pending'}\n"
+        f"<b>📅 Member Since:</b> {registration_summary.get('join_date', 'Unknown')}\n"
+        f"<b>🕒 Last Active:</b> {registration_summary.get('last_active', 'Unknown')}\n\n"
+        f"<b>Overall Status:</b> {registration_summary.get('registration_status', 'Unknown').upper()}"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")],
+        [InlineKeyboardButton("🔄 Refresh Status", callback_data="check_my_status")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        status_message,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
 
 
 # =============================================================================
 # ============== VIP ACCESS HANDLERS
 # =============================================================================
-
-async def handle_vip_access(query, context, service):
-    """Handle VIP service access requests."""
-    user_id = query.from_user.id
-    
-    # Verify user is eligible
-    user_info = db.get_user(user_id)
-    if not user_info or not user_info.get("vip_eligible"):
-        await query.edit_message_text(
-            "⚠️ VIP access not available. Please complete your deposit first.",
-            reply_markup=None
-        )
-        return
-    
-    # Service mapping
-    service_mapping = {
-        "signals": {
-            "name": "VIP Trading Signals",
-            "channel_id": SIGNALS_CHANNEL_ID,
-            #"group_id": SIGNALS_GROUP_ID,
-            "emoji": "🔔"
-        },
-        "strategy": {
-            "name": "VIP Trading Strategy",
-            "channel_id": STRATEGY_CHANNEL_ID,
-            #"group_id": STRATEGY_GROUP_ID,
-            "emoji": "📈"
-        },
-        "propcapital": {
-            "name": "VIP Prop Capital",
-            "channel_id": PROP_CHANNEL_ID,
-            #"group_id": PROP_GROUP_ID,
-            "emoji": "💰"
-        }
-    }
-    
-    if service not in service_mapping:
-        await query.edit_message_text("⚠️ Invalid service requested.")
-        return
-    
-    service_info = service_mapping[service]
-    
-    try:
-        # Create invite links
-        channel_invite = await context.bot.create_chat_invite_link(
-            chat_id=service_info["channel_id"],
-            member_limit=1,
-            name=f"{service_info['name']} invite for user {user_id}"
-        )
-        
-        # group_invite = await context.bot.create_chat_invite_link(
-        #     chat_id=service_info["group_id"],
-        #     member_limit=1,
-        #     name=f"{service_info['name']} group invite for user {user_id}"
-        # )
-        
-        # Success message
-        access_message = (
-            f"✅ **{service_info['name']} Access Granted!** {service_info['emoji']}\n\n"
-            f"**Channel:** {channel_invite.invite_link}\n"
-            #f"**Discussion Group:** {group_invite.invite_link}\n\n"
-            f"**Important Instructions:**\n"
-            f"• Click both links to join\n"
-            f"• Links expire after one use\n"
-            f"• Enable notifications for updates\n"
-            f"• Read pinned messages for guidelines\n\n"
-            f"Welcome to {service_info['name']}! 🚀"
-        )
-        
-        await query.edit_message_text(access_message, parse_mode='Markdown')
-        
-        # Update database
-        current_vip = user_info.get('vip_channels', '') or ''
-        new_vip = f"{current_vip},{service}".strip(',')
-        
-        db.add_user({
-            "user_id": user_id,
-            "vip_channels": new_vip,
-            f"vip_{service}_added": True,
-            f"vip_{service}_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
-        
-        # Notify admins
-        await notify_admins_vip_access(context, user_id, service_info["name"])
-        
-    except Exception as e:
-        await query.edit_message_text(
-            f"⚠️ Error creating access links for {service_info['name']}: {e}"
-        )
-
-async def handle_deposit_later(query, context):
-    """Handle when user chooses to deposit later."""
-    user_id = query.from_user.id
-    
-    message = (
-        f"⏰ **No Problem!**\n\n"
-        f"We understand you'd like to deposit later. Here's what happens next:\n\n"
-        f"✅ Your account is verified and ready\n"
-        f"✅ We'll monitor your balance automatically\n"
-        f"✅ You'll get VIP access immediately upon deposit\n"
-        f"✅ Our team will follow up with you\n\n"
-        f"**In the meantime:**\n"
-        f"• 📚 Access our free educational content\n"
-        f"• 📊 Join our community discussions\n"
-        f"• 📧 Receive market updates and tips\n\n"
-        f"When you're ready to deposit, just let us know!"
-    )
-    
-    keyboard = [
-        [InlineKeyboardButton("📚 Free Educational Content", callback_data="free_resources")],
-        [InlineKeyboardButton("💬 Join Community", callback_data="join_community")],
-        [InlineKeyboardButton("🔔 Set Deposit Reminder", callback_data="set_reminder")],
-        [InlineKeyboardButton("👨‍💼 Speak to Advisor", callback_data="speak_advisor")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
-    
-    # Mark user for follow-up
-    db.add_user({
-        "user_id": user_id,
-        "deposit_status": "deferred",
-        "followup_required": True,
-        "followup_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
-    
-    # Schedule follow-up messages
-    schedule_followup_messages(context, user_id)
-    
-    return ConversationHandler.END
-
-async def handle_request_access_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle VIP access request callbacks."""
-    query = update.callback_query
-    await query.answer()
-    
-    callback_data = query.data
-    user_id = query.from_user.id
-    
-    if callback_data == "request_vip_signals":
-        await send_vip_request_to_admin(query, context, "VIP Signals", "signals")
-    elif callback_data == "request_vip_strategy":
-        await send_vip_request_to_admin(query, context, "VIP Strategy", "strategy")
-    elif callback_data == "request_both_services":
-        await send_vip_request_to_admin(query, context, "Both VIP Services", "all")
-
-async def send_vip_request_to_admin(query, context, service_name, service_type):
-    """Send VIP access request to admins."""
-    user_id = query.from_user.id
-    user_info = db.get_user(user_id) or {}
-    user_name = user_info.get("first_name", "User")
-    account_number = user_info.get("trading_account", "Unknown")
-    account_balance = user_info.get("account_balance", 0)
-    
-    # User confirmation
-    await query.edit_message_text(
-        f"<b>✅ Request Submitted!</b>\n\n"
-        f"<b>📋 Service Requested:</b> {service_name}\n"
-        f"<b>📊 Account:</b> {account_number}\n"
-        f"<b>💰 Balance:</b> ${account_balance:,.2f}\n\n"
-        f"<b>🕒 Processing Time:</b> 5-15 minutes\n"
-        f"<b>📧 You'll receive access links via this chat</b>\n\n"
-        f"Thank you for choosing VFX Trading! 🚀",
-        parse_mode='HTML'
-    )
-    
-    # Admin notification with action buttons
-    admin_message = (
-        f"<b>🎯 VIP ACCESS REQUEST</b>\n\n"
-        f"<b>👤 User:</b> {user_name} (ID: {user_id})\n"
-        f"<b>📊 Account:</b> {account_number}\n"
-        f"<b>💰 Balance:</b> ${account_balance:,.2f}\n"
-        f"<b>🎯 Requested:</b> {service_name}\n"
-        f"<b>🕒 Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        f"<b>✅ User has sufficient funds and verified account</b>"
-    )
-    
-    # Create appropriate buttons based on service type
-    if service_type == "signals":
-        keyboard = [
-            [InlineKeyboardButton("✅ Grant VIP Signals Access", callback_data=f"grant_vip_signals_{user_id}")],
-            [InlineKeyboardButton("💬 Contact User First", callback_data=f"start_conv_{user_id}")],
-            [InlineKeyboardButton("👤 View Full Profile", callback_data=f"view_profile_{user_id}")]
-        ]
-    elif service_type == "strategy":
-        keyboard = [
-            [InlineKeyboardButton("✅ Grant VIP Strategy Access", callback_data=f"grant_vip_strategy_{user_id}")],
-            [InlineKeyboardButton("💬 Contact User First", callback_data=f"start_conv_{user_id}")],
-            [InlineKeyboardButton("👤 View Full Profile", callback_data=f"view_profile_{user_id}")]
-        ]
-    elif service_type == "all":
-        keyboard = [
-            [InlineKeyboardButton("✅ Grant Both VIP Services", callback_data=f"grant_vip_all_{user_id}")],
-            [InlineKeyboardButton("💬 Contact User First", callback_data=f"start_conv_{user_id}")],
-            [InlineKeyboardButton("👤 View Full Profile", callback_data=f"view_profile_{user_id}")]
-        ]
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    # Send to all admins
-    for admin_id in ADMIN_USER_ID:
-        try:
-            await context.bot.send_message(
-                chat_id=admin_id,
-                text=admin_message,
-                parse_mode='HTML',
-                reply_markup=reply_markup
-            )
-        except Exception as e:
-            print(f"Error sending VIP request to admin {admin_id}: {e}")
-    
-    # Store request in database
-    db.add_user({
-        "user_id": user_id,
-        "vip_request_type": service_type,
-        "vip_request_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "vip_request_status": "pending"
-    })
 
 async def handle_grant_vip_access_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle admin granting VIP access."""
@@ -7359,7 +6972,8 @@ async def grant_vip_access_to_user(query, context, user_id, service_type):
                         member_limit=1,
                         name=f"{service_name} invite for {user_name}"
                     )
-                    invite_links.append(f"{emoji} **{service_name}:** {invite_link.invite_link}")
+                    # Create clickable link
+                    invite_links.append(f"<a href='{invite_link.invite_link}'>{emoji} {service_name}</a>")
                     service_names.append(service_name)
                 except Exception as e:
                     print(f"Error creating invite for {service_name}: {e}")
@@ -7372,7 +6986,8 @@ async def grant_vip_access_to_user(query, context, user_id, service_type):
                     member_limit=1,
                     name=f"{service_config['name']} invite for {user_name}"
                 )
-                invite_links.append(f"{service_config['emoji']} **{service_config['name']}:** {invite_link.invite_link}")
+                # Create clickable link
+                invite_links.append(f"<a href='{invite_link.invite_link}'>{service_config['emoji']} {service_config['name']}</a>")
                 service_names.append(service_config['name'])
             except Exception as e:
                 print(f"Error creating invite for {service_config['name']}: {e}")
@@ -7385,8 +7000,9 @@ async def grant_vip_access_to_user(query, context, user_id, service_type):
                 f"<b>📋 Your exclusive invite links:</b>\n\n"
             )
             
+            # Add clickable links
             for link in invite_links:
-                user_message += f"{link}\n"
+                user_message += f"• {link}\n"
             
             user_message += (
                 f"\n<b>📝 Important Instructions:</b>\n"
@@ -7400,7 +7016,7 @@ async def grant_vip_access_to_user(query, context, user_id, service_type):
             await context.bot.send_message(
                 chat_id=user_id,
                 text=user_message,
-                parse_mode='HTML'
+                parse_mode='HTML'  # Make sure this is set to HTML
             )
             
             # Update admin with success
@@ -7438,70 +7054,70 @@ async def grant_vip_access_to_user(query, context, user_id, service_type):
             parse_mode='HTML'
         )
 
-async def restart_process_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """ENHANCED: Handle restart process button - always available."""
-    query = update.callback_query
-    await query.answer()
+# async def restart_process_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+#     """ENHANCED: Handle restart process button - always available."""
+#     query = update.callback_query
+#     await query.answer()
     
-    user_id = update.effective_user.id
+#     user_id = update.effective_user.id
     
-    # Clear ALL conversation states
-    if "user_states" in context.bot_data and user_id in context.bot_data["user_states"]:
-        del context.bot_data["user_states"][user_id]
+#     # Clear ALL conversation states
+#     if "user_states" in context.bot_data and user_id in context.bot_data["user_states"]:
+#         del context.bot_data["user_states"][user_id]
     
-    # Clear user_data if exists
-    if hasattr(context, 'user_data'):
-        context.user_data.clear()
+#     # Clear user_data if exists
+#     if hasattr(context, 'user_data'):
+#         context.user_data.clear()
     
-    # Reset database state (but keep basic user info)
-    try:
-        user_info = db.get_user(user_id)
-        if user_info:
-            # Keep basic info but reset process-specific fields
-            db.add_user({
-                "user_id": user_id,
-                "risk_appetite": None,
-                "deposit_amount": None,
-                "trading_account": None,
-                "is_verified": False,
-                "funding_status": "restarted",
-                "vip_request_status": "cancelled",
-                "restart_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
-    except Exception as e:
-        print(f"Error resetting user data: {e}")
+#     # Reset database state (but keep basic user info)
+#     try:
+#         user_info = db.get_user(user_id)
+#         if user_info:
+#             # Keep basic info but reset process-specific fields
+#             db.add_user({
+#                 "user_id": user_id,
+#                 "risk_appetite": None,
+#                 "deposit_amount": None,
+#                 "trading_account": None,
+#                 "is_verified": False,
+#                 "funding_status": "restarted",
+#                 "vip_request_status": "cancelled",
+#                 "restart_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#             })
+#     except Exception as e:
+#         print(f"Error resetting user data: {e}")
     
-    # Start over with guided setup
-    keyboard = [
-        [
-            InlineKeyboardButton("Low Risk", callback_data="risk_low"),
-            InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
-            InlineKeyboardButton("High Risk", callback_data="risk_high")
-        ],
-        [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+#     # Start over with guided setup
+#     keyboard = [
+#         [
+#             InlineKeyboardButton("Low Risk", callback_data="risk_low"),
+#             InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
+#             InlineKeyboardButton("High Risk", callback_data="risk_high")
+#         ],
+#         [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+#     ]
+#     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await query.edit_message_text(
-        "<b>🔄 Process Restarted!</b>\n\n"
-        "Let's start fresh! What risk profile would you like on your account?",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
+#     await query.edit_message_text(
+#         "<b>🔄 Process Restarted!</b>\n\n"
+#         "Let's start fresh! What risk profile would you like on your account?",
+#         parse_mode='HTML',
+#         reply_markup=reply_markup
+#     )
     
-    # Set state to risk_profile  
-    context.bot_data.setdefault("user_states", {})
-    context.bot_data["user_states"][user_id] = "risk_profile"
+#     # Set state to risk_profile  
+#     context.bot_data.setdefault("user_states", {})
+#     context.bot_data["user_states"][user_id] = "risk_profile"
     
-    # Notify admin of restart
-    for admin_id in ADMIN_USER_ID:
-        try:
-            await context.bot.send_message(
-                chat_id=admin_id,
-                text=f"🔄 User {user_id} has restarted the registration process"
-            )
-        except Exception as e:
-            print(f"Error notifying admin {admin_id}: {e}")
+#     # Notify admin of restart
+#     for admin_id in ADMIN_USER_ID:
+#         try:
+#             await context.bot.send_message(
+#                 chat_id=admin_id,
+#                 text=f"🔄 User {user_id} has restarted the registration process"
+#             )
+#         except Exception as e:
+#             print(f"Error notifying admin {admin_id}: {e}")
 
 # =============================================================================
 # =============  NOTIFICATION FUNCTIONS
@@ -7511,13 +7127,13 @@ async def notify_admins_success(context, user_id, account_info, stated_amount, r
     """Notify admins of successful verification with sufficient funds."""
     
     admin_message = (
-        f"🎉 **USER VERIFIED WITH SUFFICIENT FUNDS** 🎉\n\n"
-        f"**User ID:** {user_id}\n"
-        f"**Account:** {account_info['account_number']}\n"
-        f"**Account Holder:** {account_info['name']}\n"
-        f"**Stated Amount:** ${stated_amount:,.2f}\n"
-        f"**Actual Balance:** ${real_balance:,.2f}\n"
-        f"**Status:** ✅ VIP Access Granted\n\n"
+        f"<b>🎉 USER VERIFIED WITH SUFFICIENT FUNDS 🎉</b>\n\n"
+        f"<b>User ID:</b> {user_id}\n"
+        f"<b>Account:</b> {account_info['account_number']}\n"
+        f"<b>Account Holder:</b> {account_info['name']}\n"
+        f"<b>Stated Amount:</b> ${stated_amount:,.2f}\n"
+        f"<b>Actual Balance:</b> ${real_balance:,.2f}\n"
+        f"<b>Status:</b> ✅ VIP Access Granted\n\n"
         f"User has been automatically granted VIP access to all services."
     )
     
@@ -7527,57 +7143,7 @@ async def notify_admins_success(context, user_id, account_info, stated_amount, r
             await context.bot.send_message(
                 chat_id=admin_id,
                 text=admin_message,
-                parse_mode='Markdown'
-            )
-        except Exception as e:
-            print(f"Error notifying admin {admin_id}: {e}")
-
-async def notify_admins_deposit_success(context, user_id, new_balance, expected_amount):
-    """Notify admins when a deposit is detected."""
-    
-    admin_message = (
-        f"💰 **DEPOSIT DETECTED!** 💰\n\n"
-        f"**User ID:** {user_id}\n"
-        f"**New Balance:** ${new_balance:,.2f}\n"
-        f"**Expected:** ${expected_amount:,.2f}\n"
-        f"**Status:** ✅ Deposit Confirmed\n\n"
-        f"User has been automatically upgraded to VIP access!"
-    )
-    
-    keyboard = [
-        [InlineKeyboardButton("👤 View User Profile", callback_data=f"view_profile_{user_id}")],
-        [InlineKeyboardButton("💬 Contact User", callback_data=f"start_conv_{user_id}")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    for admin_id in ADMIN_USER_ID:
-        try:
-            await context.bot.send_message(
-                chat_id=admin_id,
-                text=admin_message,
-                parse_mode='Markdown',
-                reply_markup=reply_markup
-            )
-        except Exception as e:
-            print(f"Error notifying admin {admin_id}: {e}")
-
-async def notify_admins_vip_access(context, user_id, service_name):
-    """Notify admins when user accesses VIP service."""
-    
-    admin_message = (
-        f"🚀 **VIP ACCESS GRANTED**\n\n"
-        f"**User ID:** {user_id}\n"
-        f"**Service:** {service_name}\n"
-        f"**Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        f"User has been added to {service_name}."
-    )
-    
-    for admin_id in ADMIN_USER_ID:
-        try:
-            await context.bot.send_message(
-                chat_id=admin_id,
-                text=admin_message,
-                parse_mode='Markdown'
+                parse_mode='HTML'
             )
         except Exception as e:
             print(f"Error notifying admin {admin_id}: {e}")
@@ -7616,74 +7182,6 @@ async def send_followup_message(context, user_id, message):
     except Exception as e:
         print(f"Error sending follow-up message to user {user_id}: {e}")
 
-async def notify_admins_success_auto_welcome(context, user_id, account_info, stated_amount, real_balance):
-    """Notify admins of successful verification with sufficient funds (auto welcome flow)."""
-    
-    admin_message = (
-        f"🎉 **USER VERIFIED WITH SUFFICIENT FUNDS** 🎉\n"
-        f"**(Auto Welcome Flow)**\n\n"
-        f"**User ID:** {user_id}\n"
-        f"**Account:** {account_info['account_number']}\n"
-        f"**Account Holder:** {account_info['name']}\n"
-        f"**Stated Amount:** ${stated_amount:,.2f}\n"
-        f"**Actual Balance:** ${real_balance:,.2f}\n"
-        f"**Status:** ✅ VIP Access Granted\n\n"
-        f"User has been automatically granted VIP access to all services."
-    )
-    
-    # Send to all admins
-    for admin_id in ADMIN_USER_ID:
-        try:
-            await context.bot.send_message(
-                chat_id=admin_id,
-                text=admin_message,
-                parse_mode='Markdown'
-            )
-        except Exception as e:
-            print(f"Error notifying admin {admin_id}: {e}")
-
-async def show_verification_result(query, context):
-    """Show the original verification result."""
-    user_id = query.from_user.id
-    user_info = db.get_user(user_id) or {}
-    
-    account_number = user_info.get("trading_account", "Unknown")
-    account_name = user_info.get("account_owner", "Unknown")
-    real_balance = user_info.get("account_balance", 0)
-    stated_amount = user_info.get("deposit_amount", 1000)
-    
-    if real_balance >= stated_amount:
-        # Sufficient funds message
-        message = (
-            f"✅ **Account Verified Successfully!** ✅\n\n"
-            f"**Account:** {account_number}\n"
-            f"**Account Holder:** {account_name}\n"
-            f"**Current Balance:** ${real_balance:,.2f} 💰\n\n"
-            f"🎉 You have sufficient funds for VIP access!"
-        )
-        keyboard = [
-            [InlineKeyboardButton("🔔 Access VIP Signals", callback_data="access_vip_signals")],
-            [InlineKeyboardButton("📈 Access VIP Strategy", callback_data="access_vip_strategy")],
-            [InlineKeyboardButton("💰 Access Prop Capital", callback_data="access_vip_propcapital")]
-        ]
-    else:
-        # Insufficient funds message
-        message = (
-            f"✅ **Account Successfully Verified!**\n\n"
-            f"**Account:** {account_number}\n"
-            f"**Account Holder:** {account_name}\n"
-            f"**Current Balance:** ${real_balance:,.2f}\n\n"
-            f"**How would you like to proceed?**"
-        )
-        keyboard = [
-            [InlineKeyboardButton("💳 Deposit Now", callback_data="choose_deposit_amount")],
-            [InlineKeyboardButton("📚 Free Resources", callback_data="free_resources")],
-            [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
-        ]
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(message, parse_mode='Markdown', reply_markup=reply_markup)
-
 async def notify_admins_sufficient_funds(context, user_id, account_info, stated_amount, real_balance):
     """Notify admins when user has sufficient funds."""
     admin_message = (
@@ -7714,6 +7212,28 @@ async def notify_admins_sufficient_funds(context, user_id, account_info, stated_
             )
         except Exception as e:
             print(f"Error notifying admin {admin_id}: {e}")
+
+async def notify_admins_duplicate_attempt(context, user_id, registration_summary):
+    """Notify admins when user attempts duplicate registration."""
+    admin_message = (
+        f"<b>🔒 DUPLICATE REGISTRATION ATTEMPT</b>\n\n"
+        f"<b>👤 User:</b> {registration_summary.get('first_name', 'Unknown')} (ID: {user_id})\n"
+        f"<b>📊 Existing Account:</b> {registration_summary.get('trading_account', 'Unknown')}\n"
+        f"<b>📅 Original Registration:</b> {registration_summary.get('join_date', 'Unknown')}\n"
+        f"<b>🕒 Attempt Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        f"<b>🚫 Registration blocked - user already verified</b>"
+    )
+    
+    for admin_id in ADMIN_USER_ID:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=admin_message,
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            print(f"Error notifying admin {admin_id}: {e}")
+
 
 # ********************************************************** #
 
@@ -7815,6 +7335,12 @@ def main() -> None:
         handle_grant_vip_access_callbacks, 
         pattern=r"^grant_vip_(signals|strategy|all)_\d+$"
     ))
+    
+    # Check status for user's registration process
+    application.add_handler(CallbackQueryHandler(
+        check_my_status_callback,
+        pattern=r"^check_my_status$"
+    ))
 
     # ========================================================================
     # INTEGRATED USER REGISTRATION FLOW (Single handler for all user interactions)
@@ -7865,6 +7391,8 @@ def main() -> None:
     application.add_handler(CommandHandler("testaccount", test_account_command))
     application.add_handler(CommandHandler("signalstatus", signal_status_command))
     application.add_handler(CommandHandler("debugdb", debug_db_command))
+    application.add_handler(CommandHandler("resetuser", reset_user_registration_command))
+
     
     application.add_handler(CommandHandler("testmysql", test_mysql_command))
     application.add_handler(CommandHandler("searchaccount", search_account_command))
