@@ -7415,7 +7415,7 @@ def main() -> None:
     application.add_handler(CommandHandler("diagnoseaccess", diagnose_account_access_command))
     application.add_handler(CommandHandler("testsafe", test_safe_login_query_command))  
     application.add_handler(CommandHandler("decodetimestamp", decode_mt5_timestamp_command))
-    application.add_handler(CommandHandler("recentaccounts", recent_accounts_final_command))  # Replace the old one
+    application.add_handler(CommandHandler("recentaccounts", recent_accounts_final_command)) 
     application.add_handler(CommandHandler("currenttable", compare_current_table_command))
     application.add_handler(CommandHandler("showtables", show_all_tables_command))
     application.add_handler(CommandHandler("searchusertables", search_user_tables_command))

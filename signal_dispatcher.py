@@ -2,7 +2,9 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
+import time
 from dotenv import load_dotenv
+import pytz
 from mt5_signal_generator import MT5SignalGenerator
 
 from news_fetcher import FinancialNewsFetcher  
@@ -29,13 +31,19 @@ class SignalDispatcher:
             password = os.getenv("MT5_PASSWORD"),
             server = os.getenv("MT5_SERVER")
         )
-        # Initialize the signal executor
-        # self.signal_executor = MT5SignalExecutor(
-        #     username = os.getenv("MT5_USERNAME"),
-        #     password = os.getenv("MT5_PASSWORD"),
-        #     server = os.getenv("MT5_SERVER"),
-        #     risk_percent = 0.7  # risk % per trade
-        # )
+        
+        # Market hours configuration
+        self.market_hours_config = {
+            'enabled': True,  # Set to False to disable market hours filtering
+            'timezone': 'US/Eastern',  # Main timezone for market hours
+            'start_time': time(8, 30),  # 8:30 AM
+            'end_time': time(16, 30),   # 4:30 PM
+            'trading_days': [0, 1, 2, 3, 4],  # Monday to Friday (0=Monday, 6=Sunday)
+            'holiday_check': False,  # Set to True if you want to add holiday checking later
+        }
+        
+        # Initialize timezone
+        self.market_timezone = pytz.timezone(self.market_hours_config['timezone'])
         
         self.signal_executor = MultiAccountExecutor()
         
@@ -77,6 +85,108 @@ class SignalDispatcher:
         self.follow_up_generator = SignalFollowUpGenerator(signal_tracker=self.signal_tracker)
 
     
+    def is_market_hours(self):
+        """
+        Check if current time is within configured market hours.
+        
+        Returns:
+            tuple: (is_active, reason) - boolean indicating if market is active and reason if not
+        """
+        if not self.market_hours_config['enabled']:
+            return True, "Market hours filtering disabled"
+        
+        # Get current time in market timezone
+        now_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
+        now_market = now_utc.astimezone(self.market_timezone)
+        
+        # Check if it's a trading day
+        current_weekday = now_market.weekday()
+        if current_weekday not in self.market_hours_config['trading_days']:
+            weekend_day = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][current_weekday]
+            return False, f"Non-trading day: {weekend_day}"
+        
+        # Check if it's within trading hours
+        current_time = now_market.time()
+        start_time = self.market_hours_config['start_time']
+        end_time = self.market_hours_config['end_time']
+        
+        if current_time < start_time:
+            return False, f"Before market open: {current_time.strftime('%H:%M')} < {start_time.strftime('%H:%M')} {self.market_hours_config['timezone']}"
+        
+        if current_time > end_time:
+            return False, f"After market close: {current_time.strftime('%H:%M')} > {end_time.strftime('%H:%M')} {self.market_hours_config['timezone']}"
+        
+        return True, f"Active trading hours: {current_time.strftime('%H:%M')} {self.market_hours_config['timezone']}"
+    
+    def get_market_status(self):
+        """
+        Get detailed market status information.
+        
+        Returns:
+            dict: Market status information
+        """
+        is_active, reason = self.is_market_hours()
+        
+        # Get current time in market timezone
+        now_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
+        now_market = now_utc.astimezone(self.market_timezone)
+        
+        # Calculate time until next market open/close
+        current_time = now_market.time()
+        start_time = self.market_hours_config['start_time']
+        end_time = self.market_hours_config['end_time']
+        
+        if is_active:
+            # Market is open, calculate time until close
+            market_close_today = now_market.replace(
+                hour=end_time.hour, 
+                minute=end_time.minute, 
+                second=0, 
+                microsecond=0
+            )
+            time_until_close = market_close_today - now_market
+            next_action = "Market closes"
+            next_time = time_until_close
+        else:
+            # Market is closed, calculate time until next open
+            if current_time > end_time or now_market.weekday() not in self.market_hours_config['trading_days']:
+                # Find next trading day
+                days_ahead = 1
+                next_open_date = now_market + timedelta(days=days_ahead)
+                
+                while next_open_date.weekday() not in self.market_hours_config['trading_days']:
+                    days_ahead += 1
+                    next_open_date = now_market + timedelta(days=days_ahead)
+                
+                market_open_next = next_open_date.replace(
+                    hour=start_time.hour,
+                    minute=start_time.minute,
+                    second=0,
+                    microsecond=0
+                )
+            else:
+                # Market opens later today
+                market_open_next = now_market.replace(
+                    hour=start_time.hour,
+                    minute=start_time.minute,
+                    second=0,
+                    microsecond=0
+                )
+            
+            time_until_open = market_open_next - now_market
+            next_action = "Market opens"
+            next_time = time_until_open
+        
+        return {
+            'is_active': is_active,
+            'reason': reason,
+            'current_time': now_market.strftime('%Y-%m-%d %H:%M:%S %Z'),
+            'next_action': next_action,
+            'next_time': str(next_time).split('.')[0],  # Remove microseconds
+            'timezone': self.market_hours_config['timezone'],
+            'trading_hours': f"{start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
+        }
+    
     async def handle_signal_updates(self, signals_to_update):
         """Handle updates for signals that have crossed important thresholds"""
         try:
@@ -112,7 +222,7 @@ class SignalDispatcher:
                     
                     # Add a small delay between messages to prevent flooding
                     if len(signals_to_update) > 1:
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(3)
                     
                 except Exception as e:
                     self.logger.error(f"Error handling signal update: {e}")
@@ -148,6 +258,13 @@ class SignalDispatcher:
     async def check_and_send_signal(self):
         """Check if it's time to send a signal and do so if appropriate"""
         now = datetime.now()
+        
+        is_active, market_reason = self.is_market_hours()
+        if not is_active:
+            # Log once per hour to avoid spam, but only during what would be trading hours
+            if now.minute == 0:  # Log only at the top of each hour
+                self.logger.info(f"Signal generation paused: {market_reason}")
+            return
         
         # Reset daily counter if needed
         if now.date() != self.last_daily_reset:
@@ -293,6 +410,33 @@ class SignalDispatcher:
         if updated_count > 0:
             self.logger.info(f"Processed updates for {updated_count} signals")
 
+    def update_market_hours(self, **kwargs):
+        """
+        Update market hours configuration.
+        
+        Args:
+            **kwargs: Configuration parameters to update
+                - enabled: bool
+                - timezone: str
+                - start_time: time object or string (HH:MM)
+                - end_time: time object or string (HH:MM)  
+                - trading_days: list of weekday integers
+        """
+        for key, value in kwargs.items():
+            if key in self.market_hours_config:
+                if key in ['start_time', 'end_time'] and isinstance(value, str):
+                    # Convert string time to time object
+                    hour, minute = map(int, value.split(':'))
+                    value = time(hour, minute)
+                
+                self.market_hours_config[key] = value
+                self.logger.info(f"Updated market hours config: {key} = {value}")
+        
+        # Update timezone object if timezone changed
+        if 'timezone' in kwargs:
+            self.market_timezone = pytz.timezone(self.market_hours_config['timezone'])
+
+    
     def extract_signal_info(self, signal_message):
         """Extract structured signal information from a formatted signal message string"""
         try:
