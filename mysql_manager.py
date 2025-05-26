@@ -171,7 +171,7 @@ class MySQLManager:
             return []
     
     def verify_account_exists(self, account_number):
-        """Safe version of verify_account_exists that avoids problematic datetime columns."""
+        """Enhanced version that verifies account exists AND is a real/live account (not demo)."""
         try:
             account_int = int(account_number)
             
@@ -199,6 +199,11 @@ class MySQLManager:
             
             if results and len(results) > 0:
                 account_info = results[0]
+                account_group = account_info['account_group'] or ''
+                
+                # CHECK IF ACCOUNT IS REAL/LIVE (not demo)
+                is_real_account = self._is_real_account(account_group)
+                
                 return {
                     'exists': True,
                     'account_number': str(account_info['account_number']),
@@ -207,12 +212,14 @@ class MySQLManager:
                     'last_name': account_info['LastName'] or '',
                     'email': account_info['Email'] or '',
                     'balance': float(account_info['balance']),
-                    'group': account_info['account_group'] or '',
+                    'group': account_group,
                     'status': account_info['Status'] or '',
                     'country': account_info['Country'] or '',
                     'company': account_info['Company'] or '',
                     'leverage': account_info['leverage'],
-                    'creation_date': account_info['creation_date']
+                    'creation_date': account_info['creation_date'],
+                    'is_real_account': is_real_account,  # NEW FIELD
+                    'account_type': 'Real' if is_real_account else 'Demo'  # NEW FIELD
                 }
             else:
                 return {'exists': False}
@@ -221,7 +228,27 @@ class MySQLManager:
             return {'exists': False, 'error': 'Invalid account number format'}
         except Exception as e:
             self.logger.error(f"Error verifying account {account_number}: {e}")
-            return {'exists': False, 'error': str(e)}
+        return {'exists': False, 'error': str(e)}
+    
+    def _is_real_account(self, account_group):
+        """Helper method to determine if account is real/live based on the group name."""
+        if not account_group:
+            return False
+        
+        account_group_lower = account_group.lower()
+        
+        # Check for demo indicators
+        demo_indicators = ['demo', 'practice', 'test']
+        if any(indicator in account_group_lower for indicator in demo_indicators):
+            return False
+        
+        # Check for real indicators
+        real_indicators = ['real', 'live', 'retail', 'vortex-retail']
+        if any(indicator in account_group_lower for indicator in real_indicators):
+            return True
+        
+        # If no clear indicators, assume demo for safety
+        return False
     
     def get_account_stats(self):
         """Get overall account statistics."""

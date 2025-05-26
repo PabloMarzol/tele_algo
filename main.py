@@ -5817,12 +5817,19 @@ async def process_account_number_text(update, context, user_id, message_text):
         
         try:
             account_info = mysql_db.verify_account_exists(account_number)
-            
+
             if not account_info['exists']:
+                # Account not found message...
+                return
+            elif not account_info.get('is_real_account', False):
+                # NEW: Handle demo account
                 await update.message.reply_text(
-                    f"<b>❌ Account Not Found</b>\n\n"
-                    f"Account <b>{account_number}</b> not found in our system.\n\n"
-                    f"Please check the account number or contact support.",
+                    f"<b>⚠️ Demo Account Detected</b>\n\n"
+                    f"<b>Account:</b> {account_number}\n"
+                    f"<b>Type:</b> {account_info.get('account_type', 'Demo')}\n"
+                    f"<b>Group:</b> {account_info.get('group', 'Unknown')}\n\n"
+                    f"<b>🚫 Demo accounts are not eligible for VIP services</b>\n\n"
+                    f"<b>💡 Please provide a real/live trading account number</b>\n",
                     parse_mode='HTML',
                     reply_markup=InlineKeyboardMarkup([
                         [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
@@ -6443,11 +6450,17 @@ async def enhanced_trading_account(update: Update, context: ContextTypes.DEFAULT
     try:
         account_int = int(account_number)
         account_info = mysql_db.verify_account_exists(account_number)
-        
+
         if not account_info['exists']:
+            # Account not found...
+            return TRADING_ACCOUNT
+        elif not account_info.get('is_real_account', False):
+            # NEW: Handle demo account
             await update.message.reply_text(
-                f"❌ Account {account_number} not found in our system.\n\n"
-                f"Please check the account number or contact support if you believe this is an error."
+                "❌ Demo accounts are not eligible for VIP services.\n\n"
+                f"Account Type: {account_info.get('account_type', 'Demo')}\n"
+                f"Group: {account_info.get('group', 'Unknown')}\n\n" 
+                "Please provide a real/live Vortex-FX trading account number."
             )
             return TRADING_ACCOUNT
         
