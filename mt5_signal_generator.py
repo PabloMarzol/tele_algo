@@ -141,7 +141,7 @@ class MT5SignalGenerator:
             self.logger.error(f"❌ MT5 connection error: {e}")
             return False
     
-    def get_price_data(self, symbol, timeframe, bars=100):
+    def get_price_data(self, symbol, timeframe, bars=300):
         """Fetch historical price data from MT5 and convert to Polars DataFrame"""
         if not self.connected:
             if not self.initialize_mt5():
@@ -316,32 +316,58 @@ class MT5SignalGenerator:
             
         return None
     
-    def calculate_hawkes_volatility(self, symbol, timeframe, atr_lookback=24, kappa=0.1, quantile_lookback=72):
-        """Calculate Hawkes volatility breakout signal"""
-        # Get more bars for the Hawkes strategy since it needs longer lookback
-        df = self.get_price_data(symbol, timeframe, bars=max(atr_lookback, quantile_lookback) * 2)
-        if df is None or df.height < max(atr_lookback, quantile_lookback):
-            return None
-        
-        # Calculate Hawkes signal
-        signal, hawkes_values, q05, q95 = calculate_hawkes_signal(
-            df, atr_lookback, kappa, quantile_lookback
-        )
-        
-        if signal == 0 or hawkes_values is None:
-            return None
+    def calculate_hawkes_volatility(self, symbol, timeframe, atr_lookback=297, kappa=0.552, quantile_lookback=27):
+        """Enhanced Hawkes volatility breakout signal with detailed logging"""
+        try:
+            self.logger.info(f"Starting Hawkes calculation for {symbol}")
             
-        # Include Hawkes-specific values in additional_data
-        additional_data = {
-            "hawkes_vol": float(hawkes_values[-1]) if hawkes_values is not None else None,
-            "q05": float(q05) if q05 is not None else None,
-            "q95": float(q95) if q95 is not None else None
-        }
-        
-        if signal == 1:  # Buy signal
-            return self.format_signal(symbol, "BUY", df, "VOL_HAWKES", additional_data)
-        else:  # Sell signal
-            return self.format_signal(symbol, "SELL", df, "VOL_HAWKES", additional_data)
+            # Get more bars for the Hawkes strategy since it needs longer lookbook
+            required_bars = max(atr_lookback, quantile_lookback) * 2
+            self.logger.info(f"Requesting {required_bars} bars for {symbol}")
+            
+            df = self.get_price_data(symbol, timeframe, bars=required_bars)
+            if df is None:
+                self.logger.warning(f"Failed to get price data for {symbol}")
+                return None
+                
+            if df.height < max(atr_lookback, quantile_lookback):
+                self.logger.warning(f"Insufficient data for {symbol}: got {df.height}, need {max(atr_lookback, quantile_lookback)}")
+                return None
+            
+            self.logger.info(f"Got {df.height} bars for {symbol}, proceeding with Hawkes calculation")
+            
+            # Calculate Hawkes signal
+            signal, hawkes_values, q05, q95 = calculate_hawkes_signal(
+                df, atr_lookback, kappa, quantile_lookback
+            )
+            
+            self.logger.info(f"Hawkes calculation complete for {symbol}: signal={signal}, hawkes_values={hawkes_values is not None}, q05={q05}, q95={q95}")
+            
+            if signal == 0 or hawkes_values is None:
+                self.logger.info(f"No Hawkes signal generated for {symbol}")
+                return None
+                
+            # Include Hawkes-specific values in additional_data
+            additional_data = {
+                "hawkes_vol": float(hawkes_values[-1]) if hawkes_values is not None else None,
+                "q05": float(q05) if q05 is not None else None,
+                "q95": float(q95) if q95 is not None else None
+            }
+            
+            self.logger.info(f"Hawkes additional data for {symbol}: {additional_data}")
+            
+            if signal == 1:  # Buy signal
+                self.logger.info(f"✅ Generating BUY signal for {symbol} using Hawkes strategy")
+                return self.format_signal(symbol, "BUY", df, "VOL_HAWKES", additional_data)
+            else:  # Sell signal (signal == -1)
+                self.logger.info(f"✅ Generating SELL signal for {symbol} using Hawkes strategy")
+                return self.format_signal(symbol, "SELL", df, "VOL_HAWKES", additional_data)
+                
+        except Exception as e:
+            self.logger.error(f"Error in Hawkes volatility calculation for {symbol}: {e}")
+            import traceback
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
+            return None
     
     def format_signal(self, symbol, direction, price_data, strategy_name="", additional_data=None):
         """Format the signal according to our template with enhanced styling and strategy identification"""
@@ -513,55 +539,115 @@ class MT5SignalGenerator:
         return signal
     
     def generate_signal(self):
-        """Run all strategies on all symbols and return the first valid signal"""
-        for strategy_name, config in self.strategies.items():
+        """Run all strategies with fair rotation and return the best valid signal"""
+        import random
+        from datetime import datetime
+        
+        # Strategy rotation to ensure all strategies get equal chances
+        strategy_list = list(self.strategies.keys())
+        
+        # Rotate starting strategy based on time or random selection
+        # This ensures hawkes_volatility gets fair chances
+        current_hour = datetime.now().hour
+        start_index = current_hour % len(strategy_list)  # Rotate by hour
+        
+        # Reorder strategies starting from the calculated index
+        rotated_strategies = strategy_list[start_index:] + strategy_list[:start_index]
+        
+        self.logger.info(f"Strategy execution order this cycle: {rotated_strategies}")
+        
+        all_signals = []  # Collect all valid signals instead of returning first
+        
+        for strategy_name in rotated_strategies:
+            config = self.strategies[strategy_name]
+            self.logger.info(f"Checking strategy: {strategy_name}")
+            
             for symbol in config['symbols']:
                 for timeframe in config['timeframes']:
-                    # Skip if we've already sent a similar signal today
-                    if self.check_duplicate_signal(symbol, "BUY") and self.check_duplicate_signal(symbol, "SELL"):
-                        continue
+                    try:
+                        # Skip if we've already sent a similar signal today
+                        if self.check_duplicate_signal(symbol, "BUY") and self.check_duplicate_signal(symbol, "SELL"):
+                            self.logger.info(f"Skipping {symbol} - duplicate signal check failed")
+                            continue
                         
-                    # Choose strategy based on name
-                    if strategy_name == 'ma_crossover':
-                        signal = self.calculate_ma_crossover(
-                            symbol, 
-                            timeframe, 
-                            config['params']['fast_length'],
-                            config['params']['slow_length']
-                        )
-                    elif strategy_name == 'rsi_reversal':
-                        signal = self.calculate_rsi_reversal(
-                            symbol, 
-                            timeframe,
-                            config['params']['rsi_length'],
-                            config['params']['overbought'],
-                            config['params']['oversold']
-                        )
-                    elif strategy_name == 'support_resistance':
-                        signal = self.calculate_support_resistance(
-                            symbol, 
-                            timeframe,
-                            config['params']['lookback'],
-                            config['params']['threshold']
-                        )
-                    # Add the new Hawkes volatility strategy
-                    elif strategy_name == 'hawkes_volatility':
-                        signal = self.calculate_hawkes_volatility(
-                            symbol,
-                            timeframe,
-                            config['params']['atr_lookback'],
-                            config['params']['kappa'],
-                            config['params']['quantile_lookback']
-                        )
-                    
-                    # If valid signal found, return it
-                    if signal:
-                        self.logger.info(f"Generated {strategy_name} signal for {symbol}")
-                        return signal
+                        signal = None
+                        
+                        # Choose strategy based on name with enhanced error handling
+                        if strategy_name == 'ma_crossover':
+                            signal = self.calculate_ma_crossover(
+                                symbol, 
+                                timeframe, 
+                                config['params']['fast_length'],
+                                config['params']['slow_length']
+                            )
+                        elif strategy_name == 'rsi_reversal':
+                            signal = self.calculate_rsi_reversal(
+                                symbol, 
+                                timeframe,
+                                config['params']['rsi_length'],
+                                config['params']['overbought'],
+                                config['params']['oversold']
+                            )
+                        elif strategy_name == 'support_resistance':
+                            signal = self.calculate_support_resistance(
+                                symbol, 
+                                timeframe,
+                                config['params']['lookback'],
+                                config['params']['threshold']
+                            )
+                        elif strategy_name == 'hawkes_volatility':
+                            self.logger.info(f"Attempting Hawkes calculation for {symbol}")
+                            signal = self.calculate_hawkes_volatility(
+                                symbol,
+                                timeframe,
+                                config['params']['atr_lookback'],
+                                config['params']['kappa'],
+                                config['params']['quantile_lookback']
+                            )
+                            
+                            # Enhanced logging for Hawkes strategy
+                            if signal:
+                                self.logger.info(f"✅ Hawkes strategy generated signal for {symbol}")
+                            else:
+                                self.logger.info(f"❌ Hawkes strategy returned None for {symbol}")
+                        
+                        # If valid signal found, add to collection
+                        if signal:
+                            signal_info = {
+                                'signal': signal,
+                                'strategy': strategy_name,
+                                'symbol': symbol,
+                                'priority': self.get_strategy_priority(strategy_name)
+                            }
+                            all_signals.append(signal_info)
+                            self.logger.info(f"Generated {strategy_name} signal for {symbol}")
+                            
+                    except Exception as e:
+                        self.logger.error(f"Error in {strategy_name} for {symbol}: {e}")
+                        continue
+        
+        # If we have multiple signals, prioritize them
+        if all_signals:
+            # Sort by priority (hawkes_volatility should have high priority)
+            all_signals.sort(key=lambda x: x['priority'], reverse=True)
+            
+            self.logger.info(f"Found {len(all_signals)} valid signals. Selected: {all_signals[0]['strategy']} for {all_signals[0]['symbol']}")
+            return all_signals[0]['signal']
         
         # No signals found from any strategy
+        self.logger.info("No valid signals generated from any strategy")
         return None
-        
+    
+    def get_strategy_priority(self, strategy_name):
+        """Assign priority to strategies. Higher number = higher priority"""
+        priorities = {
+            'hawkes_volatility': 100,  
+            'ma_crossover': 80,          
+            'support_resistance': 70,    
+            'rsi_reversal': 60           
+        }
+        return priorities.get(strategy_name, 50)
+    
     def check_duplicate_signal(self, symbol, direction):
         """Check if we've already sent a similar signal recently"""
         # Create a key pattern for today

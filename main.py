@@ -23,6 +23,7 @@ from vfx_Scheduler import VFXMessageScheduler
 from signal_dispatcher import SignalDispatcher
 from config import Config
 
+
 from mysql_manager import get_mysql_connection
 
 # Global instance of the VFX message scheduler
@@ -665,6 +666,31 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
                 f"Automated welcome message has been sent.",
                 reply_markup=reply_markup
             )
+            
+        else:
+        # Handle privacy-protected users (no sender ID available)
+            print(f"Privacy-protected user detected: {original_sender_name}")
+            
+            # Create buttons for privacy-protected user handling
+            keyboard = [
+                [InlineKeyboardButton("🔗 Generate Welcome Link", callback_data=f"gen_welcome_privacy")],
+                [InlineKeyboardButton("📋 View Instructions", callback_data=f"show_privacy_instructions")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                f"⚠️ <b>Privacy-Protected User: {original_sender_name}</b>\n\n"
+                f"This user has privacy settings enabled, so I cannot message them directly.\n\n"
+                f"<b>Source:</b> {forwarded_from_channel.replace('_', ' ').title()}\n"
+                f"<b>Message:</b> \"{message_text[:100]}...\"\n\n"
+                f"Choose an option to help them connect:",
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+            
+            # Store the user info for the welcome link generation
+            context.user_data["privacy_user_name"] = original_sender_name
+            context.user_data["privacy_user_source"] = forwarded_from_channel
     
     # If it's just a regular message from the admin
     else:
@@ -2935,48 +2961,6 @@ async def risk_profile_callback(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception as e:
             print(f"Error notifying admin {admin_id}: {e}")
 
-# async def restart_process_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-#     """Handle restart process button."""
-#     query = update.callback_query
-#     await query.answer()
-    
-#     user_id = update.effective_user.id
-    
-#     # Clear conversation state
-#     if "user_states" in context.bot_data and user_id in context.bot_data["user_states"]:
-#         del context.bot_data["user_states"][user_id]
-    
-#     # Start over with risk profile buttons
-#     keyboard = [
-#         [
-#             InlineKeyboardButton("Low Risk", callback_data="risk_low"),
-#             InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
-#             InlineKeyboardButton("High Risk", callback_data="risk_high")
-#         ],
-#         [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
-#     ]
-#     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-#     await query.edit_message_text(
-#         "<b>Process restarted!</b>\n\nWhat risk profile would you like on your account?",
-#         parse_mode='HTML',
-#         reply_markup=reply_markup
-#     )
-    
-#     # Set state to risk_profile
-#     context.bot_data.setdefault("user_states", {})
-#     context.bot_data["user_states"][user_id] = "risk_profile"
-    
-#     # Notify admin of restart
-#     for admin_id in ADMIN_USER_ID:
-#         try:
-#             await context.bot.send_message(
-#                 chat_id=admin_id,
-#                 text=f"🔄 User {user_id} has restarted the registration process"
-#             )
-#         except Exception as e:
-#             print(f"Error notifying admin {admin_id}: {e}")
-
 async def experience_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle previous experience button selection."""
     query = update.callback_query
@@ -3360,7 +3344,74 @@ async def generate_welcome_link_callback(update: Update, context: ContextTypes.D
             parse_mode='HTML'
         )
 
+async def handle_privacy_welcome_link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Generate welcome link for privacy-protected users."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_name = context.user_data.get("privacy_user_name", "User")
+    
+    # Create the start link with admin referral
+    bot_info = await context.bot.get_me()
+    bot_username = bot_info.username
+    start_link = f"https://t.me/{bot_username}?start=ref_{query.from_user.id}"
+    
+    # Generate the copy-paste message
+    welcome_template = (
+        f"<b>Hello {user_name}! 👋</b>\n\n"
+        f"🎉 <b>Thank you for your interest in VFX Trading solutions!</b>\n\n"
+        f"🚀 <b>Ready to get started?</b>\n\n"
+        f"To begin your account setup and access our premium trading services, please click the link below:\n\n"
+        f"👉 <a href='{start_link}'>Connect with VFX - REGISTRATION</a>\n\n"
+        f"<b>📋 Quick Setup Process:</b>\n\n"
+        f"<b>1.</b> 🤖 Connect with our automated assistant\n"
+        f"<b>2.</b> 📊 Answer quick questions about your trading preferences\n" 
+        f"<b>3.</b> ✅ Verify your Vortex-FX MT5 account number\n\n"
+        f"<b>🎯 What happens next?</b>\n"
+        f"Our expert team will configure your account with optimal parameters based on your unique trading profile.\n\n"
+        f"💬 <b>Questions? We're here to help!</b>\n\n"
+        f"🔥 <b>Let's build your trading success together!</b> 📈"
+    )
+    
+    await query.edit_message_text(
+        f"✅ <b>Welcome Message Generated for {user_name}</b>\n\n"
+        f"📋 Copy and paste this message to the user:\n\n"
+        f"<code>{welcome_template}</code>\n\n"
+        f"When they click the link, they'll be connected to the registration system automatically.",
+        parse_mode='HTML'
+    )
 
+async def show_privacy_instructions(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show instructions for handling privacy-protected users."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_name = context.user_data.get("privacy_user_name", "User")
+    bot_info = await context.bot.get_me()
+    bot_username = bot_info.username
+    
+    instructions = (
+        f"📋 <b>Instructions for {user_name}</b>\n\n"
+        f"🔐 Since this user has privacy settings enabled:\n\n"
+        f"<b>🎯 Option 1 (Recommended):</b>\n"
+        f"• 🔗 Click 'Generate Welcome Link'\n"
+        f"• 📋 Copy the generated message\n"
+        f"• 💬 Paste it in your chat with {user_name}\n\n"
+        f"<b>⚙️ Option 2 (Manual):</b>\n"
+        f"• 🔍 Tell them to search @{bot_username}\n"
+        f"• 🚀 Ask them to send /start\n"
+        f"• 📝 They'll be guided through registration\n\n"
+        f"<b>💡 The welcome link method is faster and more professional!</b> ⚡"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔗 Generate Welcome Link", callback_data="gen_welcome_privacy")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(instructions, parse_mode='HTML', reply_markup=reply_markup)
+    
+    
 # -------------------------------------- MySQL Handles for Admin ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 
@@ -4708,8 +4759,7 @@ async def show_all_databases_command(update: Update, context: ContextTypes.DEFAU
             
     except Exception as e:
         await update.message.reply_text(f"❌ Error showing databases: {e}")
-        
-        
+                
 async def search_user_tables_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Search for tables that might contain user/account data."""
     if update.effective_user.id not in ADMIN_USER_ID:
@@ -4888,7 +4938,6 @@ async def compare_current_table_command(update: Update, context: ContextTypes.DE
         
     except Exception as e:
         await update.message.reply_text(f"❌ Error getting current table info: {e}")
-
 
 async def check_mt5_accounts_table_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Check the mt5_accounts table structure and content."""
@@ -5617,29 +5666,107 @@ async def handle_text_response(update, context, user_id, message_text):
         await handle_custom_amount_input(update, context, user_id, message_text)
         return
     
-    # Check if user is in auto_welcoming_users
+    # CRITICAL FIX: Handle deposit amount for users who started with /start
+    if current_step == "deposit_amount":
+        print(f"Processing deposit amount for user {user_id}")
+        await process_deposit_amount_text(update, context, user_id, message_text)
+        return
+    
+    # Handle account number processing
+    if current_step == "account_number" or current_step == "service_selection":
+        await process_account_number_text(update, context, user_id, message_text)
+        return
+    
+    # Check if user is in auto_welcoming_users (for admin-forwarded users)
     auto_welcoming_users = context.bot_data.get("auto_welcoming_users", {})
     if user_id in auto_welcoming_users:
         
-        # STEP 1: DEPOSIT AMOUNT PROCESSING
+        # STEP 1: DEPOSIT AMOUNT PROCESSING for auto-welcomed users
         if current_step == "deposit_amount":
             await process_deposit_amount_text(update, context, user_id, message_text)
             return
         
-        # STEP 2: ACCOUNT NUMBER PROCESSING
+        # STEP 2: ACCOUNT NUMBER PROCESSING for auto-welcomed users
         elif current_step == "account_number" or current_step == "service_selection":
             await process_account_number_text(update, context, user_id, message_text)
             return
     
-    # DEFAULT RESPONSE WITH GUIDED SETUP
+    # Handle users who are responding without a clear state
+    # This could be users who started with /start but lost their state
+    if message_text.isdigit():
+        # If it's a number, try to determine context
+        number = int(message_text)
+        
+        # Check if it looks like a deposit amount (100-100000)
+        if 100 <= number <= 100000:
+            print(f"Interpreting {number} as deposit amount for user {user_id}")
+            # Set the state and process as deposit amount
+            context.bot_data.setdefault("user_states", {})
+            context.bot_data["user_states"][user_id] = "deposit_amount"
+            await process_deposit_amount_text(update, context, user_id, message_text)
+            return
+        
+        # Check if it looks like an account number (6 digits)
+        elif len(message_text) == 6:
+            print(f"Interpreting {message_text} as account number for user {user_id}")
+            context.bot_data["user_states"][user_id] = "account_number"
+            await process_account_number_text(update, context, user_id, message_text)
+            return
+    
+    # DEFAULT RESPONSE - but make it more helpful
+    print(f"No specific handler for user {user_id} in state {current_step}, providing guided setup")
+    
+    # Check if user has any progress in the database
+    user_info = db.get_user(user_id)
+    if user_info:
+        risk_appetite = user_info.get("risk_appetite")
+        deposit_amount = user_info.get("deposit_amount")
+        
+        if risk_appetite and not deposit_amount:
+            # User has risk profile but no deposit amount
+            await update.message.reply_text(
+                f"<b>💰 Let's continue with your setup!</b>\n\n"
+                f"You selected risk level {risk_appetite}/10. Great!\n\n"
+                f"Now, how much capital are you planning to fund your account with?\n\n"
+                f"<b>Example:</b> 5000",
+                parse_mode='HTML'
+            )
+            context.bot_data.setdefault("user_states", {})
+            context.bot_data["user_states"][user_id] = "deposit_amount"
+            return
+        
+        elif risk_appetite and deposit_amount:
+            # User has both, might need service selection
+            await update.message.reply_text(
+                f"<b>📢 Almost done!</b>\n\n"
+                f"Which VFX service interests you most?",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("🔔 VFX Signals", callback_data="interest_signals"),
+                        InlineKeyboardButton("🤖 Automated Strategy", callback_data="interest_strategy")
+                    ],
+                    [
+                        InlineKeyboardButton("✨ Both Services", callback_data="interest_all"),
+                        InlineKeyboardButton("🔄 Restart", callback_data="restart_process")
+                    ]
+                ])
+            )
+            context.bot_data["user_states"][user_id] = "service_selection"
+            return
+    
+    # Truly default case - offer guided setup restart
     await update.message.reply_text(
-        "<b>💬 Thank you for your response!</b>\n\n"
-        "Our team will review your information.\n\n"
-        "<b>💡 Tip:</b> Use our guided setup for a smoother experience! 🚀",
+        "<b>💬 I received your message!</b>\n\n"
+        "It looks like we might have lost track of where you are in the setup process.\n\n"
+        "<b>💡 Let's restart with our guided setup for the best experience! 🚀</b>",
         parse_mode='HTML',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🚀 Start Guided Setup", callback_data="risk_low")],
-            [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+            [
+                InlineKeyboardButton("🚀 Start Guided Setup", callback_data="risk_low"),
+                InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")
+            ],
+            [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
         ])
     )
 
@@ -6105,10 +6232,12 @@ async def send_vip_request_to_admin(context, user_id, service_name, service_type
 # -------------------------------------- SIGNALS HANDLERS ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 
+# At the top of your file (after imports)
 signal_dispatcher = None
 signal_system_initialized = False
+
 async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
-    """Initialize the signal system after bot startup"""
+    """Initialize the signal system after bot startup - DEBUG VERSION"""
     global signal_dispatcher, signal_system_initialized
     
     # Skip if already initialized
@@ -6119,15 +6248,101 @@ async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
     try:
         logger.info("Starting signal system initialization...")
         
-        # Initialize signal dispatcher with the bot instance
+        # Debug: Check what we're importing
+        logger.info("Attempting to import SignalDispatcher class...")
+        
+        # Try different import approaches
+        try:
+            # Method 1: Direct class import
+            from signal_dispatcher import SignalDispatcher
+            logger.info(f"✅ Successfully imported SignalDispatcher: {SignalDispatcher}")
+            logger.info(f"SignalDispatcher type: {type(SignalDispatcher)}")
+            
+        except ImportError as ie:
+            logger.error(f"❌ Import error: {ie}")
+            # Method 2: Module import then access class
+            try:
+                import signal_dispatcher as sd_module
+                logger.info(f"Module imported: {sd_module}")
+                SignalDispatcher = sd_module.SignalDispatcher
+                logger.info(f"Class from module: {SignalDispatcher}")
+            except Exception as e2:
+                logger.error(f"❌ Module import failed: {e2}")
+                return
+        
+        # Debug: Check if SIGNALS_CHANNEL_ID exists
+        if 'SIGNALS_CHANNEL_ID' not in globals():
+            logger.error("❌ SIGNALS_CHANNEL_ID not defined in globals")
+            # Try to define it with a placeholder
+            global SIGNALS_CHANNEL_ID
+            SIGNALS_CHANNEL_ID = -1001234567890  # Replace with your actual channel ID
+            logger.info(f"Set SIGNALS_CHANNEL_ID to: {SIGNALS_CHANNEL_ID}")
+        else:
+            logger.info(f"✅ SIGNALS_CHANNEL_ID found: {SIGNALS_CHANNEL_ID}")
+        
+        # Debug: Check context.bot
+        logger.info(f"Context bot type: {type(context.bot)}")
+        logger.info(f"Context bot: {context.bot}")
+        
+        # Now try to create the instance
+        logger.info("Creating SignalDispatcher instance...")
         signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
         
         # Mark as initialized
         signal_system_initialized = True
-        logger.info("Signal system initialized successfully")
+        logger.info("✅ Signal system initialized successfully")
+        
+        # Notify admin
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text="🤖 Signal system initialized successfully"
+                )
+            except Exception as e:
+                logger.error(f"Failed to notify admin {admin_id}: {e}")
         
     except Exception as e:
-        logger.error(f"Error in init_signal_system: {e}")
+        logger.error(f"❌ Error in init_signal_system: {e}")
+        logger.error(f"Error type: {type(e)}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        signal_dispatcher = None
+        
+        # Notify admin of failure
+        for admin_id in ADMIN_USER_ID:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=f"❌ Signal system initialization failed: {e}"
+                )
+            except Exception as notify_error:
+                logger.error(f"Failed to notify admin of init failure: {notify_error}")
+
+# Safe wrapper functions for scheduled jobs
+async def apply_trailing_stops():
+    """Safely apply trailing stops"""
+    global signal_dispatcher
+    if signal_dispatcher is None:
+        logger.warning("Cannot apply trailing stops - signal_dispatcher is None")
+        return
+    
+    try:
+        await signal_dispatcher.check_and_apply_trailing_stops()
+    except Exception as e:
+        logger.error(f"Error in trailing stops: {e}")
+
+async def send_daily_stats():
+    """Safely send daily stats"""
+    global signal_dispatcher
+    if signal_dispatcher is None:
+        logger.warning("Cannot send daily stats - signal_dispatcher is None")
+        return
+    
+    try:
+        await signal_dispatcher.send_daily_stats()
+    except Exception as e:
+        logger.error(f"Error in daily stats: {e}")
 
 # Define the scheduled function
 async def check_and_send_signals(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -6135,6 +6350,8 @@ async def check_and_send_signals(context: ContextTypes.DEFAULT_TYPE) -> None:
     global signal_dispatcher
     if signal_dispatcher:
         await signal_dispatcher.check_and_send_signal()
+    else:
+        logger.warning("Cannot check signals - signal_dispatcher is None")
         
 async def report_signal_system_status(context: ContextTypes.DEFAULT_TYPE):
     """Log periodic status information about the signal system"""
@@ -6219,9 +6436,233 @@ async def check_and_send_signal_updates(context: ContextTypes.DEFAULT_TYPE) -> N
     global signal_dispatcher
     if signal_dispatcher:
         await signal_dispatcher.send_signal_updates()
+    else:
+        logger.warning("Cannot send signal updates - signal_dispatcher is None")
 
+async def handle_signalstats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handle /signalstats command for admin users.
+    Shows daily trading statistics on demand.
+    """
+    message = update.message
+    user_id = message.from_user.id
+    
+    # Check if user is admin
+    if user_id not in ADMIN_USER_ID:
+        await message.reply_text("❌ Access denied. Admin only command.")
+        return
+    
+    try:
+        # Send "generating stats..." message first
+        status_msg = await message.reply_text("📊 Generating daily statistics...")
+        
+        # Check if signal dispatcher exists and is initialized
+        if 'signal_dispatcher' not in globals() or signal_dispatcher is None:
+            await status_msg.edit_text("⚠️ Signal dispatcher not initialized. Cannot generate stats.")
+            return
+            
+        # Check if signal executor is initialized
+        if not hasattr(signal_dispatcher, 'signal_executor') or not signal_dispatcher.signal_executor.initialized:
+            await status_msg.edit_text("⚠️ Signal executor not initialized. Cannot generate stats.")
+            return
+        
+        # Generate daily stats
+        result = signal_dispatcher.signal_executor.generate_daily_stats()
+        
+        if not result["success"]:
+            error_msg = f"❌ Failed to generate daily stats: {result.get('error', 'Unknown error')}"
+            await status_msg.edit_text(error_msg)
+            return
+        
+        stats = result["stats"]
+        
+        # Format the main stats message
+        stats_msg = f"""
+📊 <b>DAILY TRADING STATISTICS</b> 📊
+<i>{stats['date']}</i>
 
+<b>📈 Summary:</b>
+• Signals Executed: {stats['signals_executed']}
+• Positions Opened: {stats['positions_opened']}
+• Positions Closed: {stats['positions_closed']}
+• Active Positions: {stats['active_positions']}
 
+<b>💰 Performance:</b>
+• Wins: {stats['wins']} | Losses: {stats['losses']}
+• Win Rate: {stats['win_rate']:.1f}%
+• Total Profit: ${stats['total_profit']:.2f}
+• Total Pips: {stats['total_pips']:.1f}
+• Return: {stats['return_percentage']:.2f}%
+
+<b>🎯 Symbols Traded:</b> {', '.join(stats['symbols_traded']) if stats['symbols_traded'] else 'None'}
+"""
+        
+        # Add multi-account breakdown if available
+        if 'account_breakdown' in stats and stats['account_breakdown']:
+            stats_msg += f"\n<b>💼 Account Breakdown:</b>\n"
+            for account_name, account_data in stats['account_breakdown'].items():
+                if account_data.get('success', False):
+                    stats_msg += f"• <b>{account_name}:</b> ${account_data.get('profit', 0):.2f} ({account_data.get('return_pct', 0):.1f}%) - {account_data.get('wins', 0)}W/{account_data.get('losses', 0)}L\n"
+                else:
+                    stats_msg += f"• <b>{account_name}:</b> ❌ {account_data.get('error', 'Error')}\n"
+        
+        # Add details of closed positions if any
+        closed_positions = [detail for detail in stats['signal_details'] if detail.get('status') in ['WIN', 'LOSS']]
+        if closed_positions:
+            stats_msg += f"\n<b>🔄 Closed Positions Today:</b>\n"
+            for detail in closed_positions[:10]:  # Limit to 10 to avoid message length issues
+                account_info = f" ({detail.get('account', 'N/A')})" if 'account' in detail else ""
+                stats_msg += f"• {detail['symbol']} {detail['direction']}: {detail['status']} ${detail.get('profit', 0):.2f}{account_info}\n"
+            
+            if len(closed_positions) > 10:
+                stats_msg += f"• ... and {len(closed_positions) - 10} more\n"
+        
+        # Add details of active positions if any
+        active_positions = [detail for detail in stats['signal_details'] if detail.get('status') == 'ACTIVE']
+        if active_positions:
+            stats_msg += f"\n<b>🔴 Active Positions:</b>\n"
+            for detail in active_positions[:10]:  # Limit to 10
+                account_info = f" ({detail.get('account', 'N/A')})" if 'account' in detail else ""
+                unrealized_profit = detail.get('unrealized_profit', 0)
+                unrealized_pips = detail.get('unrealized_pips', 0)
+                stats_msg += f"• {detail['symbol']} {detail['direction']}: ${unrealized_profit:.2f} ({unrealized_pips:.1f} pips){account_info}\n"
+            
+            if len(active_positions) > 10:
+                stats_msg += f"• ... and {len(active_positions) - 10} more\n"
+        
+        # Add generation timestamp
+        stats_msg += f"\n⏰ <i>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
+        
+        # Update the status message with the full stats
+        await status_msg.edit_text(stats_msg, parse_mode='HTML')
+        
+        logger.info(f"Sent daily stats to admin user {user_id}")
+        
+    except Exception as e:
+        logger.error(f"Error in handle_signalstats: {e}")
+        error_msg = f"❌ Error generating stats: {str(e)}"
+        try:
+            if 'status_msg' in locals():
+                await status_msg.edit_text(error_msg)
+            else:
+                await message.reply_text(error_msg)
+        except:
+            pass
+
+async def signal_stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handle /signalbreakdown command - shows stats for each individual signal.
+    """
+    message = update.message
+    user_id = message.from_user.id
+    
+    # Check if user is admin
+    if user_id not in ADMIN_USER_ID:
+        await message.reply_text("❌ Access denied. Admin only command.")
+        return
+    
+    try:
+        
+        from mt5_accountManager import MultiAccountExecutor
+        # Get days parameter (default: 1 day)
+        days = 1
+        if context.args and len(context.args) > 0:
+            try:
+                days = int(context.args[0])
+                if days < 1 or days > 7:  # Limit to 7 days to keep response manageable
+                    days = 1
+            except ValueError:
+                days = 1
+        
+        # Send "generating stats..." message first
+        status_msg = await message.reply_text(f"📊 Generating signal breakdown for last {days} day(s)...")
+        
+        # Check if signal dispatcher exists and is initialized
+        if 'signal_dispatcher' not in globals() or signal_dispatcher is None:
+            await status_msg.edit_text("⚠️ Signal dispatcher not initialized.")
+            return
+            
+        if not hasattr(signal_dispatcher, 'signal_executor') or not signal_dispatcher.signal_executor.initialized:
+            await status_msg.edit_text("⚠️ Signal executor not initialized.")
+            return
+        
+        # Generate signal breakdown stats
+        if isinstance(signal_dispatcher.signal_executor, MultiAccountExecutor):
+            result = signal_dispatcher.signal_executor.generate_signal_breakdown_stats_multi_account(days)
+        else:
+            result = signal_dispatcher.signal_executor.generate_signal_stats(days)
+        
+        if not result["success"]:
+            await status_msg.edit_text(f"❌ Failed to generate signal breakdown: {result.get('error', 'Unknown error')}")
+            return
+        
+        stats = result["stats"]
+        signal_breakdown = stats["signal_breakdown"]
+        
+        if not signal_breakdown:
+            await status_msg.edit_text(f"📊 No signals found in the last {days} day(s).")
+            return
+        
+        # Format the message
+        msg = f"""📊 <b>INDIVIDUAL SIGNAL BREAKDOWN</b> 📊
+<i>{stats['date_range']}</i>
+
+<b>📈 Overview:</b>
+• Total Signals: {stats['total_signals_executed']}
+• Total Profit: ${stats['total_profit_all_signals']:.2f}
+"""
+        
+        if 'accounts_analyzed' in stats:
+            msg += f"• Accounts: {stats['accounts_analyzed']}\n"
+        
+        msg += "\n<b>🎯 Individual Signal Performance:</b>\n"
+        
+        # Sort signals by profit
+        sorted_signals = sorted(
+            signal_breakdown.items(),
+            key=lambda x: x[1]['total_profit'],
+            reverse=True
+        )
+        
+        for i, (signal_key, signal_stats) in enumerate(sorted_signals):
+            if i >= 10:  # Limit to top 10 signals to avoid message length issues
+                msg += f"\n... and {len(sorted_signals) - 10} more signals"
+                break
+            
+            profit_emoji = "💰" if signal_stats['total_profit'] > 0 else "📉" if signal_stats['total_profit'] < 0 else "➖"
+            direction_emoji = "🔼" if signal_stats['direction'] == "BUY" else "🔻"
+            
+            msg += f"\n{profit_emoji} <b>{signal_stats['symbol']} {direction_emoji} ({signal_stats['strategy']})</b>\n"
+            msg += f"  • ID: {signal_stats['signal_id']}\n"
+            msg += f"  • Orders: {signal_stats['orders_placed']} | Closed: {signal_stats['total_trades']} | Active: {signal_stats['active_positions']}\n"
+            
+            if signal_stats['total_trades'] > 0:
+                msg += f"  • W/L: {signal_stats['wins']}/{signal_stats['losses']} ({signal_stats['win_rate']:.1f}%)\n"
+                msg += f"  • P&L: ${signal_stats['total_profit']:.2f} (${signal_stats['avg_profit_per_trade']:.2f}/trade)\n"
+                msg += f"  • Pips: {signal_stats['total_pips']:.1f} ({signal_stats['avg_pips_per_trade']:.1f}/trade)\n"
+            else:
+                msg += f"  • Unrealized P&L: ${signal_stats['total_profit']:.2f}\n"
+                msg += f"  • Unrealized Pips: {signal_stats['total_pips']:.1f}\n"
+            
+            msg += f"  • Executed: {signal_stats['execution_time']}\n"
+        
+        msg += f"\n⏰ <i>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
+        
+        # Update the status message with the breakdown
+        await status_msg.edit_text(msg, parse_mode='HTML')
+        
+        logger.info(f"Sent signal breakdown to admin user {user_id}")
+        
+    except Exception as e:
+        logger.error(f"Error in handle_signalbreakdown: {e}")
+        error_msg = f"❌ Error generating signal breakdown: {str(e)}"
+        try:
+            if 'status_msg' in locals():
+                await status_msg.edit_text(error_msg)
+            else:
+                await message.reply_text(error_msg)
+        except:
+            pass
 
 # -------------------------------------- MAIN ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -7054,70 +7495,7 @@ async def grant_vip_access_to_user(query, context, user_id, service_type):
             parse_mode='HTML'
         )
 
-# async def restart_process_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-#     """ENHANCED: Handle restart process button - always available."""
-#     query = update.callback_query
-#     await query.answer()
-    
-#     user_id = update.effective_user.id
-    
-#     # Clear ALL conversation states
-#     if "user_states" in context.bot_data and user_id in context.bot_data["user_states"]:
-#         del context.bot_data["user_states"][user_id]
-    
-#     # Clear user_data if exists
-#     if hasattr(context, 'user_data'):
-#         context.user_data.clear()
-    
-#     # Reset database state (but keep basic user info)
-#     try:
-#         user_info = db.get_user(user_id)
-#         if user_info:
-#             # Keep basic info but reset process-specific fields
-#             db.add_user({
-#                 "user_id": user_id,
-#                 "risk_appetite": None,
-#                 "deposit_amount": None,
-#                 "trading_account": None,
-#                 "is_verified": False,
-#                 "funding_status": "restarted",
-#                 "vip_request_status": "cancelled",
-#                 "restart_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#             })
-#     except Exception as e:
-#         print(f"Error resetting user data: {e}")
-    
-#     # Start over with guided setup
-#     keyboard = [
-#         [
-#             InlineKeyboardButton("Low Risk", callback_data="risk_low"),
-#             InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
-#             InlineKeyboardButton("High Risk", callback_data="risk_high")
-#         ],
-#         [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
-#     ]
-#     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-#     await query.edit_message_text(
-#         "<b>🔄 Process Restarted!</b>\n\n"
-#         "Let's start fresh! What risk profile would you like on your account?",
-#         parse_mode='HTML',
-#         reply_markup=reply_markup
-#     )
-    
-#     # Set state to risk_profile  
-#     context.bot_data.setdefault("user_states", {})
-#     context.bot_data["user_states"][user_id] = "risk_profile"
-    
-#     # Notify admin of restart
-#     for admin_id in ADMIN_USER_ID:
-#         try:
-#             await context.bot.send_message(
-#                 chat_id=admin_id,
-#                 text=f"🔄 User {user_id} has restarted the registration process"
-#             )
-#         except Exception as e:
-#             print(f"Error notifying admin {admin_id}: {e}")
+
 
 # =============================================================================
 # =============  NOTIFICATION FUNCTIONS
@@ -7341,6 +7719,16 @@ def main() -> None:
         check_my_status_callback,
         pattern=r"^check_my_status$"
     ))
+    
+    application.add_handler(CallbackQueryHandler(
+        handle_privacy_welcome_link,
+        pattern=r"^gen_welcome_privacy$"
+    ))
+
+    application.add_handler(CallbackQueryHandler(
+        show_privacy_instructions, 
+        pattern=r"^show_privacy_instructions$"
+    ))
 
     # ========================================================================
     # INTEGRATED USER REGISTRATION FLOW (Single handler for all user interactions)
@@ -7392,7 +7780,8 @@ def main() -> None:
     application.add_handler(CommandHandler("signalstatus", signal_status_command))
     application.add_handler(CommandHandler("debugdb", debug_db_command))
     application.add_handler(CommandHandler("resetuser", reset_user_registration_command))
-
+    application.add_handler(CommandHandler("signalstats", handle_signalstats))
+    application.add_handler(CommandHandler("algostats", signal_stats_command))
     
     application.add_handler(CommandHandler("testmysql", test_mysql_command))
     application.add_handler(CommandHandler("searchaccount", search_account_command))
@@ -7448,6 +7837,7 @@ def main() -> None:
 
     
     # Add handlers for other functionalities
+    application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("managemsg", manage_messages_command))
@@ -7629,11 +8019,6 @@ def main() -> None:
         first=seconds_until_strategy
     )
     
-    # job_queue.run_repeating(
-    #     lambda context: check_all_pending_deposits(context),
-    #     interval=600,  # Every 10 minutes
-    #     first=60
-    # )
     
     """---------------------------------
          Signal Jobs
@@ -7642,29 +8027,28 @@ def main() -> None:
     job_queue.run_once(init_signal_system, 30)
     
     # Schedule regular signal checks - run every hour
-    # job_queue.run_repeating(
-    #     check_and_send_signals,
-    #     interval=300,  # 5 Min
-    #     first=60  # First check 1 minute after bot start
-    # )
+    job_queue.run_repeating(
+        check_and_send_signals,
+        interval = 300,  # 5 
+        first = 60  # First check 1 minute after bot start
+    )
     
     job_queue.run_repeating(
         report_signal_system_status,
-        interval=21600,  # Every 6 hours
-        first=600  # First report 10 minutes after startup
+        interval = 21600,  # Every 6 hours
+        first = 600  # First report 10 minutes after startup
     )
     
     job_queue.run_repeating(
-        lambda context: asyncio.create_task(signal_dispatcher.check_and_apply_trailing_stops()),
-        interval=120,  # Every 2 minutes
-        first=60  # Start 1 minute after bot startup
+        lambda context: asyncio.create_task(apply_trailing_stops()),
+        interval = 120,
+        first = 60
     )
-    
+
     job_queue.run_daily(
-        lambda context: asyncio.create_task(signal_dispatcher.send_daily_stats()),
-        time=time(hour=22, minute=0)
+        lambda context: asyncio.create_task(send_daily_stats()),
+        time = time(hour = 22, minute = 0)
     )
-  
     
     # Log scheduled jobs
     logger.info(f"Scheduled hourly welcome messages starting in {seconds_until_next_hour:.2f} seconds")

@@ -1,8 +1,7 @@
 import asyncio
 import logging
 import os
-from datetime import datetime, timedelta
-import time
+from datetime import datetime, timedelta, time
 from dotenv import load_dotenv
 import pytz
 from mt5_signal_generator import MT5SignalGenerator
@@ -35,7 +34,7 @@ class SignalDispatcher:
         # Market hours configuration
         self.market_hours_config = {
             'enabled': True,  # Set to False to disable market hours filtering
-            'timezone': 'US/Eastern',  # Main timezone for market hours
+            'timezone': 'Europe/London',  # Main timezone for market hours
             'start_time': time(8, 30),  # 8:30 AM
             'end_time': time(16, 30),   # 4:30 PM
             'trading_days': [0, 1, 2, 3, 4],  # Monday to Friday (0=Monday, 6=Sunday)
@@ -436,7 +435,6 @@ class SignalDispatcher:
         if 'timezone' in kwargs:
             self.market_timezone = pytz.timezone(self.market_hours_config['timezone'])
 
-    
     def extract_signal_info(self, signal_message):
         """Extract structured signal information from a formatted signal message string"""
         try:
