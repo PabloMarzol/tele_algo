@@ -3,6 +3,7 @@ import json
 import logging
 import os
 
+from datetime import datetime
 from mt5_signal_executor import MT5SignalExecutor
 
 ## --------------------------------------------------------------------------------------- ##
@@ -46,7 +47,7 @@ class MultiAccountExecutor:
                 username=config["username"],
                 password=config["password"],
                 server=config["server"],
-                risk_percent=config.get("risk_percent", 1.0),
+                risk_percent=config.get("risk_percent", 0.5),
                 terminal_path=config.get("terminal_path")
             )
             
@@ -318,6 +319,214 @@ class MultiAccountExecutor:
                 }
         
         return statuses
+    
+    def generate_daily_stats(self):
+        """
+        Generate consolidated daily statistics across all accounts.
+        Leverages individual account stats and aggregates them.
+        """
+        if not self.initialized:
+            return {"success": False, "error": "MultiAccountExecutor not initialized"}
+        
+        try:
+            # Initialize consolidated stats
+            consolidated_stats = {
+                "date": datetime.now().date().strftime("%Y-%m-%d"),
+                "signals_executed": 0,
+                "positions_opened": 0,
+                "positions_closed": 0,
+                "wins": 0,
+                "losses": 0,
+                "total_profit": 0.0,
+                "total_pips": 0.0,
+                "win_rate": 0.0,
+                "return_percentage": 0.0,
+                "active_positions": 0,
+                "symbols_traded": set(),
+                "signal_details": [],
+                "account_breakdown": {},
+                "total_accounts": len(self.accounts),
+                "successful_accounts": 0,
+                "total_balance": 0.0
+            }
+            
+            # Collect stats from each account using their individual generators
+            for account_name in self.accounts:
+                account_info = self.executors[account_name]
+                executor = account_info["executor"]
+                
+                if not executor.initialized:
+                    consolidated_stats["account_breakdown"][account_name] = {
+                        "success": False,
+                        "error": "Account not initialized"
+                    }
+                    continue
+                
+                try:
+                    # USE THE EXISTING SINGLE-ACCOUNT FUNCTION
+                    account_stats_result = executor.generate_daily_stats()
+                    
+                    if account_stats_result["success"]:
+                        account_stats = account_stats_result["stats"]
+                        consolidated_stats["successful_accounts"] += 1
+                        
+                        # Aggregate the stats
+                        self._aggregate_account_stats(consolidated_stats, account_stats, account_name)
+                        
+                        # Get account balance for breakdown
+                        account_info_result = executor.get_account_info()
+                        if account_info_result["success"]:
+                            self._add_account_breakdown(consolidated_stats, account_stats, 
+                                                     account_name, account_info_result["balance"])
+                        
+                    else:
+                        consolidated_stats["account_breakdown"][account_name] = {
+                            "success": False,
+                            "error": account_stats_result.get("error", "Failed to generate stats")
+                        }
+                        
+                except Exception as e:
+                    consolidated_stats["account_breakdown"][account_name] = {
+                        "success": False,
+                        "error": str(e)
+                    }
+            
+            # Calculate final consolidated metrics
+            self._calculate_consolidated_metrics(consolidated_stats)
+            
+            return {"success": True, "stats": consolidated_stats}
+            
+        except Exception as e:
+            self.logger.error(f"Error generating consolidated daily stats: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def _aggregate_account_stats(self, consolidated_stats, account_stats, account_name):
+        """Helper method to aggregate individual account stats"""
+        consolidated_stats["signals_executed"] += account_stats["signals_executed"]
+        consolidated_stats["positions_opened"] += account_stats["positions_opened"]
+        consolidated_stats["positions_closed"] += account_stats["positions_closed"]
+        consolidated_stats["wins"] += account_stats["wins"]
+        consolidated_stats["losses"] += account_stats["losses"]
+        consolidated_stats["total_profit"] += account_stats["total_profit"]
+        consolidated_stats["total_pips"] += account_stats["total_pips"]
+        consolidated_stats["active_positions"] += account_stats["active_positions"]
+        consolidated_stats["symbols_traded"].update(account_stats["symbols_traded"])
+        
+        # Add signal details with account info
+        for detail in account_stats["signal_details"]:
+            detail_copy = detail.copy()
+            detail_copy["account"] = account_name
+            consolidated_stats["signal_details"].append(detail_copy)
+    
+    def _add_account_breakdown(self, consolidated_stats, account_stats, account_name, balance):
+        """Helper method to add account breakdown info"""
+        consolidated_stats["total_balance"] += balance
+        account_return_pct = (account_stats["total_profit"] / balance * 100) if balance > 0 else 0
+        
+        consolidated_stats["account_breakdown"][account_name] = {
+            "success": True,
+            "balance": balance,
+            "profit": account_stats["total_profit"],
+            "return_pct": account_return_pct,
+            "wins": account_stats["wins"],
+            "losses": account_stats["losses"],
+            "win_rate": account_stats["win_rate"],
+            "active_positions": account_stats["active_positions"],
+            "symbols_traded": account_stats["symbols_traded"]
+        }
+    
+    def _calculate_consolidated_metrics(self, consolidated_stats):
+        """Helper method to calculate final consolidated metrics"""
+        total_closed = consolidated_stats["wins"] + consolidated_stats["losses"]
+        if total_closed > 0:
+            consolidated_stats["win_rate"] = (consolidated_stats["wins"] / total_closed) * 100
+        
+        if consolidated_stats["total_balance"] > 0:
+            consolidated_stats["return_percentage"] = (consolidated_stats["total_profit"] / consolidated_stats["total_balance"]) * 100
+        
+        consolidated_stats["symbols_traded"] = list(consolidated_stats["symbols_traded"])
+    
+    def generate_signal_breakdown_stats_multi_account(self, days_back=1):
+        """
+        Generate signal breakdown statistics across all accounts.
+        
+        Args:
+            days_back (int): Number of days to look back
+            
+        Returns:
+            dict: Multi-account signal breakdown statistics
+        """
+        if not self.initialized:
+            return {"success": False, "error": "MultiAccountExecutor not initialized"}
+        
+        try:
+            # Collect stats from all accounts
+            all_signal_stats = {}
+            successful_accounts = 0
+            
+            for account_name in self.accounts:
+                account_info = self.executors[account_name]
+                executor = account_info["executor"]
+                
+                if not executor.initialized:
+                    continue
+                
+                # Get signal breakdown stats from this account
+                account_result = executor.generate_signal_stats(days_back)
+                
+                if account_result["success"]:
+                    successful_accounts += 1
+                    account_breakdown = account_result["stats"]["signal_breakdown"]
+                    
+                    # Merge with overall stats
+                    for signal_key, signal_stats in account_breakdown.items():
+                        if signal_key not in all_signal_stats:
+                            # First time seeing this signal
+                            all_signal_stats[signal_key] = signal_stats.copy()
+                            all_signal_stats[signal_key]['accounts'] = {account_name: signal_stats}
+                        else:
+                            # Aggregate with existing signal stats
+                            existing_stats = all_signal_stats[signal_key]
+                            existing_stats['total_trades'] += signal_stats['total_trades']
+                            existing_stats['active_positions'] += signal_stats['active_positions']
+                            existing_stats['wins'] += signal_stats['wins']
+                            existing_stats['losses'] += signal_stats['losses']
+                            existing_stats['total_profit'] += signal_stats['total_profit']
+                            existing_stats['total_pips'] += signal_stats['total_pips']
+                            existing_stats['orders_placed'] += signal_stats['orders_placed']
+                            
+                            # Store per-account breakdown
+                            if 'accounts' not in existing_stats:
+                                existing_stats['accounts'] = {}
+                            existing_stats['accounts'][account_name] = signal_stats
+                            
+                            # Recalculate averages
+                            total_closed = existing_stats['wins'] + existing_stats['losses']
+                            if total_closed > 0:
+                                existing_stats['win_rate'] = (existing_stats['wins'] / total_closed) * 100
+                                existing_stats['avg_profit_per_trade'] = existing_stats['total_profit'] / total_closed
+                                existing_stats['avg_pips_per_trade'] = existing_stats['total_pips'] / total_closed
+            
+            # Calculate overall metrics
+            total_signals = len(all_signal_stats)
+            total_profit = sum(stats['total_profit'] for stats in all_signal_stats.values())
+            total_trades = sum(stats['total_trades'] for stats in all_signal_stats.values())
+            
+            return {
+                "success": True,
+                "stats": {
+                    "date_range": f"Last {days_back} day(s)",
+                    "accounts_analyzed": successful_accounts,
+                    "total_signals_executed": total_signals,
+                    "total_trades_all_signals": total_trades,
+                    "total_profit_all_signals": total_profit,
+                    "signal_breakdown": all_signal_stats
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error generating multi-account signal breakdown stats: {e}")
+            return {"success": False, "error": str(e)}
     
     def cleanup(self):
         """Clean up all MT5 connections."""

@@ -1446,16 +1446,16 @@ class MT5SignalExecutor:
                     stats["signals_executed"] += 1
                     stats["symbols_traded"].add(signal_info["symbol"])
             
-            # Get history orders for today
+            # Get history orders for today - FIX: Use proper datetime conversion
             from_date = datetime(today.year, today.month, today.day)
             to_date = datetime(today.year, today.month, today.day, 23, 59, 59)
             
-            # Convert to MT5 datetime format
-            from_date = mt5.datetime_to_time(from_date)
-            to_date = mt5.datetime_to_time(to_date)
+            # Convert to Unix timestamp (seconds since epoch) - this is what MT5 expects
+            from_timestamp = int(from_date.timestamp())
+            to_timestamp = int(to_date.timestamp())
             
-            # Get history orders
-            history_orders = mt5.history_orders_get(from_date, to_date)
+            # Get history orders using timestamps
+            history_orders = mt5.history_orders_get(from_timestamp, to_timestamp)
             
             # Track orders specifically from our signals
             signal_orders = set()
@@ -1614,10 +1614,245 @@ class MT5SignalExecutor:
             stats["symbols_traded"] = list(stats["symbols_traded"])
             
             return {"success": True, "stats": stats}
-            
+        
         except Exception as e:
             self.logger.error(f"Error generating daily stats: {e}")
             return {"success": False, "error": str(e)}
+    
+    def generate_signal_stats(self, days_back=1):
+        """
+        Generate statistics broken down by individual signals using stored signal data.
+        This is simpler and more reliable than parsing MT5 comments.
+        
+        Args:
+            days_back (int): Number of days to look back
+            
+        Returns:
+            dict: Signal breakdown statistics
+        """
+        if not self.connected or not self.initialized:
+            if not self.initialize_mt5():
+                return {"success": False, "error": "MT5 not connected"}
+        
+        try:
+            from datetime import datetime, timedelta
+            
+            # Calculate date range
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days_back)
+            
+            # Initialize stats structure
+            signal_breakdown = {}
+            total_signals = 0
+            total_profit = 0.0
+            
+            # Process each executed signal
+            for signal_id, signal_info in self.executed_signals.items():
+                try:
+                    # Parse execution time
+                    execution_time_str = signal_info.get("execution_time", "")
+                    if not execution_time_str:
+                        continue
+                    
+                    execution_time = datetime.strptime(execution_time_str, "%Y-%m-%d %H:%M:%S")
+                    
+                    # Skip if outside date range
+                    if execution_time < start_date:
+                        continue
+                    
+                    total_signals += 1
+                    
+                    # Extract signal details
+                    symbol = signal_info.get("symbol", "UNKNOWN")
+                    direction = signal_info.get("direction", "UNKNOWN")
+                    strategy = signal_info.get("strategy", "UNKNOWN")
+                    orders = signal_info.get("orders", [])
+                    
+                    # Create signal key for grouping
+                    signal_key = f"{strategy}_{symbol}_{direction}"
+                    
+                    # Initialize signal stats if not exists
+                    if signal_key not in signal_breakdown:
+                        signal_breakdown[signal_key] = {
+                            'signal_id': signal_id,
+                            'strategy': strategy,
+                            'symbol': symbol,
+                            'direction': direction,
+                            'total_trades': 0,
+                            'wins': 0,
+                            'losses': 0,
+                            'active': 0,
+                            'total_profit': 0.0,
+                            'total_pips': 0.0,
+                            'orders_placed': len(orders),
+                            'execution_time': execution_time_str,
+                            'entry_prices': [],
+                            'trade_details': []
+                        }
+                    
+                    current_signal = signal_breakdown[signal_key]
+                    
+                    # Process each order in the signal
+                    for order in orders:
+                        order_id = order["order_id"]
+                        entry_price = order["entry_price"]
+                        current_signal['entry_prices'].append(entry_price)
+                        
+                        # Check if position still exists (active)
+                        position = None
+                        positions = mt5.positions_get(ticket=order_id)
+                        if positions:
+                            position = positions[0]
+                        
+                        if position:
+                            # Position is still active
+                            current_signal['active'] += 1
+                            
+                            # Calculate unrealized P&L
+                            unrealized_profit = position.profit
+                            current_signal['total_profit'] += unrealized_profit
+                            
+                            # Calculate unrealized pips
+                            symbol_info = mt5.symbol_info(symbol)
+                            if symbol_info:
+                                point = symbol_info.point
+                                digits = symbol_info.digits
+                                pip_size = point * 10 if digits in [5, 3] else point
+                                
+                                current_price = symbol_info.bid if direction == "BUY" else symbol_info.ask
+                                if direction == "BUY":
+                                    pips = (current_price - entry_price) / pip_size
+                                else:
+                                    pips = (entry_price - current_price) / pip_size
+                                
+                                current_signal['total_pips'] += pips
+                            
+                            current_signal['trade_details'].append({
+                                'order_id': order_id,
+                                'status': 'ACTIVE',
+                                'entry_price': entry_price,
+                                'current_profit': unrealized_profit,
+                                'pips': pips if 'pips' in locals() else 0
+                            })
+                        
+                        else:
+                            # Position is closed, check history
+                            from_timestamp = int(start_date.timestamp())
+                            to_timestamp = int(end_date.timestamp())
+                            
+                            # Look for closed deals
+                            deals = mt5.history_deals_get(from_timestamp, to_timestamp)
+                            
+                            if deals:
+                                # Find deals related to this order
+                                for deal in deals:
+                                    if deal.magic >= 123456 and deal.magic < 123500:  # Our magic number range
+                                        if deal.entry == mt5.DEAL_ENTRY_OUT:  # Closing deal
+                                            current_signal['total_trades'] += 1
+                                            
+                                            profit = deal.profit
+                                            current_signal['total_profit'] += profit
+                                            total_profit += profit
+                                            
+                                            # Determine win/loss
+                                            if profit > 0:
+                                                current_signal['wins'] += 1
+                                            else:
+                                                current_signal['losses'] += 1
+                                            
+                                            # Calculate pips for closed position  
+                                            symbol_info = mt5.symbol_info(symbol)
+                                            if symbol_info:
+                                                point = symbol_info.point
+                                                digits = symbol_info.digits
+                                                pip_size = point * 10 if digits in [5, 3] else point
+                                                
+                                                # Get opening deal to calculate pips
+                                                opening_deals = mt5.history_deals_get(position=deal.position_id)
+                                                if opening_deals:
+                                                    opening_deal = None
+                                                    for d in opening_deals:
+                                                        if d.entry == mt5.DEAL_ENTRY_IN:
+                                                            opening_deal = d
+                                                            break
+                                                    
+                                                    if opening_deal:
+                                                        if opening_deal.type == mt5.DEAL_TYPE_BUY:
+                                                            pips = (deal.price - opening_deal.price) / pip_size
+                                                        else:
+                                                            pips = (opening_deal.price - deal.price) / pip_size
+                                                        
+                                                        current_signal['total_pips'] += pips
+                                            
+                                            current_signal['trade_details'].append({
+                                                'order_id': order_id,
+                                                'status': 'WIN' if profit > 0 else 'LOSS',
+                                                'entry_price': entry_price,
+                                                'exit_price': deal.price,
+                                                'profit': profit,
+                                                'pips': pips if 'pips' in locals() else 0
+                                            })
+                                            break
+                
+                except Exception as e:
+                    self.logger.error(f"Error processing signal {signal_id}: {e}")
+                    continue
+            
+            # Calculate final statistics for each signal
+            final_breakdown = {}
+            for signal_key, stats in signal_breakdown.items():
+                total_closed = stats['wins'] + stats['losses']
+                
+                final_breakdown[signal_key] = {
+                    'signal_id': stats['signal_id'],
+                    'strategy': stats['strategy'],
+                    'symbol': stats['symbol'],
+                    'direction': stats['direction'],
+                    'execution_time': stats['execution_time'],
+                    'orders_placed': stats['orders_placed'],
+                    'total_trades': total_closed,
+                    'active_positions': stats['active'],
+                    'wins': stats['wins'],
+                    'losses': stats['losses'],
+                    'win_rate': (stats['wins'] / total_closed * 100) if total_closed > 0 else 0,
+                    'total_profit': stats['total_profit'],
+                    'avg_profit_per_trade': stats['total_profit'] / total_closed if total_closed > 0 else 0,
+                    'total_pips': stats['total_pips'],
+                    'avg_pips_per_trade': stats['total_pips'] / total_closed if total_closed > 0 else 0,
+                    'entry_prices': stats['entry_prices'],
+                    'trade_details': stats['trade_details'],
+                    'profit_factor': self._calculate_profit_factor(stats['trade_details'])
+                }
+            
+            return {
+                "success": True,
+                "stats": {
+                    "date_range": f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
+                    "total_signals_executed": total_signals,
+                    "total_profit_all_signals": total_profit,
+                    "signal_breakdown": final_breakdown
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error generating signal breakdown stats: {e}")
+            return {"success": False, "error": str(e)}
+
+    def _calculate_profit_factor(self, trade_details):
+        """Simple profit factor calculation for individual signals."""
+        try:
+            gross_profit = sum(trade['profit'] for trade in trade_details 
+                            if trade.get('profit', 0) > 0 and trade['status'] != 'ACTIVE')
+            gross_loss = abs(sum(trade['profit'] for trade in trade_details 
+                                if trade.get('profit', 0) < 0 and trade['status'] != 'ACTIVE'))
+            
+            if gross_loss == 0:
+                return float('inf') if gross_profit > 0 else 0
+            return gross_profit / gross_loss
+        except:
+            return 0.0
+    
+    
     
     def cleanup(self):
         """Clean up resources."""
