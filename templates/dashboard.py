@@ -9,8 +9,8 @@ from functools import wraps
 import pandas as pd
 
 # Import database manager
-from db_manager import TradingBotDatabase
-from config import Config
+from local_DB.db_manager import TradingBotDatabase
+from config.config import Config
 
 # Initialize app
 app = Flask(__name__)

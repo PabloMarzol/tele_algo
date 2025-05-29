@@ -493,6 +493,7 @@ class MySQLManager:
         except Exception as e:
             self.logger.error(f"Error getting recent accounts by FILETIME: {e}")
             return []
+    
     def close(self):
         """Close database connection."""
         try:

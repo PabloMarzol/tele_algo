@@ -1,0 +1,34 @@
+{
+    "bot_manager_token": "8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694",
+    "bot_algo_token": "7653568615:AAGiZmDEGLhpMiPVuwExdXfe2NZoMCztj1k",
+    "admin_user_id": [
+        7823596188,
+        7396303047,
+        8177033621
+    ],
+    "admin_user_id_2": 7396303047,
+    "channels": {
+        "main_channel_id": "-1002586937373",
+        "support_group_id": -1002520071214,
+        "strategy_channel_id": "-1002575685046",
+        "strategy_group_id": -1002428210575,
+        "signals_channel_id": "-1002697690452",
+        "signals_group_id": -1002685536346,
+        "prop_channel_id": "-1002675985847",
+        "prop_group_id": -1002673182167,
+        "ed_channel_id": "-1002529155778",
+        "ed_group_id": 0
+    },
+    "message_interval_hours": 1,
+    "data_dir": "./bot_data",
+    "messages": {
+        "welcome": "Welcome to our Trading Community! Please complete the authentication process.",
+        "periodic": "\ud83d\udcca Remember to check our latest trading signals!",
+        "private_welcome": "Thanks for reaching out! To better serve you, please answer a few questions:"
+    },
+    "auth": {
+        "captcha_enabled": true,
+        "max_attempts": 3,
+        "account_format_regex": "^TR\\d{8}$"
+    }
+}

@@ -1,17 +1,28 @@
 {
-    "bot_token": "8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694",
-    "admin_user_id": 7823596188,
-    "channel_id": "-1002575685046",
-    "group_id": -1002428210575,
+    "bot_manager_token": "8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694",
+    "bot_algo_token": "7653568615:AAGiZmDEGLhpMiPVuwExdXfe2NZoMCztj1k",
+    "admin_user_id": [7823596188, 7396303047, 8177033621],
+    "admin_user_id_2": 7396303047,
+    "channels": {
+        "main_channel_id": "-1002586937373",
+        "support_group_id": -1002520071214,
+        "strategy_channel_id": "-1002575685046",
+        "strategy_group_id": -1002428210575,
+        "signals_channel_id": "-1002697690452",
+        "signals_group_id": -1002685536346,
+        "prop_channel_id": "-1002675985847",
+        "prop_group_id": -1002673182167,
+        "ed_channel_id": "-1002529155778",
+        "ed_group_id": 0
+    },
     "message_interval_hours": 1,
     "data_dir": "./bot_data",
     "messages": {
-        "welcome": "Welcome to our Trading Community! \ud83d\ude80 Please complete the authentication process to access our trading signals.",
-        "periodic": "\ud83d\udcca TRADING SIGNALS UPDATE: Remember to check our latest market analysis and signals! Join our premium channel for exclusive access to advanced trading strategies.",
-        "private_welcome": "Welcome to our Trading Community! \ud83d\udcc8 To provide you with personalized trading recommendations, please answer a few questions:",
+        "welcome": "Welcome to our Trading Community! 🚀 Please complete the authentication process to access our trading signals.",
+        "periodic": "📊 TRADING SIGNALS UPDATE: Remember to check our latest market analysis and signals! Join our premium channel for exclusive access to advanced trading strategies.",
+        "private_welcome": "Welcome to our Trading Community! 📈 To provide you with personalized trading recommendations, please answer a few questions:",
         "admin_auto_welcome": "<b>Hey there, and welcome to VFX! 👋💸</b>\n\nFirstly, apologies for the delayed response — we've been absolutely inundated with requests due to the high demand for the VFX strategy. We truly appreciate your patience and are excited to have you on board!\n\n<b>🏦 Account Setup:</b>\n\n• If you've already created your Vortex FX account, great! 📊\n• If you haven't registered yet, you can do that here (it's free):\n👉 <a href='https://clients.vortexfx.com/register?referral=0195a843-2b1c-7339-9088-57b56b4aa753'>Register Now</a>\n\n<b>🚀 Ready to get started?</b>\n\nUse our guided setup below to get your account configured perfectly for your trading style!\n\nWe're glad to have you with us — let's build and grow together! 📈🔥",
         "signals_auto_welcome": "<b>Hey there, and welcome to VFX Signals! 👋📊</b>\n\nFirstly, apologies for the delayed response — we've been absolutely inundated with requests due to the high demand for the VFX signals. We truly appreciate your patience and are excited to have you on board!\n<b>Account Setup:</b>\n\n- If you've already created your Vortex FX account, please reply with your MT5 account number so we can get you set up right away. ✅\n- If you haven't registered yet, you can do that here (it's free):\n\n👉 <a href='https://clients.vortexfx.com/register?referral=0195a843-2b1c-7339-9088-57b56b4aa753'>Register Now</a>\n <b>To help us tailor your signals service, please also answer the following:</b>\n1️⃣ What risk profile would you like on your account? (Low / Medium / High)\n2️⃣ How much capital have you funded your account with?\n3️⃣ Have you used a signals service before? (Yes / No)\n4️⃣ What is your Vortex FX MT5 account number? 🔢\n\nWe're glad to have you with us — let's trade and grow together! 📊 🔥"
-
     },
     "auth": {
         "captcha_enabled": true,
@@ -19,4 +30,3 @@
         "account_format_regex": "^TR\\d{8}$"
     }
 }
-

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import time
 
 # Import our Hawkes strategy module
-from hawkes import calculate_hawkes_signal
+from tradingSignals.algorithms.hawkes import calculate_hawkes_signal
 
 logging.basicConfig(
     level=logging.INFO,
@@ -660,7 +660,7 @@ class MT5SignalGenerator:
             hours_ago = (datetime.now() - last_time).total_seconds() / 3600
             
             # If sent less than 8 hours ago, consider it a duplicate
-            if hours_ago < 8:
+            if hours_ago < 1:
                 return True
         
         return False

@@ -4,7 +4,7 @@ import hashlib
 import random
 import string
 from datetime import datetime, timedelta
-from mysql_manager import get_mysql_connection
+from mySQL.mysql_manager import get_mysql_connection
 
 class TradingAccountAuth:
     def __init__(self, db_path=None):
