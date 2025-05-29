@@ -8,6 +8,7 @@ user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_accou
 5001208252,dbart1989,D,B,0,0,"",false,2025-05-27 17:47:22,2025-05-27 17:47:22,false,"","","","",false,"",signals_channel,2025-05-27 17:47:22,false,"","","",""
 7369915384,TRADEXCELLENT,TRADEX,,0,0,"",false,2025-05-27 23:31:49,2025-05-27 23:31:49,false,"","","","",false,"",main_channel,2025-05-27 23:31:49,true,2025-05-27 23:31:50,"","",""
 720145405,,༺ཊཽWAZZཏཽ༻,,0,0,"",false,2025-05-27 23:32:20,2025-05-27 23:32:20,false,"","","","",false,"",main_channel,2025-05-27 23:32:20,false,"","","",""
+<<<<<<< HEAD
 6284619526,kash11412,Kerry,Delva,0,0,"",false,2025-05-28 05:54:23,2025-05-28 05:54:23,false,"","","","",false,"",main_channel,2025-05-28 05:54:23,false,"","","",""
 773381277,GEEQUE,GQ,,0,0,"",false,2025-05-28 05:54:41,2025-05-28 05:54:41,false,"","","","",false,"",main_channel,2025-05-28 05:54:41,false,"","","",""
 694903440,VFPdragon,VFP,Dragon,0,0,"",false,2025-05-28 05:55:01,2025-05-28 05:55:01,false,"","","","",false,"",main_channel,2025-05-28 05:55:01,false,"","","",""
@@ -16,3 +17,5 @@ user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_accou
 6567567105,Rohittiwari4,Rohit-,Money Expo India / Colombia / Chile / Dubai,0,0,"",false,2025-05-28 08:27:25,2025-05-28 08:27:25,false,"","","","",false,"",main_channel,2025-05-28 08:27:25,false,"","","",""
 6376915981,Muzzymn,Muzzy,man,8,500,,false,2025-05-28 09:36:56,2025-05-28 09:36:56,false,"",strategy,"","",false,"",main_channel,2025-05-28 09:33:28,false,"",high,500,2025-05-28 09:38:05
 5494495178,,ثائر,صالح,0,0,"",false,2025-05-28 17:13:20,2025-05-28 17:13:20,false,"","","","",false,"","","",false,"","","",""
+=======
+>>>>>>> 299960dade99d6b775bfe5774ef60ad382db5431
