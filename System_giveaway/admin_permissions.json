@@ -1,0 +1,136 @@
+{
+  "admins": {
+    "7097133726": {
+      "name": "CREATOR",
+      "permission_group": "FULL_ADMIN",
+      "active": true,
+      "created_date": "2025-01-20",
+      "restrictions": {
+        "time_based": false,
+        "allowed_hours": {},
+        "timezone": "Europe/London"
+      },
+      "custom_permissions": [],
+      "denied_permissions": [],
+      "notifications": {
+        "private_notifications": true,
+        "channel_notifications": true
+      }
+    },
+    "1127393419": {
+      "name": "Admin 1",
+      "permission_group": "FULL_ADMIN",
+      "active": true,
+      "created_date": "2025-01-20",
+      "restrictions": {
+        "time_based": false,
+        "allowed_hours": {},
+        "timezone": "Europe/London"
+      },
+      "custom_permissions": [],
+      "denied_permissions": [],
+      "notifications": {
+        "private_notifications": true,
+        "channel_notifications": true
+      }
+    },
+    "number": {
+      "name": "Business Owner",
+      "permission_group": "FULL_ADMIN",
+      "active": true,
+      "created_date": "2025-01-20",
+      "restrictions": {
+        "time_based": true,
+        "allowed_hours": {
+          "daily_draw": [],
+          "weekly_draw": [],
+          "monthly_draw": [17]
+        },
+        "timezone": "Europe/London"
+      },
+      "custom_permissions": [],
+      "denied_permissions": [],
+      "notifications": {
+        "private_notifications": true,
+        "channel_notifications": true
+      }
+    },
+    "8177033621": {
+      "name": "Admin Especializado",
+      "permission_group": "PAYMENT_SPECIALIST",
+      "active": true,
+      "created_date": "2025-01-20",
+      "restrictions": {
+        "time_based": true,
+        "allowed_hours": {
+          "daily_draw": [17],
+          "weekly_draw": [17],
+          "monthly_draw": [17]
+        },
+        "timezone": "Europe/London"
+      },
+      "custom_permissions": [],
+      "denied_permissions": ["MODIFY_PRIZE_AMOUNTS"],
+      "notifications": {
+        "private_notifications": true,
+        "channel_notifications": false
+      }
+    },
+    "id": {
+      "name": "Admin Solo Lectura",
+      "permission_group": "VIEW_ONLY",
+      "active": true,
+      "created_date": "2025-01-20",
+      "restrictions": {
+        "time_based": false,
+        "allowed_hours": {},
+        "timezone": "Europe/London"
+      },
+      "custom_permissions": [],
+      "denied_permissions": [],
+      "notifications": {
+        "private_notifications": false,
+        "channel_notifications": true
+      }
+    }
+  },
+  "system_config": {
+    "require_two_factor_for_draws": false,
+    "log_all_actions": true,
+    "notification_channel_id": null,
+    "default_timezone": "Europe/London",
+    "created_date": "2025-01-20",
+    "version": "1.0",
+    "emergency_contacts": ["8177033621"],
+    "security_settings": {
+      "max_failed_attempts": 3,
+      "lockout_duration_minutes": 30,
+      "require_confirmation_for_high_value": true,
+      "high_value_threshold": 1000
+    }
+  },
+  "notification_config": {
+    "admin_channel_id": "OPCIONAL_CANAL_DE_ADMINS",
+    "notification_types": {
+      "winner_notifications": true,
+      "payment_reminders": true,
+      "system_alerts": true,
+      "error_notifications": true,
+      "revenue_reports": true,
+      "health_checks": true,
+      "draw_results": true,
+      "payment_confirmations": true
+    },
+    "schedule": {
+      "payment_reminders": "daily_6pm",
+      "health_checks": "daily_2am",
+      "revenue_reports": "weekly_monday_9am"
+    }
+  },
+  "audit_log": {
+    "enabled": true,
+    "retention_days": 90,
+    "include_failed_attempts": true,
+    "file_path": "admin_actions.log"
+  }
+}

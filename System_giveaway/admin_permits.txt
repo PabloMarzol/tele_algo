@@ -1,0 +1,39 @@
+{
+  "admins": {
+    "ID_ADMIN_1": {
+      "name": "Admin 1",
+      "permission_group": "FULL_ADMIN",  // ← Acceso total
+      "restrictions": {
+        "time_based": false  // ← Sin restricciones
+      }
+    },
+    "8177033621": {
+      "name": "Tu Nombre", 
+      "permission_group": "FULL_ADMIN",  // ← Acceso total
+      "restrictions": {
+        "time_based": false  // ← Sin restricciones
+      }
+    },
+    "ID_DUENO": {
+      "name": "Dueño",
+      "permission_group": "PAYMENT_SPECIALIST",  // ← Permisos especializados
+      "restrictions": {
+        "time_based": true,  // ← CON restricciones horarias
+        "allowed_hours": {
+          "daily_draw": [17],    // Solo 5 PM
+          "weekly_draw": [17],   // Solo 5 PM
+          "monthly_draw": [17]   // Solo 5 PM
+        }
+      }
+    },
+    "ID_OTRO_ADMIN": {
+      "name": "Otro Admin",
+      "permission_group": "PAYMENT_SPECIALIST",  // ← Permisos especializados
+      "restrictions": {
+        "time_based": true,  // ← CON restricciones horarias
+        "custom_permissions": [],  // ← Permisos extra si necesitas
+        "denied_permissions": ["MODIFY_PRIZE_AMOUNTS"]  // ← Permisos específicamente bloqueados
+      }
+    }
+  }
+}

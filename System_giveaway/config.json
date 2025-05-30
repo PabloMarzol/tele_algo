@@ -1,0 +1,118 @@
+{
+  "bot": {
+    "token": "7980849363:AAFq_OjZL7i_HzZGz0PVxzFwjO4ng_ufL8E",
+    "channel_id": "-1002636028382",
+    "admin_id": "7823596188",
+    "admin_username": "VFX_FX2"
+  },
+  "automation": {
+    "enabled": true,
+    "default_auto_modes": {
+      "daily": false,
+      "weekly": false,
+      "monthly": false
+    },
+    "recurring_invitations": {
+      "enabled": true,
+      "daily_frequency_hours": 2,
+      "weekly_frequency_hours": 4,
+      "monthly_frequency_hours": 6,
+      "active_hours": {
+        "start": 9,
+        "end": 21
+      },
+      "respect_participation_windows": true,
+      "admin_error_notifications": true
+    }
+  },
+  "mt5_api": {
+    "server": "your_mt5_server",
+    "username": "your_api_username",
+    "password": "your_api_password",
+    "timeout": 30
+  },
+  "giveaway_configs": {
+    "daily": {
+      "prize": 250,
+      "cooldown_days": 30,
+      "reset_frequency": "daily",
+      "min_balance": 100,
+      "participation_window": {
+        "days": "mon-fri",
+        "start_hour": 1,
+        "start_minute": 0,
+        "end_hour": 16,
+        "end_minute": 50
+      },
+      "draw_schedule": {
+        "days": "mon-fri",
+        "hour": 11,
+        "minute": 45
+      }
+    },
+    "weekly": {
+      "prize": 500,
+      "cooldown_days": 60,
+      "reset_frequency": "weekly",
+      "min_balance": 100,
+      "participation_window": {
+        "start_day": "monday",
+        "start_hour": 9,
+        "start_minute": 0,
+        "end_day": "friday",
+        "end_hour": 17,
+        "end_minute": 0
+      },
+      "draw_schedule": {
+        "day": "friday",
+        "hour": 17,
+        "minute": 15
+      }
+    },
+    "monthly": {
+      "prize": 1000,
+      "cooldown_days": 90,
+      "reset_frequency": "monthly",
+      "min_balance": 100,
+      "participation_window": {
+        "start_day": 1,
+        "end_day": "last_friday",
+        "start_hour": 9,
+        "start_minute": 0
+      },
+      "draw_schedule": {
+        "day": "last_friday",
+        "hour": 17,
+        "minute": 30
+      }
+    }
+  },
+  "admin_notifications": {
+    "admin_channel_id": "-1001234567890",
+    "notification_types": {
+      "automatic_draws": true,
+      "draw_errors": true,
+      "system_status": true,
+      "winner_announcements": true,
+      "no_participants": false
+    }
+  },
+  
+  "database": {
+    "type": "csv",
+    "base_path": "./System_giveaway/data"
+  },
+  "security": {
+    "encryption_key": "your_optional_encryption_key",
+    "rate_limit": {
+      "max_attempts": 4,
+      "window_minutes": 60
+    }
+  },
+  "timezone": "Europe/London",
+  "logging": {
+    "level": "INFO",
+    "file": "giveaway_bot.log",
+    "max_size_mb": 10
+  }
+}
