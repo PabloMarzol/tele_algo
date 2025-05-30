@@ -1,0 +1,37 @@
+{"timestamp": "2025-05-26 17:40:47", "user_id": "7097133726", "admin_name": "Unknown", "action": "send_daily_invitation", "details": "DENIED - admin_send_daily_invitation", "authorized": false}
+{"timestamp": "2025-05-26 17:46:30", "user_id": "7097133726", "admin_name": "Unknown", "action": "send_weekly_invitation", "details": "DENIED - admin_send_weekly_invitation", "authorized": false}
+{"timestamp": "2025-05-26 17:46:45", "user_id": "7097133726", "admin_name": "Unknown", "action": "execute_daily_draw", "details": "DENIED - No permission to execute daily draws", "authorized": false}
+{"timestamp": "2025-05-26 17:46:56", "user_id": "7097133726", "admin_name": "Unknown", "action": "execute_weekly_draw", "details": "DENIED - No permission to execute weekly draws", "authorized": false}
+{"timestamp": "2025-05-26 17:47:05", "user_id": "7097133726", "admin_name": "Unknown", "action": "execute_monthly_draw", "details": "DENIED - No permission to execute monthly draws", "authorized": false}
+{"timestamp": "2025-05-26 17:47:33", "user_id": "7097133726", "admin_name": "Unknown", "action": "test_connections", "details": "DENIED - test_channel_command", "authorized": false}
+{"timestamp": "2025-05-26 17:56:31", "user_id": "7097133726", "admin_name": "Unknown", "action": "test_connections", "details": "DENIED - test_channel_command", "authorized": false}
+{"timestamp": "2025-05-26 17:58:05", "user_id": "7097133726", "admin_name": "Unknown", "action": "health_check", "details": "DENIED - health_check_command", "authorized": false}
+{"timestamp": "2025-05-26 18:27:53", "user_id": "7097133726", "admin_name": "Unknown", "action": "send_daily_invitation", "details": "DENIED - admin_send_daily_invitation", "authorized": false}
+{"timestamp": "2025-05-26 18:29:16", "user_id": "7097133726", "admin_name": "Unknown", "action": "send_daily_invitation", "details": "DENIED - admin_send_daily_invitation", "authorized": false}
+{"timestamp": "2025-05-26 18:34:43", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_daily_invitation", "details": "AUTHORIZED - admin_send_daily_invitation", "authorized": true}
+{"timestamp": "2025-05-26 18:34:43", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_daily_invitation", "details": "Failed to send daily invitation", "authorized": true}
+{"timestamp": "2025-05-26 18:35:10", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_daily_invitation", "details": "AUTHORIZED - admin_send_daily_invitation", "authorized": true}
+{"timestamp": "2025-05-26 18:35:10", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_daily_invitation", "details": "Failed to send daily invitation", "authorized": true}
+{"timestamp": "2025-05-26 18:35:16", "user_id": "7097133726", "admin_name": "bird Bill", "action": "health_check", "details": "AUTHORIZED - health_check_command", "authorized": true}
+{"timestamp": "2025-05-26 18:35:17", "user_id": "7097133726", "admin_name": "bird Bill", "action": "health_check", "details": "Health check completed - Status: healthy", "authorized": true}
+{"timestamp": "2025-05-26 18:35:23", "user_id": "7097133726", "admin_name": "bird Bill", "action": "test_connections", "details": "AUTHORIZED - test_channel_command", "authorized": true}
+{"timestamp": "2025-05-26 18:35:23", "user_id": "7097133726", "admin_name": "bird Bill", "action": "test_connections", "details": "Test channel successful - Message ID: 122", "authorized": true}
+{"timestamp": "2025-05-27 01:06:11", "user_id": "7097133726", "admin_name": "bird Bill", "action": "test_connections", "details": "AUTHORIZED - test_channel_command", "authorized": true}
+{"timestamp": "2025-05-27 01:06:11", "user_id": "7097133726", "admin_name": "bird Bill", "action": "test_connections", "details": "Test channel successful - Message ID: 123", "authorized": true}
+{"timestamp": "2025-05-27 01:06:14", "user_id": "7097133726", "admin_name": "bird Bill", "action": "health_check", "details": "AUTHORIZED - health_check_command", "authorized": true}
+{"timestamp": "2025-05-27 01:06:15", "user_id": "7097133726", "admin_name": "bird Bill", "action": "health_check", "details": "Health check completed - Status: healthy", "authorized": true}
+{"timestamp": "2025-05-27 01:06:45", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_daily_invitation", "details": "AUTHORIZED - admin_send_daily_invitation", "authorized": true}
+{"timestamp": "2025-05-27 01:06:45", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_daily_invitation", "details": "Failed to send daily invitation", "authorized": true}
+{"timestamp": "2025-05-27 01:14:38", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_daily_invitation", "details": "AUTHORIZED - admin_send_daily_invitation", "authorized": true}
+{"timestamp": "2025-05-27 01:14:38", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_daily_invitation", "details": "Failed to send daily invitation", "authorized": true}
+{"timestamp": "2025-05-27 01:14:52", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_weekly_invitation", "details": "AUTHORIZED - admin_send_weekly_invitation", "authorized": true}
+{"timestamp": "2025-05-27 01:14:52", "user_id": "7097133726", "admin_name": "bird Bill", "action": "send_weekly_invitation", "details": "Weekly invitation sent successfully", "authorized": true}
+{"timestamp": "2025-05-27 01:15:10", "user_id": "7097133726", "admin_name": "bird Bill", "action": "execute_weekly_draw", "details": "AUTHORIZED - admin_run_weekly_draw at 01:15", "authorized": true}
+{"timestamp": "2025-05-27 01:15:10", "user_id": "7097133726", "admin_name": "bird Bill", "action": "execute_weekly_draw", "details": "Weekly draw executed - No participants", "authorized": true}
+{"timestamp": "2025-05-27 13:47:39", "user_id": "7097133726", "admin_name": "bird Bill", "action": "execute_daily_draw", "details": "AUTHORIZED - admin_run_daily_draw at 13:47", "authorized": true}
+{"timestamp": "2025-05-27 13:47:40", "user_id": "7097133726", "admin_name": "bird Bill", "action": "execute_daily_draw", "details": "Daily draw executed - No participants", "authorized": true}
+{"timestamp": "2025-05-27 15:55:10", "user_id": "7097133726", "admin_name": "bird Bill", "action": "execute_daily_draw", "details": "AUTHORIZED - admin_run_daily_draw at 15:55", "authorized": true}
+{"timestamp": "2025-05-27 15:55:11", "user_id": "7097133726", "admin_name": "bird Bill", "action": "execute_daily_draw", "details": "Daily draw executed - Winner: @birdcapri", "authorized": true}
+{"timestamp": "2025-05-27 15:55:33", "user_id": "7097133726", "admin_name": "bird Bill", "action": "confirm_daily_payments", "details": "AUTHORIZED - admin_confirm_daily_payment", "authorized": true}
+{"timestamp": "2025-05-27 15:56:03", "user_id": "7097133726", "admin_name": "bird Bill", "action": "confirm_daily_payments", "details": "AUTHORIZED - admin_confirm_daily_payment", "authorized": true}
+{"timestamp": "2025-05-27 15:57:14", "user_id": "7097133726", "admin_name": "bird Bill", "action": "confirm_daily_payments", "details": "AUTHORIZED - admin_confirm_daily_payment", "authorized": true}
