@@ -28,7 +28,7 @@ class MT5SignalGenerator:
         self.strategies = {
             'ma_crossover': {
                 'symbols': [
-                    'NAS100','US30', 'US500'
+                    'NAS100','US30', 'US500', 'BTCUSD'
                 ],
                 'timeframes': [
                     mt5.TIMEFRAME_M5 

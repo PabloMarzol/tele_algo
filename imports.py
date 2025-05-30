@@ -24,6 +24,7 @@ from mySQL.mysql_manager import get_mysql_connection
 from configs.config import Config
 from mySQL.mysql_manager import get_mysql_connection
 
+from tradingSignals.SignalAlgo import SignalBot
 class ForwardedMessageFilter(MessageFilter):
     """Custom filter for forwarded messages."""
     

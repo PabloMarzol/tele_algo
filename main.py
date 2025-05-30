@@ -13,7 +13,7 @@ from telegram.ext import (
 
 from userReg.reg_Fn import *
 from local_DB.db_handlers import *  
-from tradingSignals.signal_Functions import *
+from tradingSignals.SignalAlgo import *
 from mySQL.c_functions import *
 
 
@@ -2075,13 +2075,11 @@ async def copy_template_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 
 def main() -> None:
-    """Start the bot."""
-    # Create the Application
-    print("Starting bot...")
-    print("Setting up VFX message scheduler...")
+    """Start both manager and signal bots from same main function."""
+    print("Starting VFX Trading Bot System...")
+    print("📋 Manager Bot: User registration, admin tools, scheduled messages")
+    print("🤖 Signal Bot: Trading signals, MT5 connections, signal analysis")
     print(f"Admin ID is set to {ADMIN_USER_ID}")
-    
-    
     
     mysql_db = get_mysql_connection()
     if mysql_db.is_connected():
@@ -2089,123 +2087,57 @@ def main() -> None:
     else:
         print("⚠️ MySQL connection failed - will use CSV fallback")
     
+    # ===== CREATE BOTH BOTS =====
+    # Manager bot 
+    manager_application = Application.builder().token(BOT_MANAGER_TOKEN).build()
     
-    application = Application.builder().token(BOT_MANAGER_TOKEN).build()
-
-    # Create instance of custom filter for forwarded messages
+    # Signal bot 
+    signal_bot = SignalBot(BOT_ALGO_TOKEN, SIGNALS_CHANNEL_ID)
+    
+    # Custom filter for forwarded messages
     forwarded_filter = ForwardedMessageFilter()
-
     
-    """------------------------------
-        ------ Message Handlers ----- 
-    ---------------------------------"""
-    # Add handler for messages forwarded to the admin
-    application.add_handler(MessageHandler(
+    # ===== MANAGER BOT HANDLERS (All existing handlers) =====
+    manager_application.add_handler(MessageHandler(
         filters.User(user_id=ADMIN_USER_ID) & ~filters.COMMAND,
         handle_admin_forward,
         block=True
     ))
 
-    # Add handler for regular admin messages (not forwarded)
-    application.add_handler(MessageHandler(
+    manager_application.add_handler(MessageHandler(
         filters.User(user_id=ADMIN_USER_ID) & filters.TEXT & ~forwarded_filter & ~filters.COMMAND,
         handle_admin_forward,
         block=True
     ))
     
-    """------------------------------
-        ------ Call Handlers ----- 
-    ---------------------------------"""
+    # All callback handlers (VIP, copier, profile, etc.)
+    manager_application.add_handler(CallbackQueryHandler(add_to_vip_callback, pattern=r"^add_vip_"))
+    manager_application.add_handler(CallbackQueryHandler(forward_to_copier_callback, pattern=r"^forward_copier_"))
+    manager_application.add_handler(CallbackQueryHandler(copier_team_action_callback, pattern=r"^copier_(added|rejected)_\d+$"))
+    manager_application.add_handler(CallbackQueryHandler(copier_team_action_callback, pattern=r"^contact_user_\d+$"))
+    manager_application.add_handler(CallbackQueryHandler(start_user_conversation_callback, pattern=r"^start_conv_\d+$"))
+    manager_application.add_handler(CallbackQueryHandler(view_profile_callback, pattern=r"^view_profile_"))
+    manager_application.add_handler(CallbackQueryHandler(generate_welcome_link_callback, pattern=r"^gen_welcome_"))
+    manager_application.add_handler(CallbackQueryHandler(handle_grant_vip_access_callbacks, pattern=r"^grant_vip_(signals|strategy|all)_\d+$"))
+    manager_application.add_handler(CallbackQueryHandler(check_my_status_callback, pattern=r"^check_my_status$"))
+    manager_application.add_handler(CallbackQueryHandler(handle_privacy_welcome_link, pattern=r"^gen_welcome_privacy$"))
+    manager_application.add_handler(CallbackQueryHandler(show_privacy_instructions, pattern=r"^show_privacy_instructions$"))
 
-    # Add callback handlers for VIP channel and copier team actions
-    application.add_handler(CallbackQueryHandler(
-        add_to_vip_callback,
-        pattern=r"^add_vip_"
+    # User registration flow
+    manager_application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
+        handle_auto_welcome_response,
+        block=False  
     ))
 
-    application.add_handler(CallbackQueryHandler(
-        forward_to_copier_callback,
-        pattern=r"^forward_copier_"
+    manager_application.add_handler(CallbackQueryHandler(
+        handle_auto_welcome_response,
+        pattern=r"^(risk_|interest_|deposit_exact_|choose_deposit_amount|custom_amount|request_vip_|restart_process|speak_advisor|check_balance_now|start_guided).*$"
     ))
 
-    application.add_handler(CallbackQueryHandler(
-        copier_team_action_callback,
-        pattern=r"^copier_(added|rejected)_\d+$"
-    ))
-
-    application.add_handler(CallbackQueryHandler(
-        copier_team_action_callback,
-        pattern=r"^contact_user_\d+$"
-    ))
-
-    # Admin conversation and profile management
-    application.add_handler(CallbackQueryHandler(
-        start_user_conversation_callback,
-        pattern=r"^start_conv_\d+$"
-    ))
-
-    application.add_handler(CallbackQueryHandler(
-        view_profile_callback,
-        pattern=r"^view_profile_"
-    ))
-
-    application.add_handler(CallbackQueryHandler(
-        generate_welcome_link_callback,
-        pattern=r"^gen_welcome_"
-    ))
-
-    # Admin granting VIP access (consolidated - no duplicates)
-    application.add_handler(CallbackQueryHandler(
-        handle_grant_vip_access_callbacks, 
-        pattern=r"^grant_vip_(signals|strategy|all)_\d+$"
-    ))
-    
-    # Check status for user's registration process
-    application.add_handler(CallbackQueryHandler(
-        check_my_status_callback,
-        pattern=r"^check_my_status$"
-    ))
-    
-    application.add_handler(CallbackQueryHandler(
-        handle_privacy_welcome_link,
-        pattern=r"^gen_welcome_privacy$"
-    ))
-
-    application.add_handler(CallbackQueryHandler(
-        show_privacy_instructions, 
-        pattern=r"^show_privacy_instructions$"
-    ))
-
-    # ========================================================================
-    # INTEGRATED USER REGISTRATION FLOW (Single handler for all user interactions)
-    # ========================================================================
-
-    # Handle ALL user text messages (replaces multiple separate handlers)
-    application.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
-            handle_auto_welcome_response,
-            block=False  
-        )
-    )
-
-    # Handle ALL user button callbacks (replaces multiple separate handlers)
-    application.add_handler(
-        CallbackQueryHandler(
-            handle_auto_welcome_response,
-            pattern=r"^(risk_|interest_|deposit_exact_|choose_deposit_amount|custom_amount|request_vip_|restart_process|speak_advisor|check_balance_now|start_guided).*$"
-        )
-    )
-
-    # ========================================================================
-    # LEGACY HANDLERS (Keep these if you still need backward compatibility)
-    # ========================================================================
-
-    # Manual entry conversation handler (keep this separate)
+    # Manual entry conversation
     manual_entry_handler = ConversationHandler(
-        entry_points=[
-            CallbackQueryHandler(manual_entry_callback, pattern=r"^manual_")
-        ],
+        entry_points=[CallbackQueryHandler(manual_entry_callback, pattern=r"^manual_")],
         states={
             RISK_APPETITE_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, risk_appetite_manual)],
             DEPOSIT_AMOUNT_MANUAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, deposit_amount_manual)],
@@ -2214,173 +2146,123 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", cancel)],
         name="manual_entry_conversation",
     )
-    application.add_handler(manual_entry_handler)
+    manager_application.add_handler(manual_entry_handler)
     
-    # Add admin-specific command handlers
-    application.add_handler(CommandHandler("users", list_users_command))
-    application.add_handler(CommandHandler("endchat", end_user_conversation))
-    application.add_handler(CommandHandler("startform", start_form_command))
-    application.add_handler(CommandHandler("addtovip", add_to_vip_command))
-    application.add_handler(CommandHandler("forwardmt5", forward_mt5_command))
-    application.add_handler(CommandHandler("testaccount", test_account_command))
-    application.add_handler(CommandHandler("signalstatus", signal_status_command))
-    application.add_handler(CommandHandler("debugdb", debug_db_command))
-    application.add_handler(CommandHandler("resetuser", reset_user_registration_command))
-    application.add_handler(CommandHandler("signalstats", handle_signalstats))
-    application.add_handler(CommandHandler("algostats", signal_stats_command))
+    # ===== ADMIN COMMANDS =====
+    # Manager bot commands (no signal commands)
+    manager_application.add_handler(CommandHandler("users", list_users_command))
+    manager_application.add_handler(CommandHandler("endchat", end_user_conversation))
+    manager_application.add_handler(CommandHandler("startform", start_form_command))
+    manager_application.add_handler(CommandHandler("addtovip", add_to_vip_command))
+    manager_application.add_handler(CommandHandler("forwardmt5", forward_mt5_command))
+    manager_application.add_handler(CommandHandler("testaccount", test_account_command))
+    manager_application.add_handler(CommandHandler("debugdb", debug_db_command))
+    manager_application.add_handler(CommandHandler("resetuser", reset_user_registration_command))
     
+    # Signal bot commands 
+    # manager_application.add_handler(CommandHandler("signalstatus", lambda u, c: signal_bot.signal_status_command(u, c)))
+    # manager_application.add_handler(CommandHandler("signalstats", lambda u, c: signal_bot.handle_signalstats(u, c)))
+    # manager_application.add_handler(CommandHandler("algostats", lambda u, c: signal_bot.signal_stats_command(u, c)))
     
-    application.add_handler(CommandHandler("testmysql", test_mysql_command))
-    application.add_handler(CommandHandler("searchaccount", search_account_command))
-    application.add_handler(CommandHandler("checktable", check_table_command))
-    application.add_handler(CommandHandler("debugreg", debug_registrations_command))
-    application.add_handler(CommandHandler("checkmyaccounts", check_my_accounts_command))
-    application.add_handler(CommandHandler("quickbalance", quick_balance_command))
-    application.add_handler(CommandHandler("simpleregcheck", simple_reg_check_command))
-    application.add_handler(CommandHandler("testrecent", test_recent_fix_command))
-    application.add_handler(CommandHandler("testtimestamp", test_timestamp_approach))
-    application.add_handler(CommandHandler("recentbylogin", recent_accounts_by_login_command))
-    application.add_handler(CommandHandler("recentbytime", recent_accounts_timestamp_command))
-    application.add_handler(CommandHandler("newest", newest_accounts_simple_command))
-
-    
-    application.add_handler(CommandHandler("debugzero", debug_zero_dates_command))
-    application.add_handler(CommandHandler("checkmysqlmode", check_mysql_mode_command))
-    application.add_handler(CommandHandler("findthreshold", find_recent_login_threshold_command))
-    application.add_handler(CommandHandler("checkperms", check_user_permissions_command))
-    application.add_handler(CommandHandler("diagnoseaccess", diagnose_account_access_command))
-    application.add_handler(CommandHandler("testsafe", test_safe_login_query_command))  
-    application.add_handler(CommandHandler("decodetimestamp", decode_mt5_timestamp_command))
-    application.add_handler(CommandHandler("recentaccounts", recent_accounts_final_command)) 
-    application.add_handler(CommandHandler("currenttable", compare_current_table_command))
-    application.add_handler(CommandHandler("showtables", show_all_tables_command))
-    application.add_handler(CommandHandler("searchusertables", search_user_tables_command))
-    application.add_handler(CommandHandler("showdatabases", show_all_databases_command))
-    application.add_handler(CommandHandler("checktable", check_table_for_high_accounts_command))
-    application.add_handler(CommandHandler("checkaccounts", check_mt5_accounts_table_command))
-    application.add_handler(CommandHandler("compareusers", compare_users_vs_accounts_command))
-    application.add_handler(CommandHandler("sampleaccounts", check_accounts_table_sample_command))
+    # MySQL commands
+    manager_application.add_handler(CommandHandler("testmysql", test_mysql_command))
+    manager_application.add_handler(CommandHandler("searchaccount", search_account_command))
+    manager_application.add_handler(CommandHandler("checktable", check_table_command))
+    manager_application.add_handler(CommandHandler("debugreg", debug_registrations_command))
+    manager_application.add_handler(CommandHandler("checkmyaccounts", check_my_accounts_command))
+    manager_application.add_handler(CommandHandler("quickbalance", quick_balance_command))
+    manager_application.add_handler(CommandHandler("simpleregcheck", simple_reg_check_command))
+    manager_application.add_handler(CommandHandler("testrecent", test_recent_fix_command))
+    manager_application.add_handler(CommandHandler("testtimestamp", test_timestamp_approach))
+    manager_application.add_handler(CommandHandler("recentbylogin", recent_accounts_by_login_command))
+    manager_application.add_handler(CommandHandler("recentbytime", recent_accounts_timestamp_command))
+    manager_application.add_handler(CommandHandler("newest", newest_accounts_simple_command))
+    manager_application.add_handler(CommandHandler("debugzero", debug_zero_dates_command))
+    manager_application.add_handler(CommandHandler("checkmysqlmode", check_mysql_mode_command))
+    manager_application.add_handler(CommandHandler("findthreshold", find_recent_login_threshold_command))
+    manager_application.add_handler(CommandHandler("checkperms", check_user_permissions_command))
+    manager_application.add_handler(CommandHandler("diagnoseaccess", diagnose_account_access_command))
+    manager_application.add_handler(CommandHandler("testsafe", test_safe_login_query_command))  
+    manager_application.add_handler(CommandHandler("decodetimestamp", decode_mt5_timestamp_command))
+    manager_application.add_handler(CommandHandler("recentaccounts", recent_accounts_final_command)) 
+    manager_application.add_handler(CommandHandler("currenttable", compare_current_table_command))
+    manager_application.add_handler(CommandHandler("showtables", show_all_tables_command))
+    manager_application.add_handler(CommandHandler("searchusertables", search_user_tables_command))
+    manager_application.add_handler(CommandHandler("showdatabases", show_all_databases_command))
+    manager_application.add_handler(CommandHandler("checktable", check_table_for_high_accounts_command))
+    manager_application.add_handler(CommandHandler("checkaccounts", check_mt5_accounts_table_command))
+    manager_application.add_handler(CommandHandler("compareusers", compare_users_vs_accounts_command))
+    manager_application.add_handler(CommandHandler("sampleaccounts", check_accounts_table_sample_command))
     
         
     
-    application.add_handler(MessageHandler(filters.ALL, silent_update_logger), group=999)
+    manager_application.add_handler(MessageHandler(filters.ALL, silent_update_logger), group=999)
     
     
 
-    # Add conversation handler for the CAPTCHA and authentication process
+    # Auth conversation
     auth_conv_handler = ConversationHandler(
-        entry_points=[
-            CallbackQueryHandler(auth_callback, pattern=r"^auth_\d+$")
-        ],
+        entry_points=[CallbackQueryHandler(auth_callback, pattern=r"^auth_\d+$")],
         states={
             CAPTCHA_RESPONSE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_captcha_response)],
             TRADING_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_account_verification)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_chat=False,  # This allows the conversation to span across multiple chats
+        per_chat=False,
         name="auth_conversation",
     )
-    application.add_handler(auth_conv_handler)
+    manager_application.add_handler(auth_conv_handler)
 
+    # Basic commands
+    manager_application.add_handler(CommandHandler("start", start))
+    manager_application.add_handler(CommandHandler("help", help_command))
+    manager_application.add_handler(CommandHandler("stats", stats_command))
+    manager_application.add_handler(CommandHandler("managemsg", manage_messages_command))
+    manager_application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
     
-    # Add handlers for other functionalities
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("stats", stats_command))
-    application.add_handler(CommandHandler("managemsg", manage_messages_command))
-
-
-    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
+    # Error handler
+    manager_application.add_error_handler(error_handler)
     
-    # Add error handler
-    application.add_error_handler(error_handler)
+    # ===== SCHEDULED JOBS =====
+    job_queue = manager_application.job_queue
     
-    # # Add periodic job for sending messages (interval from settings)
-    job_queue = application.job_queue
-    
-    """------------------------------
-    --- Send Report Messages ----- 
-    ---------------------------------"""
-    # Schedule daily signup report
-    job_queue.run_daily(
-        send_daily_signup_report,
-        time=time(hour=0, minute=0)
-    )
-    # Schedule daily response report
-    job_queue.run_daily(
-        send_daily_response_report,
-        time=time(hour=23, minute=0)
-    )
-    
-    # Calculate the first run time for hourly job - at the start of the next hour
-    now = datetime.now()
-    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-    seconds_until_next_hour = (next_hour - now).total_seconds()
-    
+    # ===== MANAGER BOT JOBS (Non-signal jobs) =====
+    job_queue.run_daily(send_daily_signup_report, time=time(hour=0, minute=0))
+    job_queue.run_daily(send_daily_response_report, time=time(hour=23, minute=0))
     job_queue.run_once(log_all_chats, 5)
     
-    # Market session messages (on weekdays only)
-    # Calculate first run time for each market session
-    # Tokyo session (00:00)
-    """------------------------------
-    --- Send Messages at Market Open ----- 
-    ---------------------------------"""
+    # Market session messages, giveaways, channel messages (all existing)
+    now = datetime.now()
+    
+    # Market session messages
     tokyo_time = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if tokyo_time <= now:
         tokyo_time += timedelta(days=1)
     seconds_until_tokyo = (tokyo_time - now).total_seconds()
     
-    # London session (08:00)
     london_time = now.replace(hour=8, minute=0, second=0, microsecond=0)
     if london_time <= now:
         london_time += timedelta(days=1)
     seconds_until_london = (london_time - now).total_seconds()
     
-    # NY session (13:00)
     ny_time = now.replace(hour=13, minute=0, second=0, microsecond=0)
     if ny_time <= now:
         ny_time += timedelta(days=1)
     seconds_until_ny = (ny_time - now).total_seconds()
     
-    # --------------------------------------------------------------------- #
-    
     job_queue.run_once(send_hourly_welcome, seconds_until_tokyo)
     job_queue.run_daily(send_hourly_welcome, time=time(hour=0, minute=0))
-    
     job_queue.run_once(send_hourly_welcome, seconds_until_london)
     job_queue.run_daily(send_hourly_welcome, time=time(hour=8, minute=0))
-    
     job_queue.run_once(send_hourly_welcome, seconds_until_ny)
     job_queue.run_daily(send_hourly_welcome, time=time(hour=13, minute=0))
-    
 
-    """------------------------------
-        ------ Give aways Messages ----- 
-    ---------------------------------"""
-     # 17:00 - Daily giveaway announcement
-    job_queue.run_daily(
-        send_giveaway_message,
-        time=time(hour=15, minute=0)
-    )
+    # Giveaway messages
+    job_queue.run_daily(send_giveaway_message, time=time(hour=15, minute=0))
+    job_queue.run_daily(send_giveaway_message, time=time(hour=16, minute=0))
+    job_queue.run_daily(send_giveaway_message, time=time(hour=17, minute=0))
     
-    # 18:00 - Countdown to giveaway
-    job_queue.run_daily(
-        send_giveaway_message,
-        time=time(hour=16, minute=0)
-    )
-    
-    # 19:00 - Giveaway winner announcement
-    job_queue.run_daily(
-        send_giveaway_message,
-        time=time(hour=17, minute=0)
-    )
-     
-    
-    """---------------------------------
-    Send Messages at specified intervals
-    ------------------------------------"""
-    # Schedule interval messages - runs every 20 minutes
-    # Calculate time until next 20-minute mark
+    # Channel interval messages (all existing)
     minutes_now = now.minute
     minutes_until_next_interval = 21 - (minutes_now % 21)
     if minutes_until_next_interval == 0:
@@ -2391,9 +2273,9 @@ def main() -> None:
     seconds_until_next_interval = (next_interval - now).total_seconds()
     
     job_queue.run_repeating(
-        send_interval_message,
-        interval=timedelta(minutes=21),
-        first=seconds_until_next_interval  # Time in seconds until first run
+        send_interval_message, 
+        interval=timedelta(minutes=21), 
+        first=seconds_until_next_interval
     )
     
     
@@ -2471,47 +2353,60 @@ def main() -> None:
          Signal Jobs
     ------------------------------------"""
     
-    job_queue.run_once(init_signal_system, 10)
+    job_queue.run_once(lambda context: signal_bot.init_signal_system(), 10)
     
-    # Schedule regular signal checks - run every hour
+    # Signal checks every 5 minutes
     job_queue.run_repeating(
-        check_and_send_signals,
-        interval = 300,  # 5 
-        first = 60  # First check 1 minute after bot start
+        lambda context: signal_bot.check_and_send_signals(),
+        interval=300,
+        first=60
     )
     
+    # Signal status reports every 6 hours
     job_queue.run_repeating(
-        report_signal_system_status,
-        interval = 21600,  # Every 6 hours
-        first = 600  # First report 10 minutes after startup
+        lambda context: signal_bot.report_signal_system_status(),
+        interval=21600,
+        first=600
     )
     
+    # Trailing stops every 2 minutes
     job_queue.run_repeating(
-        lambda context: asyncio.create_task(apply_trailing_stops()),
-        interval = 120,
-        first = 60
+        lambda context: signal_bot.apply_trailing_stops(),
+        interval=120,
+        first=60
     )
 
+    # Daily stats at 22:00
     job_queue.run_daily(
-        lambda context: asyncio.create_task(send_daily_stats()),
-        time = time(hour = 22, minute = 0)
+        lambda context: signal_bot.send_daily_stats(),
+        time=time(hour=22, minute=0)
     )
     
-    # Log scheduled jobs
-    logger.info(f"Scheduled hourly welcome messages starting in {seconds_until_next_hour:.2f} seconds")
-    logger.info(f"Scheduled interval messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
-    logger.info(f"Scheduled strategy messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
-    logger.info(f"Scheduled propCapital messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
-    logger.info(f"Scheduled signals messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
-    logger.info(f"Scheduled education messages every 20 minutes starting in {seconds_until_next_interval:.2f} seconds")
-    logger.info(f"Tokyo session messages scheduled at 00:00 (in {seconds_until_tokyo/3600:.1f} hours)")
-    logger.info(f"London session messages scheduled at 08:00 (in {seconds_until_london/3600:.1f} hours)")
-    logger.info(f"NY session messages scheduled at 13:00 (in {seconds_until_ny/3600:.1f} hours)")
-    logger.info(f"Scheduled giveaway messages at 17:00, 18:00, and 19:00")
+    # ===== LOGGING =====
+    logger.info("📋 Manager Bot scheduled jobs:")
+    logger.info(f"- Hourly welcome messages")
+    logger.info(f"- Channel interval messages") 
+    logger.info(f"- Giveaway messages")
+    logger.info(f"- Daily reports")
     
+    logger.info("🤖 Signal Bot scheduled jobs:")
+    logger.info(f"- Signal checks every 5 minutes")
+    logger.info(f"- Trailing stops every 2 minutes")
+    logger.info(f"- Status reports every 6 hours")
+    logger.info(f"- Daily stats at 22:00")
     
-    # Run the bot
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    print("✅ Both bots configured and ready!")
+    print("📋 Manager Bot handles: Registration, Admin, VIP, Channels")
+    print("🤖 Signal Bot handles: Signals, MT5, Trading, Statistics")
+    
+    # ===== RUN MANAGER BOT  ===== #
+    import threading
+    
+    # Start signal bot in background thread 
+    threading.Thread(target=signal_bot.start_polling, daemon=True).start()
+    
+    # Start manager bot in main thread
+    manager_application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 # Main running name # 
