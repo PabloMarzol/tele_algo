@@ -233,3 +233,607 @@
 2025-05-29 18:57:37,457 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
 2025-05-29 18:57:47,478 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
 2025-05-29 18:57:57,497 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:58:07,519 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:58:15,706 - apscheduler.executors.default - INFO - Running job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:03:15 UTC)" (scheduled at 2025-05-29 17:58:15.701901+00:00)
+2025-05-29 18:58:15,706 - imports - WARNING - Cannot check signals - signal_dispatcher is None
+2025-05-29 18:58:15,706 - apscheduler.executors.default - INFO - Job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:03:15 UTC)" executed successfully
+2025-05-29 18:58:17,540 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:58:27,559 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:58:37,580 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:58:47,604 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:58:57,623 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:59:07,645 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:59:15,711 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:01:15 UTC)" (scheduled at 2025-05-29 17:59:15.701901+00:00)
+2025-05-29 18:59:15,711 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 18:59:15,711 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:01:15 UTC)" executed successfully
+2025-05-29 18:59:17,664 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:59:27,694 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:59:37,713 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:59:47,742 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 18:59:57,767 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:00:00,013 - apscheduler.executors.default - INFO - Running job "send_strategy_interval_message (trigger: interval[0:30:00], next run at: 2025-05-29 18:30:00 UTC)" (scheduled at 2025-05-29 18:00:00.002984+00:00)
+2025-05-29 19:00:00,014 - VFXMessageScheduler - INFO - Sending interval message: vip_strategy_welcome
+2025-05-29 19:00:00,342 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:00:00,342 - imports - INFO - Sent strategy interval message to channel -1002575685046 at 2025-05-29 19:00:00.342297
+2025-05-29 19:00:00,365 - apscheduler.executors.default - INFO - Job "send_strategy_interval_message (trigger: interval[0:30:00], next run at: 2025-05-29 18:30:00 UTC)" executed successfully
+2025-05-29 19:00:07,800 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:00:17,821 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:00:27,840 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:00:37,859 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:00:47,880 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:00:57,900 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:01:07,923 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:01:15,704 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:03:15 UTC)" (scheduled at 2025-05-29 18:01:15.701901+00:00)
+2025-05-29 19:01:15,704 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:01:15,705 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:03:15 UTC)" executed successfully
+2025-05-29 19:01:17,943 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:01:27,962 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:01:37,980 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:01:48,011 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:01:58,032 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:02:08,595 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:02:15,715 - apscheduler.executors.default - INFO - Running job "report_signal_system_status (trigger: interval[6:00:00], next run at: 2025-05-30 00:02:15 UTC)" (scheduled at 2025-05-29 18:02:15.701901+00:00)
+2025-05-29 19:02:15,715 - imports - WARNING - \u26a0\ufe0f Signal system not initialized yet
+2025-05-29 19:02:15,715 - apscheduler.executors.default - INFO - Job "report_signal_system_status (trigger: interval[6:00:00], next run at: 2025-05-30 00:02:15 UTC)" executed successfully
+2025-05-29 19:02:18,845 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:02:28,865 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:02:38,887 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:02:48,910 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:03:00,011 - apscheduler.executors.default - INFO - Running job "send_interval_message (trigger: interval[0:21:00], next run at: 2025-05-29 18:24:00 UTC)" (scheduled at 2025-05-29 18:03:00.001986+00:00)
+2025-05-29 19:03:00,011 - VFXMessageScheduler - INFO - Sending interval message: welcome_general
+2025-05-29 19:03:00,197 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:03:00,198 - imports - INFO - Sent interval message at 2025-05-29 19:03:00.198377
+2025-05-29 19:03:00,206 - apscheduler.executors.default - INFO - Job "send_interval_message (trigger: interval[0:21:00], next run at: 2025-05-29 18:24:00 UTC)" executed successfully
+2025-05-29 19:03:01,313 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:03:13,718 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:03:15,722 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:05:15 UTC)" (scheduled at 2025-05-29 18:03:15.701901+00:00)
+2025-05-29 19:03:15,722 - apscheduler.executors.default - INFO - Running job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:08:15 UTC)" (scheduled at 2025-05-29 18:03:15.701901+00:00)
+2025-05-29 19:03:15,722 - imports - WARNING - Cannot check signals - signal_dispatcher is None
+2025-05-29 19:03:15,723 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:03:15,723 - apscheduler.executors.default - INFO - Job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:08:15 UTC)" executed successfully
+2025-05-29 19:03:15,723 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:05:15 UTC)" executed successfully
+2025-05-29 19:03:23,747 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:03:33,766 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:03:43,785 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:03:53,803 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:04:03,820 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:04:13,840 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:04:23,862 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:04:33,880 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:04:45,067 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:04:55,325 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:05:05,589 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:05:15,616 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:05:15,713 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:07:15 UTC)" (scheduled at 2025-05-29 18:05:15.701901+00:00)
+2025-05-29 19:05:15,713 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:05:15,713 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:07:15 UTC)" executed successfully
+2025-05-29 19:05:17,825 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:05:17,951 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:05:18,026 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/editMessageText "HTTP/1.1 200 OK"
+2025-05-29 19:05:28,099 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:05:38,121 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:05:48,141 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:05:48,405 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:05:48,520 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:05:58,443 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:06:08,725 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:06:13,744 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:06:13,819 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/answerCallbackQuery "HTTP/1.1 200 OK"
+2025-05-29 19:06:13,854 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChatMember "HTTP/1.1 200 OK"
+2025-05-29 19:06:13,895 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:06:13,968 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/editMessageText "HTTP/1.1 200 OK"
+2025-05-29 19:06:23,770 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:06:33,790 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:06:43,813 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:06:45,987 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:06:46,112 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:06:56,022 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:07:06,044 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:07:15,717 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:09:15 UTC)" (scheduled at 2025-05-29 18:07:15.701901+00:00)
+2025-05-29 19:07:15,717 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:07:15,718 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:09:15 UTC)" executed successfully
+2025-05-29 19:07:16,069 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:07:26,350 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:07:36,648 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:07:41,545 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:07:41,877 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:07:51,647 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:08:01,666 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:08:11,695 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:08:15,716 - apscheduler.executors.default - INFO - Running job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:13:15 UTC)" (scheduled at 2025-05-29 18:08:15.701901+00:00)
+2025-05-29 19:08:15,717 - imports - WARNING - Cannot check signals - signal_dispatcher is None
+2025-05-29 19:08:15,717 - apscheduler.executors.default - INFO - Job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:13:15 UTC)" executed successfully
+2025-05-29 19:08:22,006 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:08:31,497 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:08:31,643 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:08:41,558 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:08:51,576 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:08:57,511 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:08:57,597 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:08:57,642 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/editMessageText "HTTP/1.1 200 OK"
+2025-05-29 19:09:07,532 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:09:15,707 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:11:15 UTC)" (scheduled at 2025-05-29 18:09:15.701901+00:00)
+2025-05-29 19:09:15,708 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:09:15,708 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:11:15 UTC)" executed successfully
+2025-05-29 19:09:17,553 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:09:27,573 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:09:37,595 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:09:47,616 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:09:57,640 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:10:00,017 - apscheduler.executors.default - INFO - Running job "send_prop_interval_message (trigger: interval[0:35:00], next run at: 2025-05-29 18:45:00 UTC)" (scheduled at 2025-05-29 18:10:00.002984+00:00)
+2025-05-29 19:10:00,018 - VFXMessageScheduler - INFO - Sending interval message: vfx_vip_welcome_premium
+2025-05-29 19:10:00,293 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:10:00,293 - imports - INFO - Sent strategy interval message to channel -1002675985847 at 2025-05-29 19:10:00.293385
+2025-05-29 19:10:00,296 - apscheduler.executors.default - INFO - Job "send_prop_interval_message (trigger: interval[0:35:00], next run at: 2025-05-29 18:45:00 UTC)" executed successfully
+2025-05-29 19:10:07,660 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:10:17,679 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:10:27,698 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:10:37,719 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:10:47,738 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:10:57,758 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:11:07,777 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:11:15,717 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:13:15 UTC)" (scheduled at 2025-05-29 18:11:15.701901+00:00)
+2025-05-29 19:11:15,717 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:11:15,717 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:13:15 UTC)" executed successfully
+2025-05-29 19:11:17,797 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:11:27,815 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:11:37,835 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:11:47,854 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:11:57,873 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:12:00,007 - apscheduler.executors.default - INFO - Running job "send_signals_interval_message (trigger: interval[0:36:00], next run at: 2025-05-29 18:48:00 UTC)" (scheduled at 2025-05-29 18:12:00.002984+00:00)
+2025-05-29 19:12:00,008 - VFXMessageScheduler - INFO - Sending interval message: vfx_vip_welcome_premium
+2025-05-29 19:12:00,175 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:12:00,176 - imports - INFO - Sent strategy interval message to channel -1002697690452 at 2025-05-29 19:12:00.176261
+2025-05-29 19:12:00,178 - apscheduler.executors.default - INFO - Job "send_signals_interval_message (trigger: interval[0:36:00], next run at: 2025-05-29 18:48:00 UTC)" executed successfully
+2025-05-29 19:12:07,894 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:12:17,915 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:12:27,934 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:12:37,954 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:12:47,975 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:12:57,996 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:13:08,063 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:13:15,714 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:15:15 UTC)" (scheduled at 2025-05-29 18:13:15.701901+00:00)
+2025-05-29 19:13:15,715 - apscheduler.executors.default - INFO - Running job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:18:15 UTC)" (scheduled at 2025-05-29 18:13:15.701901+00:00)
+2025-05-29 19:13:15,715 - imports - WARNING - Cannot check signals - signal_dispatcher is None
+2025-05-29 19:13:15,715 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:13:15,715 - apscheduler.executors.default - INFO - Job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:18:15 UTC)" executed successfully
+2025-05-29 19:13:15,715 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:15:15 UTC)" executed successfully
+2025-05-29 19:13:18,082 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:13:28,103 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:13:38,122 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:13:48,151 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:13:58,170 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:14:08,189 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:14:18,210 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:14:28,229 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:14:38,248 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:14:48,268 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:14:58,288 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:15:08,308 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:15:15,717 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:17:15 UTC)" (scheduled at 2025-05-29 18:15:15.701901+00:00)
+2025-05-29 19:15:15,718 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:15:15,718 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:17:15 UTC)" executed successfully
+2025-05-29 19:15:18,326 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:15:28,348 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:15:38,366 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:15:48,386 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:15:58,405 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:16:08,430 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:16:18,449 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:16:28,472 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:16:38,493 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:16:48,512 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:16:58,530 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:17:08,550 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:17:15,703 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:19:15 UTC)" (scheduled at 2025-05-29 18:17:15.701901+00:00)
+2025-05-29 19:17:15,703 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:17:15,703 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:19:15 UTC)" executed successfully
+2025-05-29 19:17:18,571 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:17:28,591 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:17:38,611 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:17:48,635 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:17:58,657 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:18:08,675 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:18:15,704 - apscheduler.executors.default - INFO - Running job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:23:15 UTC)" (scheduled at 2025-05-29 18:18:15.701901+00:00)
+2025-05-29 19:18:15,704 - imports - WARNING - Cannot check signals - signal_dispatcher is None
+2025-05-29 19:18:15,704 - apscheduler.executors.default - INFO - Job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 18:23:15 UTC)" executed successfully
+2025-05-29 19:18:18,694 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:18:28,715 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:18:38,737 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:18:48,757 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:18:58,778 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:19:08,796 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:19:15,705 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:21:15 UTC)" (scheduled at 2025-05-29 18:19:15.701901+00:00)
+2025-05-29 19:19:15,706 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 19:19:15,706 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 18:21:15 UTC)" executed successfully
+2025-05-29 19:19:18,815 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:19:28,836 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:19:38,855 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:19:48,875 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:19:58,893 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:20:00,009 - apscheduler.executors.default - INFO - Running job "send_ed_interval_message (trigger: interval[0:40:00], next run at: 2025-05-29 19:00:00 UTC)" (scheduled at 2025-05-29 18:20:00.002984+00:00)
+2025-05-29 19:20:00,010 - VFXMessageScheduler - INFO - Sending interval message: market_concept_vwap
+2025-05-29 19:20:00,166 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 19:20:00,166 - imports - INFO - Sent strategy interval message to channel -1002529155778 at 2025-05-29 19:20:00.166950
+2025-05-29 19:20:00,168 - apscheduler.executors.default - INFO - Job "send_ed_interval_message (trigger: interval[0:40:00], next run at: 2025-05-29 19:00:00 UTC)" executed successfully
+2025-05-29 19:20:08,912 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:20:18,931 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:20:28,960 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:20:38,979 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:20:49,003 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:20:54,588 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 19:20:54,590 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-05-29 19:20:54,590 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-05-29 19:20:54,590 - telegram.ext.Application - INFO - Application.stop() complete
+2025-05-29 23:20:46,413 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-05-29 23:20:46,414 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-05-29 23:20:46,415 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-05-29 23:20:46,415 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-05-29 23:20:46,416 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-05-29 23:20:46,724 - MySQLManager - INFO - Successfully connected to MySQL database
+2025-05-29 23:20:46,852 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,852 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,853 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,854 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,856 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:20:46,856 - imports - INFO - Scheduled hourly welcome messages starting in 2353.15 seconds
+2025-05-29 23:20:46,856 - imports - INFO - Scheduled interval messages every 20 minutes starting in 13.15 seconds
+2025-05-29 23:20:46,856 - imports - INFO - Scheduled strategy messages every 20 minutes starting in 13.15 seconds
+2025-05-29 23:20:46,856 - imports - INFO - Scheduled propCapital messages every 20 minutes starting in 13.15 seconds
+2025-05-29 23:20:46,856 - imports - INFO - Scheduled signals messages every 20 minutes starting in 13.15 seconds
+2025-05-29 23:20:46,856 - imports - INFO - Scheduled education messages every 20 minutes starting in 13.15 seconds
+2025-05-29 23:20:46,856 - imports - INFO - Tokyo session messages scheduled at 00:00 (in 0.7 hours)
+2025-05-29 23:20:46,856 - imports - INFO - London session messages scheduled at 08:00 (in 8.7 hours)
+2025-05-29 23:20:46,856 - imports - INFO - NY session messages scheduled at 13:00 (in 13.7 hours)
+2025-05-29 23:20:46,856 - imports - INFO - Scheduled giveaway messages at 17:00, 18:00, and 19:00
+2025-05-29 23:20:46,911 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-05-29 23:20:46,922 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/deleteWebhook "HTTP/1.1 200 OK"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_daily_signup_report" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_daily_response_report" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "log_all_chats" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_interval_message" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_strategy_interval_message" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_prop_interval_message" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_signals_interval_message" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "send_ed_interval_message" to job store "default"
+2025-05-29 23:20:46,923 - apscheduler.scheduler - INFO - Added job "init_signal_system" to job store "default"
+2025-05-29 23:20:46,924 - apscheduler.scheduler - INFO - Added job "check_and_send_signals" to job store "default"
+2025-05-29 23:20:46,924 - apscheduler.scheduler - INFO - Added job "report_signal_system_status" to job store "default"
+2025-05-29 23:20:46,924 - apscheduler.scheduler - INFO - Added job "<lambda>" to job store "default"
+2025-05-29 23:20:46,924 - apscheduler.scheduler - INFO - Added job "<lambda>" to job store "default"
+2025-05-29 23:20:46,924 - apscheduler.scheduler - INFO - Scheduler started
+2025-05-29 23:20:46,924 - telegram.ext.Application - INFO - Application started
+2025-05-29 23:20:51,859 - apscheduler.scheduler - INFO - Removed job e77a944d15b64be5bd0a53c8ff2c0c68
+2025-05-29 23:20:51,859 - apscheduler.executors.default - INFO - Running job "log_all_chats (trigger: date[2025-05-29 22:20:51 UTC], next run at: 2025-05-29 22:20:51 UTC)" (scheduled at 2025-05-29 22:20:51.852706+00:00)
+2025-05-29 23:20:51,872 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-05-29 23:20:51,931 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-05-29 23:20:51,975 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-05-29 23:20:51,977 - apscheduler.executors.default - INFO - Job "log_all_chats (trigger: date[2025-05-29 22:20:51 UTC], next run at: 2025-05-29 22:20:51 UTC)" executed successfully
+2025-05-29 23:20:56,977 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:21:00,012 - apscheduler.executors.default - INFO - Running job "send_interval_message (trigger: interval[0:21:00], next run at: 2025-05-29 22:42:00 UTC)" (scheduled at 2025-05-29 22:21:00.001999+00:00)
+2025-05-29 23:21:00,012 - VFXMessageScheduler - INFO - Sending interval message: welcome_general
+2025-05-29 23:21:00,140 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 23:21:00,141 - imports - INFO - Sent interval message at 2025-05-29 23:21:00.141470
+2025-05-29 23:21:00,153 - apscheduler.executors.default - INFO - Job "send_interval_message (trigger: interval[0:21:00], next run at: 2025-05-29 22:42:00 UTC)" executed successfully
+2025-05-29 23:21:06,994 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:21:16,860 - apscheduler.scheduler - INFO - Removed job 16a6600a92314390a3e9f1d49c05f925
+2025-05-29 23:21:16,860 - apscheduler.executors.default - INFO - Running job "init_signal_system (trigger: date[2025-05-29 22:21:16 UTC], next run at: 2025-05-29 22:21:16 UTC)" (scheduled at 2025-05-29 22:21:16.854705+00:00)
+2025-05-29 23:21:16,860 - imports - INFO - Starting signal system initialization...
+2025-05-29 23:21:16,860 - imports - INFO - Attempting to import SignalDispatcher class...
+2025-05-29 23:21:18,847 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 54
+2025-05-29 23:21:18,847 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 58
+2025-05-29 23:21:18,847 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 68
+2025-05-29 23:21:19,180 - imports - ERROR - \u274c Import error: No module named 'signal_tracker'
+2025-05-29 23:21:19,180 - imports - ERROR - \u274c Module import failed: No module named 'signalsManager'
+2025-05-29 23:21:19,181 - apscheduler.executors.default - INFO - Job "init_signal_system (trigger: date[2025-05-29 22:21:16 UTC], next run at: 2025-05-29 22:21:16 UTC)" executed successfully
+2025-05-29 23:21:19,181 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:21:29,198 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:21:37,503 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:21:37,504 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-05-29 23:21:37,504 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-05-29 23:21:37,504 - telegram.ext.Application - INFO - Application.stop() complete
+2025-05-29 23:21:39,567 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-05-29 23:21:39,567 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-05-29 23:21:39,568 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-05-29 23:21:39,568 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-05-29 23:21:39,569 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-05-29 23:21:39,722 - MySQLManager - INFO - Successfully connected to MySQL database
+2025-05-29 23:21:39,830 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,831 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,831 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,831 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,831 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,831 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,831 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,833 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,833 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,833 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,833 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,833 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:21:39,834 - __main__ - INFO - Scheduled hourly welcome messages starting in 2300.17 seconds
+2025-05-29 23:21:39,834 - __main__ - INFO - Scheduled interval messages every 20 minutes starting in 1220.17 seconds
+2025-05-29 23:21:39,835 - __main__ - INFO - Scheduled strategy messages every 20 minutes starting in 1220.17 seconds
+2025-05-29 23:21:39,835 - __main__ - INFO - Scheduled propCapital messages every 20 minutes starting in 1220.17 seconds
+2025-05-29 23:21:39,835 - __main__ - INFO - Scheduled signals messages every 20 minutes starting in 1220.17 seconds
+2025-05-29 23:21:39,835 - __main__ - INFO - Scheduled education messages every 20 minutes starting in 1220.17 seconds
+2025-05-29 23:21:39,835 - __main__ - INFO - Tokyo session messages scheduled at 00:00 (in 0.6 hours)
+2025-05-29 23:21:39,835 - __main__ - INFO - London session messages scheduled at 08:00 (in 8.6 hours)
+2025-05-29 23:21:39,835 - __main__ - INFO - NY session messages scheduled at 13:00 (in 13.6 hours)
+2025-05-29 23:21:39,835 - __main__ - INFO - Scheduled giveaway messages at 17:00, 18:00, and 19:00
+2025-05-29 23:21:39,870 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-05-29 23:21:39,879 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/deleteWebhook "HTTP/1.1 200 OK"
+2025-05-29 23:21:39,881 - apscheduler.scheduler - INFO - Added job "send_daily_signup_report" to job store "default"
+2025-05-29 23:21:39,881 - apscheduler.scheduler - INFO - Added job "send_daily_response_report" to job store "default"
+2025-05-29 23:21:39,881 - apscheduler.scheduler - INFO - Added job "log_all_chats" to job store "default"
+2025-05-29 23:21:39,881 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:21:39,881 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:21:39,881 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:21:39,881 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:21:39,881 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_interval_message" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_strategy_interval_message" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_prop_interval_message" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_signals_interval_message" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "send_ed_interval_message" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "init_signal_system" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "check_and_send_signals" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "report_signal_system_status" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "<lambda>" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Added job "<lambda>" to job store "default"
+2025-05-29 23:21:39,882 - apscheduler.scheduler - INFO - Scheduler started
+2025-05-29 23:21:39,882 - telegram.ext.Application - INFO - Application started
+2025-05-29 23:21:44,846 - apscheduler.scheduler - INFO - Removed job 3c721a00eb7c4ef29463f3ab909f49c8
+2025-05-29 23:21:44,846 - apscheduler.executors.default - INFO - Running job "log_all_chats (trigger: date[2025-05-29 22:21:44 UTC], next run at: 2025-05-29 22:21:44 UTC)" (scheduled at 2025-05-29 22:21:44.831944+00:00)
+2025-05-29 23:21:44,856 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-05-29 23:21:44,867 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-05-29 23:21:44,880 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-05-29 23:21:44,881 - apscheduler.executors.default - INFO - Job "log_all_chats (trigger: date[2025-05-29 22:21:44 UTC], next run at: 2025-05-29 22:21:44 UTC)" executed successfully
+2025-05-29 23:21:49,934 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:21:59,954 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:22:09,835 - apscheduler.scheduler - INFO - Removed job b23f8c618c9947e1b9d9c3134441908c
+2025-05-29 23:22:09,835 - apscheduler.executors.default - INFO - Running job "init_signal_system (trigger: date[2025-05-29 22:22:09 UTC], next run at: 2025-05-29 22:22:09 UTC)" (scheduled at 2025-05-29 22:22:09.834150+00:00)
+2025-05-29 23:22:09,835 - imports - INFO - Starting signal system initialization...
+2025-05-29 23:22:09,835 - imports - INFO - Attempting to import SignalDispatcher class...
+2025-05-29 23:22:10,303 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 54
+2025-05-29 23:22:10,303 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 58
+2025-05-29 23:22:10,304 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 68
+2025-05-29 23:22:10,505 - imports - ERROR - \u274c Import error: No module named 'signal_tracker'
+2025-05-29 23:22:10,505 - imports - ERROR - \u274c Module import failed: No module named 'signalsManager'
+2025-05-29 23:22:10,505 - apscheduler.executors.default - INFO - Job "init_signal_system (trigger: date[2025-05-29 22:22:09 UTC], next run at: 2025-05-29 22:22:09 UTC)" executed successfully
+2025-05-29 23:22:10,506 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:22:20,530 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:22:26,257 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:22:26,258 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-05-29 23:22:26,258 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-05-29 23:22:26,258 - telegram.ext.Application - INFO - Application.stop() complete
+2025-05-29 23:22:28,496 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/vfx_messages.json
+2025-05-29 23:22:28,497 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/strategy_messages.json
+2025-05-29 23:22:28,497 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/prop_messages.json
+2025-05-29 23:22:28,497 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/signals_messages.json
+2025-05-29 23:22:28,498 - VFXMessageScheduler - INFO - Loaded message configuration from ./bot_data/ed_messages.json
+2025-05-29 23:22:28,660 - MySQLManager - INFO - Successfully connected to MySQL database
+2025-05-29 23:22:28,763 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,763 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,763 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,763 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,763 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,763 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,763 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,764 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,766 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,766 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-05-29 23:22:28,766 - __main__ - INFO - Scheduled hourly welcome messages starting in 2251.24 seconds
+2025-05-29 23:22:28,766 - __main__ - INFO - Scheduled interval messages every 20 minutes starting in 1171.24 seconds
+2025-05-29 23:22:28,766 - __main__ - INFO - Scheduled strategy messages every 20 minutes starting in 1171.24 seconds
+2025-05-29 23:22:28,766 - __main__ - INFO - Scheduled propCapital messages every 20 minutes starting in 1171.24 seconds
+2025-05-29 23:22:28,766 - __main__ - INFO - Scheduled signals messages every 20 minutes starting in 1171.24 seconds
+2025-05-29 23:22:28,766 - __main__ - INFO - Scheduled education messages every 20 minutes starting in 1171.24 seconds
+2025-05-29 23:22:28,766 - __main__ - INFO - Tokyo session messages scheduled at 00:00 (in 0.6 hours)
+2025-05-29 23:22:28,766 - __main__ - INFO - London session messages scheduled at 08:00 (in 8.6 hours)
+2025-05-29 23:22:28,766 - __main__ - INFO - NY session messages scheduled at 13:00 (in 13.6 hours)
+2025-05-29 23:22:28,766 - __main__ - INFO - Scheduled giveaway messages at 17:00, 18:00, and 19:00
+2025-05-29 23:22:28,824 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-05-29 23:22:28,864 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/deleteWebhook "HTTP/1.1 200 OK"
+2025-05-29 23:22:28,865 - apscheduler.scheduler - INFO - Added job "send_daily_signup_report" to job store "default"
+2025-05-29 23:22:28,865 - apscheduler.scheduler - INFO - Added job "send_daily_response_report" to job store "default"
+2025-05-29 23:22:28,865 - apscheduler.scheduler - INFO - Added job "log_all_chats" to job store "default"
+2025-05-29 23:22:28,865 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_hourly_welcome" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_giveaway_message" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_interval_message" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_strategy_interval_message" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_prop_interval_message" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_signals_interval_message" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "send_ed_interval_message" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "init_signal_system" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "check_and_send_signals" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "report_signal_system_status" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "<lambda>" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Added job "<lambda>" to job store "default"
+2025-05-29 23:22:28,866 - apscheduler.scheduler - INFO - Scheduler started
+2025-05-29 23:22:28,866 - telegram.ext.Application - INFO - Application started
+2025-05-29 23:22:33,770 - apscheduler.scheduler - INFO - Removed job 0faddfcb75984e6e95e24caf81fc1d66
+2025-05-29 23:22:33,770 - apscheduler.executors.default - INFO - Running job "log_all_chats (trigger: date[2025-05-29 22:22:33 UTC], next run at: 2025-05-29 22:22:33 UTC)" (scheduled at 2025-05-29 22:22:33.763772+00:00)
+2025-05-29 23:22:33,787 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getMe "HTTP/1.1 200 OK"
+2025-05-29 23:22:33,825 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-05-29 23:22:33,870 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getChat "HTTP/1.1 200 OK"
+2025-05-29 23:22:33,872 - apscheduler.executors.default - INFO - Job "log_all_chats (trigger: date[2025-05-29 22:22:33 UTC], next run at: 2025-05-29 22:22:33 UTC)" executed successfully
+2025-05-29 23:22:38,919 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:22:48,937 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:22:58,778 - apscheduler.scheduler - INFO - Removed job 0bb5ff5d61fd4ecfb02b355d10198a68
+2025-05-29 23:22:58,778 - apscheduler.executors.default - INFO - Running job "init_signal_system (trigger: date[2025-05-29 22:22:58 UTC], next run at: 2025-05-29 22:22:58 UTC)" (scheduled at 2025-05-29 22:22:58.764777+00:00)
+2025-05-29 23:22:58,778 - imports - INFO - Starting signal system initialization...
+2025-05-29 23:22:58,778 - imports - INFO - Attempting to import SignalDispatcher class...
+2025-05-29 23:22:59,226 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 54
+2025-05-29 23:22:59,226 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 58
+2025-05-29 23:22:59,226 - dotenv.main - WARNING - Python-dotenv could not parse statement starting at line 68
+2025-05-29 23:22:59,417 - imports - ERROR - \u274c Import error: No module named 'signal_tracker'
+2025-05-29 23:22:59,417 - imports - ERROR - \u274c Module import failed: No module named 'signalsManager'
+2025-05-29 23:22:59,417 - apscheduler.executors.default - INFO - Job "init_signal_system (trigger: date[2025-05-29 22:22:58 UTC], next run at: 2025-05-29 22:22:58 UTC)" executed successfully
+2025-05-29 23:22:59,418 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:23:09,437 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:23:19,454 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:23:28,766 - apscheduler.executors.default - INFO - Running job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 22:28:28 UTC)" (scheduled at 2025-05-29 22:23:28.764777+00:00)
+2025-05-29 23:23:28,766 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:25:28 UTC)" (scheduled at 2025-05-29 22:23:28.764777+00:00)
+2025-05-29 23:23:28,766 - imports - WARNING - Cannot check signals - signal_dispatcher is None
+2025-05-29 23:23:28,766 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 23:23:28,766 - apscheduler.executors.default - INFO - Job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 22:28:28 UTC)" executed successfully
+2025-05-29 23:23:28,766 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:25:28 UTC)" executed successfully
+2025-05-29 23:23:29,474 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:23:39,492 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:23:49,510 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:23:59,529 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:24:09,547 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:24:19,569 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:24:29,590 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:24:39,620 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:24:49,639 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:24:59,662 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:25:09,681 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:25:19,697 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:25:28,764 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:27:28 UTC)" (scheduled at 2025-05-29 22:25:28.764777+00:00)
+2025-05-29 23:25:28,764 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 23:25:28,764 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:27:28 UTC)" executed successfully
+2025-05-29 23:25:29,714 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:25:39,732 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:25:49,751 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:25:59,768 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:26:09,793 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:26:19,811 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:26:29,828 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:26:39,846 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:26:49,864 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:26:59,883 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:27:09,900 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:27:19,917 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:27:28,764 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:29:28 UTC)" (scheduled at 2025-05-29 22:27:28.764777+00:00)
+2025-05-29 23:27:28,764 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 23:27:28,764 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:29:28 UTC)" executed successfully
+2025-05-29 23:27:29,937 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:27:39,956 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:27:49,972 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:27:59,991 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:28:10,008 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:28:20,028 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:28:28,764 - apscheduler.executors.default - INFO - Running job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 22:33:28 UTC)" (scheduled at 2025-05-29 22:28:28.764777+00:00)
+2025-05-29 23:28:28,764 - imports - WARNING - Cannot check signals - signal_dispatcher is None
+2025-05-29 23:28:28,764 - apscheduler.executors.default - INFO - Job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 22:33:28 UTC)" executed successfully
+2025-05-29 23:28:30,041 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:28:43,649 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:28:53,668 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:29:03,688 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:29:13,705 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:29:23,725 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:29:28,765 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:31:28 UTC)" (scheduled at 2025-05-29 22:29:28.764777+00:00)
+2025-05-29 23:29:28,765 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 23:29:28,765 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:31:28 UTC)" executed successfully
+2025-05-29 23:29:33,744 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:29:43,761 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:29:53,778 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:30:00,001 - apscheduler.executors.default - INFO - Running job "send_strategy_interval_message (trigger: interval[0:30:00], next run at: 2025-05-29 23:00:00 UTC)" (scheduled at 2025-05-29 22:30:00.001005+00:00)
+2025-05-29 23:30:00,002 - VFXMessageScheduler - INFO - Sending interval message: vip_strategy_welcome
+2025-05-29 23:30:00,107 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/sendMessage "HTTP/1.1 200 OK"
+2025-05-29 23:30:00,107 - __main__ - INFO - Sent strategy interval message to channel -1002575685046 at 2025-05-29 23:30:00.107019
+2025-05-29 23:30:00,111 - apscheduler.executors.default - INFO - Job "send_strategy_interval_message (trigger: interval[0:30:00], next run at: 2025-05-29 23:00:00 UTC)" executed successfully
+2025-05-29 23:30:03,795 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:30:13,816 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:30:23,835 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:30:33,854 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:30:43,870 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:30:53,888 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:31:03,906 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:31:13,927 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:31:23,945 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:31:28,765 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:33:28 UTC)" (scheduled at 2025-05-29 22:31:28.764777+00:00)
+2025-05-29 23:31:28,765 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 23:31:28,765 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:33:28 UTC)" executed successfully
+2025-05-29 23:31:33,961 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:31:43,979 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:31:53,997 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:32:04,014 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:32:14,031 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:32:24,050 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:32:28,766 - apscheduler.executors.default - INFO - Running job "report_signal_system_status (trigger: interval[6:00:00], next run at: 2025-05-30 04:32:28 UTC)" (scheduled at 2025-05-29 22:32:28.764777+00:00)
+2025-05-29 23:32:28,766 - imports - WARNING - \u26a0\ufe0f Signal system not initialized yet
+2025-05-29 23:32:28,766 - apscheduler.executors.default - INFO - Job "report_signal_system_status (trigger: interval[6:00:00], next run at: 2025-05-30 04:32:28 UTC)" executed successfully
+2025-05-29 23:32:34,067 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:32:44,086 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:32:54,104 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:33:04,122 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:33:14,139 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:33:24,157 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:33:28,766 - apscheduler.executors.default - INFO - Running job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 22:38:28 UTC)" (scheduled at 2025-05-29 22:33:28.764777+00:00)
+2025-05-29 23:33:28,766 - apscheduler.executors.default - INFO - Running job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:35:28 UTC)" (scheduled at 2025-05-29 22:33:28.764777+00:00)
+2025-05-29 23:33:28,766 - imports - WARNING - Cannot check signals - signal_dispatcher is None
+2025-05-29 23:33:28,766 - imports - WARNING - Cannot apply trailing stops - signal_dispatcher is None
+2025-05-29 23:33:28,766 - apscheduler.executors.default - INFO - Job "check_and_send_signals (trigger: interval[0:05:00], next run at: 2025-05-29 22:38:28 UTC)" executed successfully
+2025-05-29 23:33:28,766 - apscheduler.executors.default - INFO - Job "<lambda> (trigger: interval[0:02:00], next run at: 2025-05-29 22:35:28 UTC)" executed successfully
+2025-05-29 23:33:34,176 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:33:44,193 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:33:54,214 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:34:04,237 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:34:14,255 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:34:24,275 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:34:34,295 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:34:38,051 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8113209614:AAFQ7YaIW4fZiJ6bqfOZmCScpWTB9mpd694/getUpdates "HTTP/1.1 200 OK"
+2025-05-29 23:34:38,051 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-05-29 23:34:38,051 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-05-29 23:34:38,051 - telegram.ext.Application - INFO - Application.stop() complete

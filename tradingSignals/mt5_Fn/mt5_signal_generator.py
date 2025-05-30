@@ -28,8 +28,7 @@ class MT5SignalGenerator:
         self.strategies = {
             'ma_crossover': {
                 'symbols': [
-                    'XAUUSD', 'EURUSD', 'GBPUSD', 'NAS100',
-                    'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
+                    'NAS100','US30', 'US500'
                 ],
                 'timeframes': [
                     mt5.TIMEFRAME_M5 
@@ -43,9 +42,9 @@ class MT5SignalGenerator:
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M15   
+                    mt5.TIMEFRAME_D1   
                 ],
-                'params': {'rsi_length': 2, 'overbought': 95, 'oversold': 10}
+                'params': {'rsi_length': 2, 'overbought': 95, 'oversold': 5}
             },
             'support_resistance': {
                 'symbols': [
@@ -65,7 +64,7 @@ class MT5SignalGenerator:
                     'AUDUSD', 'USDCAD', 'FRA40', 'UK100', 'US30', 'US500'
                 ],
                 'timeframes': [
-                    mt5.TIMEFRAME_M5  # Run only on 5min timeframe
+                    mt5.TIMEFRAME_M5  
                 ],
                 'params': {'atr_lookback': 297, 'kappa': 0.552, 'quantile_lookback': 27}
             }

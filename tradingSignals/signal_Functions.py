@@ -1,5 +1,7 @@
 from imports import *
-from main import is_user_admin
+import sys
+import os
+sys.path.append(os.path.abspath(".."))
 # =============================== Signal Functions ============================= #
 # ============================================================ #
 
@@ -7,7 +9,7 @@ signal_dispatcher = None
 signal_system_initialized = False
 
 async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
-    """Initialize the signal system after bot startup - DEBUG VERSION"""
+    """Initialize the signal system after bot startup"""
     global signal_dispatcher, signal_system_initialized
     
     # Skip if already initialized
@@ -18,44 +20,11 @@ async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
     try:
         logger.info("Starting signal system initialization...")
         
-        # Debug: Check what we're importing
-        logger.info("Attempting to import SignalDispatcher class...")
+        # Import SignalDispatcher from the correct path
+        from tradingSignals.signalsManager.signal_dispatcher import SignalDispatcher
+        logger.info("✅ Successfully imported SignalDispatcher")
         
-        # Try different import approaches
-        try:
-            # Method 1: Direct class import
-            from signalsManager.signal_dispatcher import SignalDispatcher
-            logger.info(f"✅ Successfully imported SignalDispatcher: {SignalDispatcher}")
-            logger.info(f"SignalDispatcher type: {type(SignalDispatcher)}")
-            
-        except ImportError as ie:
-            logger.error(f"❌ Import error: {ie}")
-            # Method 2: Module import then access class
-            try:
-                import signalsManager.signal_dispatcher as sd_module
-                logger.info(f"Module imported: {sd_module}")
-                SignalDispatcher = sd_module.SignalDispatcher
-                logger.info(f"Class from module: {SignalDispatcher}")
-            except Exception as e2:
-                logger.error(f"❌ Module import failed: {e2}")
-                return
-        
-        # Debug: Check if SIGNALS_CHANNEL_ID exists
-        if 'SIGNALS_CHANNEL_ID' not in globals():
-            logger.error("❌ SIGNALS_CHANNEL_ID not defined in globals")
-            # Try to define it with a placeholder
-            global SIGNALS_CHANNEL_ID
-            SIGNALS_CHANNEL_ID = -1001234567890  # Replace with your actual channel ID
-            logger.info(f"Set SIGNALS_CHANNEL_ID to: {SIGNALS_CHANNEL_ID}")
-        else:
-            logger.info(f"✅ SIGNALS_CHANNEL_ID found: {SIGNALS_CHANNEL_ID}")
-        
-        # Debug: Check context.bot
-        logger.info(f"Context bot type: {type(context.bot)}")
-        logger.info(f"Context bot: {context.bot}")
-        
-        # Now try to create the instance
-        logger.info("Creating SignalDispatcher instance...")
+        # Create instance
         signal_dispatcher = SignalDispatcher(context.bot, SIGNALS_CHANNEL_ID)
         
         # Mark as initialized
@@ -74,20 +43,9 @@ async def init_signal_system(context: ContextTypes.DEFAULT_TYPE):
         
     except Exception as e:
         logger.error(f"❌ Error in init_signal_system: {e}")
-        logger.error(f"Error type: {type(e)}")
         import traceback
         logger.error(f"Full traceback: {traceback.format_exc()}")
         signal_dispatcher = None
-        
-        # Notify admin of failure
-        for admin_id in ADMIN_USER_ID:
-            try:
-                await context.bot.send_message(
-                    chat_id=admin_id,
-                    text=f"❌ Signal system initialization failed: {e}"
-                )
-            except Exception as notify_error:
-                logger.error(f"Failed to notify admin of init failure: {notify_error}")
 
 # Safe wrapper functions for scheduled jobs
 async def apply_trailing_stops():

@@ -24,6 +24,18 @@ from mySQL.mysql_manager import get_mysql_connection
 from configs.config import Config
 from mySQL.mysql_manager import get_mysql_connection
 
+class ForwardedMessageFilter(MessageFilter):
+    """Custom filter for forwarded messages."""
+    
+    def filter(self, message):
+        """Returns True if the message has forward_origin attribute."""
+        return hasattr(message, 'forward_origin')
+
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 # Global instance of the VFX message scheduler
 config = Config()
@@ -58,19 +70,47 @@ ED_GROUP_ID = config.ED_GROUP_ID
 (RISK_APPETITE, DEPOSIT_AMOUNT, TRADING_INTEREST, TRADING_ACCOUNT, CAPTCHA_RESPONSE, 
  AWAITING_DEPOSIT_DECISION, PAYMENT_METHOD_SELECTION, DEPOSIT_CONFIRMATION) = range(8)
 
-class ForwardedMessageFilter(MessageFilter):
-    """Custom filter for forwarded messages."""
-    
-    def filter(self, message):
-        """Returns True if the message has forward_origin attribute."""
-        return hasattr(message, 'forward_origin')
 
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+
+
 
 # Initialize database and auth system
 db = TradingBotDatabase(data_dir="./bot_data")
 auth = TradingAccountAuth(db_path="./bot_data/trading_accounts.csv")
+
+async def is_user_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Check if user is an admin in direct chats or the current chat."""
+    user_id = update.effective_user.id
+    print(f"Checking admin status for user ID: {user_id}")
+    print(f"Admin IDs list: {ADMIN_USER_ID}")
+    
+    # Always allow hardcoded admin
+    if user_id in ADMIN_USER_ID:
+        print(f"User {user_id} is in the hardcoded admin list")
+        return True
+    
+    # If in direct chat, check if user is admin in the main group/channel
+    if update.effective_chat.type == "private":
+        try:
+            # Check if user is admin in the main group
+            group_member = await context.bot.get_chat_member(STRATEGY_GROUP_ID, user_id)
+            if group_member.status in ['owner', 'administrator']:
+                return True
+                
+            # Also check if user is admin in the main channel
+            channel_member = await context.bot.get_chat_member(MAIN_CHANNEL_ID, user_id)
+            if channel_member.status in ['owner', 'administrator']:
+                return True
+        except Exception as e:
+            print(f"Error checking admin status in group/channel: {e}")
+    
+    # If in a group chat, check if user is admin in the current chat
+    else:
+        try:
+            chat_id = update.effective_chat.id
+            chat_member = await context.bot.get_chat_member(chat_id, user_id)
+            return chat_member.status in ['owner', 'administrator']
+        except Exception as e:
+            print(f"Error checking admin status: {e}")
+    
+    return False

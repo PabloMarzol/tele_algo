@@ -4,14 +4,13 @@ import os
 from datetime import datetime, timedelta, time
 from dotenv import load_dotenv
 import pytz
-from tradingSignals.mt5_Fn.mt5_signal_generator import MT5SignalGenerator
 
 from LLMs.news_fetcher import FinancialNewsFetcher  
 from LLMs.groq_client import GroqClient
-from signal_tracker import SignalTracker
-from signal_follow import SignalFollowUpGenerator
-from mt5_signal_executor import MT5SignalExecutor
+from tradingSignals.signalsManager.signal_tracker import SignalTracker
+from tradingSignals.signalsManager.signal_follow import SignalFollowUpGenerator
 from tradingSignals.mt5_Fn.mt5_accountManager import MultiAccountExecutor
+from tradingSignals.mt5_Fn.mt5_signal_generator import MT5SignalGenerator
 
 load_dotenv()
 ADMIN_USER_ID = [7823596188, 7396303047]

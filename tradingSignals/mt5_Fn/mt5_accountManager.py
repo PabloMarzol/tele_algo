@@ -4,7 +4,7 @@ import logging
 import os
 
 from datetime import datetime
-from mt5_signal_executor import MT5SignalExecutor
+from tradingSignals.mt5_Fn.mt5_signal_executor import MT5SignalExecutor
 
 ## --------------------------------------------------------------------------------------- ##
 ## --------------------------------------------------------------------------------------- ##
