@@ -661,6 +661,16 @@ class AdminPermissionManager:
         admin_info = self.admins.get(user_id)
         return admin_info is not None and admin_info.get('active', True)
 
+    def get_main_admin_id(self) -> Optional[str]:
+        """Get main administrator ID by name 'Main Administrator'"""
+        try:
+            for admin_id, admin_info in self.admins.items():
+                if admin_info.get('name', '').strip() == 'Main Administrator':
+                    return str(admin_id)
+            return None
+        except Exception as e:
+            logging.error(f"Error getting main admin ID: {e}")
+            return None
 # ============== TUS DECORADORES ORIGINALES MANTENIDOS ==============
 
 # Variable global para el permission manager

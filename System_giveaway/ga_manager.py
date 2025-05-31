@@ -802,7 +802,7 @@ class GiveawaySystem:
         except Exception as e:
             self.logger.error(f"Error handling max attempts for {giveaway_type}: {e}")
     
-    # ================== VALIDATIONS ==================
+    # ================== VALIDATIONS To MT5 Accounts ==================
     
     def validate_mt5_account(self, account_number):
         """✅ ORIGINAL: Validate MT5 account using API (no changes needed)"""
@@ -1068,8 +1068,92 @@ class GiveawaySystem:
             self.logger.error(f"Error executing {giveaway_type} giveaway: {e}")
             raise
     
+#     async def _notify_admin_winner(self, winner, total_participants, giveaway_type=None, prize_amount=None):
+#         """🔄 MODIFIED: Notify admin with type-specific information"""
+#         if giveaway_type is None:
+#             giveaway_type = self.giveaway_type
+#         if prize_amount is None:
+#             prize_amount = self.get_prize_amount(giveaway_type)
+        
+#         try:
+#             today = datetime.now().strftime('%Y-%m-%d')
+#             username = winner.get('username', '').strip()
+#             first_name = winner.get('first_name', 'N/A')
+            
+#             # Prepare winner display
+#             if username:
+#                 winner_display = f"@{username}"
+#                 command_identifier = username
+#             else:
+#                 winner_display = f"{first_name} (No username)"
+#                 command_identifier = winner['telegram_id']
+
+#             # 🆕 OBTENER admin principal por nombre "Main Administrator"
+#             permission_manager = None
+#             try:
+#                 if hasattr(self.bot, 'application') and hasattr(self.bot.application, 'bot_data'):
+#                     permission_manager = self.bot.application.bot_data.get('permission_manager')
+#             except:
+#                 pass
+            
+#             main_admin_id = None
+#             if permission_manager:
+#                 main_admin_id = permission_manager.get_main_admin_id()
+            
+#             # Fallback al config si no encuentra "Main Administrator"
+#             if not main_admin_id:
+#                 main_admin_id = self.admin_id
+            
+#             admin_message = f"""🏆 <b>{giveaway_type.upper()} WINNER SELECTED - ACTION REQUIRED</b>
+
+# 🎉 <b>Winner:</b> {first_name} ({winner_display})
+# 💰 <b>Prize:</b> ${prize_amount} USD
+# 📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+# 🆔 <b>Telegram ID:</b> <code>{winner['telegram_id']}</code>
+# 👥 <b>Total participants:</b> {total_participants}
+# 📅 <b>Date:</b> {today}
+# 🎯 <b>Giveaway Type:</b> {giveaway_type.upper()}
+
+# ⚠️ <b>INSTRUCTIONS:</b>
+# 1️⃣ Transfer ${prize_amount} USD to MT5 account: <code>{winner['mt5_account']}</code>
+# 2️⃣ Once completed, press the confirmation button below
+
+# ⏳ <b>Status:</b> Waiting for manual transfer
+# 💡 <b>Use command:</b> <code>/admin_confirm_payment_{giveaway_type} {command_identifier}</code>"""
+            
+#             # Create inline button for quick confirmation
+#             button_text = f"✅ Confirm payment to {first_name}"
+#             callback_data = f"confirm_payment_{giveaway_type}_{command_identifier}"
+            
+#             keyboard = [[InlineKeyboardButton(button_text, callback_data=callback_data)]]
+#             reply_markup = InlineKeyboardMarkup(keyboard)
+            
+#             await self.bot.send_message(
+#                 chat_id=self.admin_id,
+#                 text=admin_message,
+#                 parse_mode='HTML',
+#                 reply_markup=reply_markup
+#             )
+
+#             # 🆕 AGREGAR SOLO ESTO - Enviar al canal admin también
+#             admin_config = self.config_loader.get_all_config().get('admin_notifications', {})
+#             admin_channel_id = admin_config.get('admin_channel_id')
+            
+#             if admin_channel_id:
+#                 await self.bot.send_message(
+#                     chat_id=admin_channel_id,
+#                     text=admin_message,
+#                     parse_mode='HTML',
+#                     reply_markup=reply_markup
+#                 )
+            
+#             self.logger.info(f"Administrator notified about {giveaway_type} winner: {winner['telegram_id']} (@{username})")
+            
+#         except Exception as e:
+#             self.logger.error(f"Error notifying administrator about {giveaway_type} winner: {e}")
+
     async def _notify_admin_winner(self, winner, total_participants, giveaway_type=None, prize_amount=None):
-        """🔄 MODIFIED: Notify admin with type-specific information"""
+        """🔄 ENHANCED: Notify Main Administrator by name"""
         if giveaway_type is None:
             giveaway_type = self.giveaway_type
         if prize_amount is None:
@@ -1080,7 +1164,6 @@ class GiveawaySystem:
             username = winner.get('username', '').strip()
             first_name = winner.get('first_name', 'N/A')
             
-            # Prepare winner display
             if username:
                 winner_display = f"@{username}"
                 command_identifier = username
@@ -1088,41 +1171,83 @@ class GiveawaySystem:
                 winner_display = f"{first_name} (No username)"
                 command_identifier = winner['telegram_id']
             
-            admin_message = f"""🏆 <b>{giveaway_type.upper()} WINNER SELECTED - ACTION REQUIRED</b>
-
-🎉 <b>Winner:</b> {first_name} ({winner_display})
-💰 <b>Prize:</b> ${prize_amount} USD
-📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
-🆔 <b>Telegram ID:</b> <code>{winner['telegram_id']}</code>
-👥 <b>Total participants:</b> {total_participants}
-📅 <b>Date:</b> {today}
-🎯 <b>Giveaway Type:</b> {giveaway_type.upper()}
-
-⚠️ <b>INSTRUCTIONS:</b>
-1️⃣ Transfer ${prize_amount} USD to MT5 account: <code>{winner['mt5_account']}</code>
-2️⃣ Once completed, press the confirmation button below
-
-⏳ <b>Status:</b> Waiting for manual transfer
-💡 <b>Use command:</b> <code>/admin_confirm_payment_{giveaway_type} {command_identifier}</code>"""
+            # 🆕 OBTENER admin principal por nombre "Main Administrator"
+            permission_manager = None
+            try:
+                if hasattr(self.bot, 'application') and hasattr(self.bot.application, 'bot_data'):
+                    permission_manager = self.bot.application.bot_data.get('permission_manager')
+            except:
+                pass
             
-            # Create inline button for quick confirmation
-            button_text = f"✅ Confirm payment to {first_name}"
-            callback_data = f"confirm_payment_{giveaway_type}_{command_identifier}"
+            main_admin_id = None
+            if permission_manager:
+                main_admin_id = permission_manager.get_main_admin_id()
             
-            keyboard = [[InlineKeyboardButton(button_text, callback_data=callback_data)]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+            # Fallback al config si no encuentra "Main Administrator"
+            if not main_admin_id:
+                main_admin_id = self.admin_id
             
+            # 🎯 MENSAJE PERSONAL al Main Administrator
+            personal_message = f"""📱 <b>PERSONAL NOTIFICATION - {giveaway_type.upper()}</b>
+
+    🎉 <b>Winner Selected:</b> {first_name} ({winner_display})
+    💰 <b>Prize:</b> ${prize_amount} USD
+    📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+    🆔 <b>Telegram ID:</b> <code>{winner['telegram_id']}</code>
+    👥 <b>Total participants:</b> {total_participants}
+    📅 <b>Date:</b> {today}
+
+    ℹ️ <b>Next Steps:</b>
+    1️⃣ Admin channel has been notified for payment confirmation
+    2️⃣ Authorized payment admins will handle the transfer
+    3️⃣ You will receive confirmation when payment is completed
+
+    💡 <b>Status:</b> Winner selected, awaiting payment confirmation"""
+
             await self.bot.send_message(
-                chat_id=self.admin_id,
-                text=admin_message,
-                parse_mode='HTML',
-                reply_markup=reply_markup
+                chat_id=main_admin_id,  # 🎯 Tu cuenta profesional (Main Administrator)
+                text=personal_message,
+                parse_mode='HTML'
             )
             
-            self.logger.info(f"Administrator notified about {giveaway_type} winner: {winner['telegram_id']} (@{username})")
+            # 🎯 MENSAJE AL CANAL de administradores con botón
+            admin_config = self.config_loader.get_all_config().get('admin_notifications', {})
+            admin_channel_id = admin_config.get('admin_channel_id')
+            
+            if admin_channel_id:
+                channel_message = f"""🔔 <b>{giveaway_type.upper()} WINNER - PAYMENT CONFIRMATION NEEDED</b>
+
+    🎯 <b>Winner:</b> {first_name} ({winner_display})
+    💰 <b>Prize:</b> ${prize_amount} USD
+    📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+    🆔 <b>Telegram ID:</b> <code>{winner['telegram_id']}</code>
+    👥 <b>Participants:</b> {total_participants}
+
+    ⚠️ <b>ACTION REQUIRED:</b>
+    💸 Transfer ${prize_amount} USD to MT5 account: <code>{winner['mt5_account']}</code>
+    ✅ Press button below after completing transfer
+
+    🎯 <b>Authorized for payment confirmation:</b>
+    - PAYMENT_SPECIALIST level admins
+    - FULL_ADMIN level admins"""
+
+                # Create confirmation button
+                button_text = f"✅ Confirm ${prize_amount} Payment to {first_name}"
+                callback_data = f"confirm_payment_{giveaway_type}_{command_identifier}"
+                keyboard = [[InlineKeyboardButton(button_text, callback_data=callback_data)]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+
+                await self.bot.send_message(
+                    chat_id=admin_channel_id,
+                    text=channel_message,
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
+            
+            self.logger.info(f"Winner notifications sent: Main Administrator ({main_admin_id}) + admin channel")
             
         except Exception as e:
-            self.logger.error(f"Error notifying administrator about {giveaway_type} winner: {e}")
+            self.logger.error(f"Error notifying winner for {giveaway_type}: {e}")
     
     # @require_giveaway_lock()
     async def confirm_payment_and_announce(self, winner_telegram_id, confirmed_by_admin_id, giveaway_type=None):
@@ -1212,6 +1337,31 @@ class GiveawaySystem:
             print(f"🔍 DEBUG: Step 5 - Private congratulation...")
             await self._congratulate_winner_private(winner_data, giveaway_type)
             print(f"✅ DEBUG: {giveaway_type.title()} private congratulation sent")
+
+            # 🆕 SOLO AGREGAR ESTAS 2 LÍNEAS:
+            # 6. Notify main admin of completion
+            permission_manager = None
+            try:
+                if hasattr(self.bot, 'application') and hasattr(self.bot.application, 'bot_data'):
+                    permission_manager = self.bot.application.bot_data.get('permission_manager')
+            except:
+                pass
+
+            main_admin_id = None
+            if permission_manager:
+                main_admin_id = permission_manager.get_main_admin_id()  # Busca "Main Administrator"
+
+            if not main_admin_id:
+                main_admin_id = self.admin_id  # fallback
+
+            completion_msg = f"✅ {giveaway_type.title()} payment confirmed by admin {confirmed_by_admin_id}. Winner announced and congratulated."
+            await self.bot.send_message(chat_id=main_admin_id, text=completion_msg)  # 🎯 Ahora a tu cuenta profesional
+
+            # 7. Notify admin channel of completion
+            admin_config = self.config_loader.get_all_config().get('admin_notifications', {})
+            admin_channel_id = admin_config.get('admin_channel_id')
+            if admin_channel_id:
+                await self.bot.send_message(chat_id=admin_channel_id, text=completion_msg)
             
             print(f"🔍 DEBUG: ===== {giveaway_type.upper()} CONFIRMATION COMPLETED =====")
             return True, f"{giveaway_type.title()} payment confirmed and winner announced"
@@ -1219,6 +1369,7 @@ class GiveawaySystem:
         except Exception as e:
             self.logger.error(f"Error confirming {giveaway_type} payment: {e}")
             print(f"❌ DEBUG: EXCEPTION in {giveaway_type} payment confirmation: {e}")
+            
             return False, f"Error: {e}"
     async def _announce_winner_public(self, winner_data, giveaway_type=None):
         """🔄 MODIFIED: Announce winner with type-specific message"""

@@ -18,7 +18,7 @@
       }
     },
     "1127393419": {
-      "name": "Admin 1",
+      "name": "Administrator",
       "permission_group": "FULL_ADMIN",
       "active": true,
       "created_date": "2025-01-20",
@@ -34,7 +34,24 @@
         "channel_notifications": true
       }
     },
-    "number": {
+    "8177033621": {
+      "name": "Main Administrator",
+      "permission_group": "FULL_ADMIN",
+      "active": true,
+      "created_date": "2025-01-20",
+      "restrictions": {
+        "time_based": false,
+        "allowed_hours": {},
+        "timezone": "Europe/London"
+      },
+      "custom_permissions": [],
+      "denied_permissions": [],
+      "notifications": {
+        "private_notifications": true,
+        "channel_notifications": true
+      }
+    },
+    "7396303047": {
       "name": "Business Owner",
       "permission_group": "FULL_ADMIN",
       "active": true,
@@ -55,8 +72,8 @@
         "channel_notifications": true
       }
     },
-    "8177033621": {
-      "name": "Admin Especializado",
+    "ID": {
+      "name": "Admin Payment",
       "permission_group": "PAYMENT_SPECIALIST",
       "active": true,
       "created_date": "2025-01-20",
@@ -110,7 +127,7 @@
     }
   },
   "notification_config": {
-    "admin_channel_id": "OPCIONAL_CANAL_DE_ADMINS",
+    "admin_channel_id": "-4283031860",
     "notification_types": {
       "winner_notifications": true,
       "payment_reminders": true,

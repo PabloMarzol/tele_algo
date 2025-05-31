@@ -259,20 +259,80 @@ class MultiGiveawayIntegration:
 
     # 🆕 ADD after setup_automatic_draws() method
 
+    # def setup_recurring_invitations(self):
+    #     """🆕 Setup recurring invitation jobs"""
+    #     if self.scheduler is None: # or not self.recurring_invitations_enabled
+    #         logging.warning("⚠️ No scheduler available for recurring invitations")
+    #         return
+            
+    #     try:
+    #         from apscheduler.triggers.interval import IntervalTrigger
+    #         logging.info("🔧 Setting up recurring invitations...")
+
+    #          # 🔄 IMPROVED: More detailed logging
+    #         logging.info(f"🔧 Setting up recurring invitations...")
+    #         logging.info(f"   - Enabled: {self.recurring_invitations_enabled}")
+    #         logging.info(f"   - Frequencies: {self.invitation_frequencies}")
+        
+    #         # Lista de trabajos a crear
+    #         jobs_to_create = [
+    #             ('recurring_daily_invitations', 'daily', self.invitation_frequencies['daily']),
+    #             ('recurring_weekly_invitations', 'weekly', self.invitation_frequencies['weekly']),
+    #             ('recurring_monthly_invitations', 'monthly', self.invitation_frequencies['monthly'])
+    #         ]
+            
+    #         successful_jobs = 0
+            
+    #         for job_id, giveaway_type, frequency in jobs_to_create:
+    #             try:
+    #                 # Remover trabajo existente si existe
+    #                 try:
+    #                     self.scheduler.remove_job(job_id)
+    #                     logging.info(f"🗑️ Removed existing job: {job_id}")
+    #                 except:
+    #                     pass
+    #                 if frequency <= 0:
+    #                     logging.error(f"❌ Invalid frequency for {job_id}: {frequency}h")
+    #                     continue
+    #                 # Crear nuevo trabajo
+    #                 self.scheduler.add_job(
+    #                     lambda gt=giveaway_type: asyncio.create_task(self._send_recurring_invitation(gt)),
+    #                     IntervalTrigger(hours=frequency),
+    #                     id=job_id,
+    #                     paused=not self.recurring_invitations_enabled  
+    #                 )
+                    
+    #                 status = "🟢 ACTIVE" if self.recurring_invitations_enabled else "⏸️ PAUSED"
+    #                 logging.info(f"✅ Created job {job_id}: every {frequency}h ({status})")
+    #                 successful_jobs += 1
+                    
+    #             except Exception as job_error:
+    #                 logging.error(f"❌ Failed to create job {job_id}: {job_error}")
+            
+    #         logging.info(f"✅ Recurring invitations setup: {successful_jobs}/{len(jobs_to_create)} jobs created")
+            
+    #         if successful_jobs > 0:
+    #             logging.info(f"🔔 Recurring invitations: {'🟢 ENABLED' if self.recurring_invitations_enabled else '🔴 DISABLED'}")
+    #             logging.info(f"   📅 Daily: every {self.invitation_frequencies['daily']}h")
+    #             logging.info(f"   📅 Weekly: every {self.invitation_frequencies['weekly']}h")
+    #             logging.info(f"   📅 Monthly: every {self.invitation_frequencies['monthly']}h")
+            
+    #     except ImportError:
+    #         logging.error("❌ APScheduler not available for recurring invitations")
+    #         self.scheduler = None
+    #     except Exception as e:
+    #         logging.error(f"❌ Error setting up recurring invitations: {e}")
+
+    # 🔄 FIXED: setup_recurring_invitations method
     def setup_recurring_invitations(self):
-        """🆕 Setup recurring invitation jobs"""
-        if self.scheduler is None: # or not self.recurring_invitations_enabled
+        """🆕 Fixed recurring invitation jobs with proper async handling"""
+        if self.scheduler is None:
             logging.warning("⚠️ No scheduler available for recurring invitations")
             return
             
         try:
             from apscheduler.triggers.interval import IntervalTrigger
             logging.info("🔧 Setting up recurring invitations...")
-
-             # 🔄 IMPROVED: More detailed logging
-            logging.info(f"🔧 Setting up recurring invitations...")
-            logging.info(f"   - Enabled: {self.recurring_invitations_enabled}")
-            logging.info(f"   - Frequencies: {self.invitation_frequencies}")
         
             # Lista de trabajos a crear
             jobs_to_create = [
@@ -291,15 +351,39 @@ class MultiGiveawayIntegration:
                         logging.info(f"🗑️ Removed existing job: {job_id}")
                     except:
                         pass
-                    if frequency <= 0:
-                        logging.error(f"❌ Invalid frequency for {job_id}: {frequency}h")
-                        continue
-                    # Crear nuevo trabajo
+                    
+                    # 🆕 FIXED: Usar función wrapper síncrona en lugar de lambda async
+                    def create_sync_wrapper(gt):
+                        """Create synchronous wrapper for async function"""
+                        def sync_wrapper():
+                            try:
+                                # 🆕 SOLUTION: Usar asyncio.run() para ejecutar función async
+                                import asyncio
+                                import threading
+                                
+                                # Verificar si ya hay un loop corriendo en este thread
+                                try:
+                                    loop = asyncio.get_running_loop()
+                                    # Si hay loop, crear task
+                                    asyncio.create_task(self._send_recurring_invitation(gt))
+                                except RuntimeError:
+                                    # No hay loop, usar asyncio.run()
+                                    asyncio.run(self._send_recurring_invitation(gt))
+                                    
+                            except Exception as e:
+                                logging.error(f"Error in recurring invitation wrapper for {gt}: {e}")
+                        
+                        return sync_wrapper
+                    
+                    # Crear wrapper específico para este tipo
+                    wrapper_func = create_sync_wrapper(giveaway_type)
+                    
+                    # Agregar job con función wrapper síncrona
                     self.scheduler.add_job(
-                        lambda gt=giveaway_type: asyncio.create_task(self._send_recurring_invitation(gt)),
+                        wrapper_func,
                         IntervalTrigger(hours=frequency),
                         id=job_id,
-                        paused=not self.recurring_invitations_enabled  
+                        paused=not self.recurring_invitations_enabled
                     )
                     
                     status = "🟢 ACTIVE" if self.recurring_invitations_enabled else "⏸️ PAUSED"
@@ -539,8 +623,61 @@ class MultiGiveawayIntegration:
     # ==================     DRAW       =============================
 
     # 🆕 ADD: Scheduler setup method (after line 100)
+    # def setup_automatic_draws(self):
+    #     """🆕 Initialize the automatic draw scheduler"""
+    #     if self.scheduler is None:
+    #         try:
+    #             from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    #             from apscheduler.triggers.cron import CronTrigger
+                
+    #             self.scheduler = AsyncIOScheduler()
+                
+    #             # Daily: Monday-Friday at 5:00 PM London Time
+    #             self.scheduler.add_job(
+    #                 self._execute_automatic_daily_draw,
+    #                 CronTrigger(day_of_week='mon-fri', hour=17, minute=0, timezone='Europe/London'),
+    #                 id='auto_daily_draw',
+    #                 paused=not self.auto_mode_enabled['daily']
+    #             )
+                
+    #             # Weekly: Friday at 5:15 PM London Time
+    #             self.scheduler.add_job(
+    #                 self._execute_automatic_weekly_draw,
+    #                 CronTrigger(day_of_week='fri', hour=17, minute=15, timezone='Europe/London'),
+    #                 id='auto_weekly_draw',
+    #                 paused=not self.auto_mode_enabled['weekly']
+    #             )
+                
+    #             # Monthly: Last Friday at 5:30 PM London Time
+    #             self.scheduler.add_job(
+    #                 self._execute_automatic_monthly_draw,
+    #                 CronTrigger(day='last fri', hour=17, minute=30, timezone='Europe/London'),
+    #                 id='auto_monthly_draw',
+    #                 paused=not self.auto_mode_enabled['monthly']
+    #             )
+                
+    #             self.scheduler.start()
+
+    #             # 🆕 ADD: Setup recurring invitations
+    #             if self.scheduler.running:
+    #                 self.setup_recurring_invitations()
+    #             else:
+    #                 logging.warning("Scheduler not running, skipping recurring invitations setup")
+                
+    #             enabled_types = [t for t, enabled in self.auto_mode_enabled.items() if enabled]
+    #             logging.info(f"✅ Automatic draw scheduler initialized")
+    #             logging.info(f"🤖 Auto-enabled types: {enabled_types if enabled_types else 'None'}")
+                
+    #         except ImportError:
+    #             logging.error("❌ APScheduler not installed. Run: pip install apscheduler")
+    #             self.scheduler = None
+    #         except Exception as e:
+    #             logging.error(f"❌ Error setting up scheduler: {e}")
+    #             self.scheduler = None
+
+    # 🔄 ENHANCED: setup_automatic_draws method
     def setup_automatic_draws(self):
-        """🆕 Initialize the automatic draw scheduler"""
+        """🆕 Enhanced scheduler using config.json for flexibility"""
         if self.scheduler is None:
             try:
                 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -548,38 +685,123 @@ class MultiGiveawayIntegration:
                 
                 self.scheduler = AsyncIOScheduler()
                 
-                # Daily: Monday-Friday at 5:00 PM London Time
-                self.scheduler.add_job(
-                    self._execute_automatic_daily_draw,
-                    CronTrigger(day_of_week='mon-fri', hour=17, minute=0, timezone='Europe/London'),
-                    id='auto_daily_draw',
-                    paused=not self.auto_mode_enabled['daily']
-                )
+                # 🆕 NUEVO: Leer horarios desde config.json
+                giveaway_configs = self.config_loader.get_giveaway_configs()
+                timezone = self.config_loader.get_timezone()
                 
-                # Weekly: Friday at 5:15 PM London Time
-                self.scheduler.add_job(
-                    self._execute_automatic_weekly_draw,
-                    CronTrigger(day_of_week='fri', hour=17, minute=15, timezone='Europe/London'),
-                    id='auto_weekly_draw',
-                    paused=not self.auto_mode_enabled['weekly']
-                )
+                # 🔄 MANTENER: Wrappers síncronos (ya funcionan bien)
+                def create_draw_wrapper(draw_method):
+                    """Create synchronous wrapper for async draw methods"""
+                    def sync_wrapper():
+                        try:
+                            import asyncio
+                            
+                            # Verificar si hay loop corriendo
+                            try:
+                                loop = asyncio.get_running_loop()
+                                # Si hay loop, crear task
+                                asyncio.create_task(draw_method())
+                            except RuntimeError:
+                                # No hay loop, usar asyncio.run()
+                                asyncio.run(draw_method())
+                                
+                        except Exception as e:
+                            logging.error(f"Error in draw wrapper: {e}")
+                    
+                    return sync_wrapper
                 
-                # Monthly: Last Friday at 5:30 PM London Time
-                self.scheduler.add_job(
-                    self._execute_automatic_monthly_draw,
-                    CronTrigger(day='last fri', hour=17, minute=30, timezone='Europe/London'),
-                    id='auto_monthly_draw',
-                    paused=not self.auto_mode_enabled['monthly']
-                )
+                # Create wrappers
+                daily_wrapper = create_draw_wrapper(self._execute_automatic_daily_draw)
+                weekly_wrapper = create_draw_wrapper(self._execute_automatic_weekly_draw)
+                monthly_wrapper = create_draw_wrapper(self._execute_automatic_monthly_draw)
+                
+                # 🆕 NUEVO: Usar configuración en lugar de hardcode
+                try:
+                    # DAILY schedule from config
+                    daily_schedule = giveaway_configs['daily']['draw_schedule']
+                    self.scheduler.add_job(
+                        daily_wrapper,
+                        CronTrigger(
+                            day_of_week=daily_schedule['days'],
+                            hour=daily_schedule['hour'],
+                            minute=daily_schedule['minute'],
+                            timezone=timezone
+                        ),
+                        id='auto_daily_draw',
+                        paused=not self.auto_mode_enabled['daily']
+                    )
+                    
+                    # WEEKLY schedule from config
+                    weekly_schedule = giveaway_configs['weekly']['draw_schedule']
+                    weekly_day = self._convert_day_name_to_cron(weekly_schedule['day'])
+                    self.scheduler.add_job(
+                        weekly_wrapper,
+                        CronTrigger(
+                            day_of_week=weekly_day,
+                            hour=weekly_schedule['hour'],
+                            minute=weekly_schedule['minute'],
+                            timezone=timezone
+                        ),
+                        id='auto_weekly_draw',
+                        paused=not self.auto_mode_enabled['weekly']
+                    )
+                    
+                    # MONTHLY schedule from config
+                    monthly_schedule = giveaway_configs['monthly']['draw_schedule']
+                    monthly_day = self._convert_day_name_to_cron(monthly_schedule['day'])
+                    self.scheduler.add_job(
+                        monthly_wrapper,
+                        CronTrigger(
+                            day=monthly_day,
+                            hour=monthly_schedule['hour'],
+                            minute=monthly_schedule['minute'],
+                            timezone=timezone
+                        ),
+                        id='auto_monthly_draw',
+                        paused=not self.auto_mode_enabled['monthly']
+                    )
+                    
+                    logging.info(f"✅ Scheduler configured from config.json:")
+                    logging.info(f"   📅 Daily: {daily_schedule['days']} at {daily_schedule['hour']}:{daily_schedule['minute']:02d}")
+                    logging.info(f"   📅 Weekly: {weekly_day} at {weekly_schedule['hour']}:{weekly_schedule['minute']:02d}")
+                    logging.info(f"   📅 Monthly: {monthly_day} at {monthly_schedule['hour']}:{monthly_schedule['minute']:02d}")
+                    
+                except KeyError as config_error:
+                    logging.warning(f"⚠️ Config incomplete, using fallback hardcoded schedules: {config_error}")
+                    
+                    # 🆕 FALLBACK: Usar tus horarios hardcoded actuales si config falla
+                    self.scheduler.add_job(
+                        daily_wrapper,
+                        CronTrigger(day_of_week='mon-fri', hour=18, minute=10, timezone='Europe/London'),
+                        id='auto_daily_draw',
+                        paused=not self.auto_mode_enabled['daily']
+                    )
+                    
+                    self.scheduler.add_job(
+                        weekly_wrapper,
+                        CronTrigger(day_of_week='fri', hour=18, minute=12, timezone='Europe/London'),
+                        id='auto_weekly_draw',
+                        paused=not self.auto_mode_enabled['weekly']
+                    )
+                    
+                    self.scheduler.add_job(
+                        monthly_wrapper,
+                        CronTrigger(day='last fri', hour=18, minute=15, timezone='Europe/London'),
+                        id='auto_monthly_draw',
+                        paused=not self.auto_mode_enabled['monthly']
+                    )
+                    
+                    logging.info(f"✅ Scheduler configured with fallback hardcoded times")
                 
                 self.scheduler.start()
 
-                # 🆕 ADD: Setup recurring invitations
+                # Setup recurring invitations
                 if self.scheduler.running:
                     self.setup_recurring_invitations()
+                    logging.info("✅ Recurring invitations setup completed")
                 else:
                     logging.warning("Scheduler not running, skipping recurring invitations setup")
-                
+                    
                 enabled_types = [t for t, enabled in self.auto_mode_enabled.items() if enabled]
                 logging.info(f"✅ Automatic draw scheduler initialized")
                 logging.info(f"🤖 Auto-enabled types: {enabled_types if enabled_types else 'None'}")
@@ -590,6 +812,23 @@ class MultiGiveawayIntegration:
             except Exception as e:
                 logging.error(f"❌ Error setting up scheduler: {e}")
                 self.scheduler = None
+
+    # 🆕 ADD: Helper function después del método setup_automatic_draws
+    def _convert_day_name_to_cron(self, day_name):
+        """Convert config day names to APScheduler cron format"""
+        day_mapping = {
+            'monday': 'mon',
+            'tuesday': 'tue', 
+            'wednesday': 'wed',
+            'thursday': 'thu',
+            'friday': 'fri',
+            'saturday': 'sat',
+            'sunday': 'sun',
+            'last_friday': 'last fri',
+            'last_monday': 'last mon'
+        }
+        
+        return day_mapping.get(str(day_name).lower(), day_name)
 
     # 🆕 ADD: Automatic execution methods (after setup_automatic_draws)
     async def _execute_automatic_daily_draw(self):
@@ -708,31 +947,85 @@ class MultiGiveawayIntegration:
             logging.error(f"❌ Error in automatic monthly draw: {e}")
             await self._notify_draw_error('monthly', str(e))
 
+    async def _notify_main_admin_only(self, winner, giveaway_type, executed_by):
+        """🆕 NEW: Send notification ONLY to main administrator"""
+        try:
+            # Get main admin ID from config
+            main_admin_id = self.admin_id  # This is your ID from config
+            
+            username = winner.get('username', '').strip()
+            first_name = winner.get('first_name', 'N/A')
+            winner_display = f"@{username}" if username else first_name
+            
+            # Get prize amount
+            giveaway_system = self.get_giveaway_system(giveaway_type)
+            prize = giveaway_system.get_prize_amount(giveaway_type)
+            
+            # Create comprehensive notification for main admin
+            main_admin_message = f"""🤖 <b>AUTOMATIC {giveaway_type.upper()} WINNER - MAIN ADMIN NOTIFICATION</b>
 
+    🎉 <b>Winner Selected:</b> {first_name} ({winner_display})
+    📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+    💰 <b>Prize:</b> ${prize} USD
+    🎯 <b>Giveaway Type:</b> {giveaway_type.upper()}
+    👤 <b>Executed by:</b> {executed_by}
+    📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+    ⚠️ <b>PAYMENT REQUIRED:</b>
+    💸 Transfer ${prize} USD to MT5 account: <code>{winner['mt5_account']}</code>
+
+    💡 <b>Confirmation Commands:</b>
+    - <code>/admin_confirm_{giveaway_type} {username if username else winner['telegram_id']}</code>
+    - Or use the admin panel buttons
+
+    🔔 <b>Notification Status:</b>
+    ├─ Main Admin: ✅ You (individual notification)
+    ├─ Admin Channel: ✅ Group notification sent
+    └─ Other Admins: ❌ No individual spam
+
+    🎯 <b>Next Steps:</b>
+    1️⃣ Process payment to MT5 account
+    2️⃣ Confirm using command or admin panel
+    3️⃣ Winner will be announced automatically"""
+
+            # Send only to main admin
+            await self.app.bot.send_message(
+                chat_id=main_admin_id,
+                text=main_admin_message,
+                parse_mode='HTML'
+            )
+            
+            logging.info(f"Main admin notification sent for {giveaway_type} winner: {winner['telegram_id']}")
+            
+        except Exception as e:
+            logging.error(f"Error notifying main admin: {e}")
     # 🆕 ADD: Notification methods (after automatic execution methods)
     async def _notify_automatic_winner(self, giveaway_type: str, winner):
         """🆕 Notify about automatic draw winner"""
         try:
             # Create context for existing notification system
-            class MockContext:
-                def __init__(self, bot):
-                    self.bot = bot
+            # class MockContext:
+            #     def __init__(self, bot):
+            #         self.bot = bot
             
-            mock_context = MockContext(self.app.bot)
+            # mock_context = MockContext(self.app.bot)
             
             # Use existing notification method - zero redundancy
-            await self.notify_payment_admins_new_winner(
-                mock_context, 
-                winner, 
-                giveaway_type, 
-                'Automatic System'
-            )
+            # await self.notify_payment_admins_new_winner(
+            #     None, 
+            #     winner, 
+            #     giveaway_type, 
+            #     'Automatic System'
+            # )
+            # 1️⃣ Send to main admin (individual)
+            await self._notify_main_admin_only(winner, giveaway_type, 'Automatic System')
             
             # Additional admin channel notification if configured
             await self._send_admin_channel_notification(giveaway_type, winner, 'winner')
             
         except Exception as e:
             logging.error(f"Error notifying automatic winner: {e}")
+
 
     async def _notify_no_participants(self, giveaway_type: str):
         """🆕 Notify about automatic draw with no participants"""
@@ -787,8 +1080,10 @@ class MultiGiveawayIntegration:
             admin_config = self.config_loader.get_all_config().get('admin_notifications', {})
             admin_channel_id = admin_config.get('admin_channel_id')
             
-            if not admin_channel_id:
-                return  # No admin channel configured
+            if not admin_channel_id  or admin_channel_id == "-1001234567890":
+                logging.info("No admin channel configured, skipping group notification")
+                return
+                
             
             if custom_message:
                 message = custom_message
@@ -804,7 +1099,7 @@ class MultiGiveawayIntegration:
 📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
 📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
-⚠️ <b>PAYMENT REQUIRED</b>
+⚠️ <b>PAYMENT REQUIRED</b> Pending manual transfer
 💸 Transfer ${prize} USD to account <code>{winner['mt5_account']}</code>
 📱 Confirm: <code>/admin_confirm_{giveaway_type} {username or winner['telegram_id']}</code>
 
@@ -1505,54 +1800,74 @@ Please send only your MT5 account number.
             await update.message.reply_text(f"❌ Error getting pending {giveaway_type} winners")
 
 
+#     async def notify_payment_admins_new_winner(self, context, winner, giveaway_type, executed_by):
+#         """Notificar a admins con permisos de confirmación - movido desde test_botTTT.py"""
+#         permission_manager = get_permission_manager(context)
+#         if not permission_manager:
+#             logging.warning("Permission manager not available for notifications")
+#             return
+        
+#         confirm_action_map = {
+#             'daily': SystemAction.CONFIRM_DAILY_PAYMENTS,
+#             'weekly': SystemAction.CONFIRM_WEEKLY_PAYMENTS,
+#             'monthly': SystemAction.CONFIRM_MONTHLY_PAYMENTS
+#         }
+        
+#         required_permission = confirm_action_map.get(giveaway_type)
+#         if not required_permission:
+#             return
+        
+#         admins_who_can_confirm = permission_manager.get_admins_with_permission(required_permission)
+        
+#         if not admins_who_can_confirm:
+#             logging.warning(f"No admins found with permission to confirm {giveaway_type} payments")
+#             return
+        
+#         username = winner.get('username', '').strip()
+#         first_name = winner.get('first_name', 'N/A')
+#         winner_display = f"@{username}" if username else first_name
+        
+#         notification_message = f"""🔔 <b>NEW {giveaway_type.upper()} WINNER - PAYMENT NEEDED</b>
+
+# 🎉 <b>Winner:</b> {first_name} ({winner_display})
+# 📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+# 💰 <b>Prize:</b> ${winner['prize']} USD
+# 👤 <b>Draw executed by:</b> {executed_by}
+# 📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+# ⚠️ <b>ACTION REQUIRED:</b>
+# 💸 Transfer ${winner['prize']} USD to account {winner['mt5_account']}
+# 💡 Use <code>/admin_confirm_{giveaway_type} {username if username else winner['telegram_id']}</code> after transfer
+
+# 🎯 <b>Your permission level allows you to confirm this payment.</b>"""
+        
+#         for admin_id in admins_who_can_confirm:
+#             try:
+#                 await context.bot.send_message(
+#                     chat_id=admin_id,
+#                     text=notification_message,
+#                     parse_mode='HTML'
+#                 )
+#                 print(f"✅ Payment notification sent to admin {admin_id}")
+#             except Exception as e:
+#                 logging.error(f"Error sending notification to admin {admin_id}: {e}")
+
     async def notify_payment_admins_new_winner(self, context, winner, giveaway_type, executed_by):
-        """Notificar a admins con permisos de confirmación - movido desde test_botTTT.py"""
-        permission_manager = get_permission_manager(context)
-        
-        confirm_action_map = {
-            'daily': SystemAction.CONFIRM_DAILY_PAYMENTS,
-            'weekly': SystemAction.CONFIRM_WEEKLY_PAYMENTS,
-            'monthly': SystemAction.CONFIRM_MONTHLY_PAYMENTS
-        }
-        
-        required_permission = confirm_action_map.get(giveaway_type)
-        if not required_permission:
-            return
-        
-        admins_who_can_confirm = permission_manager.get_admins_with_permission(required_permission)
-        
-        if not admins_who_can_confirm:
-            logging.warning(f"No admins found with permission to confirm {giveaway_type} payments")
-            return
-        
-        username = winner.get('username', '').strip()
-        first_name = winner.get('first_name', 'N/A')
-        winner_display = f"@{username}" if username else first_name
-        
-        notification_message = f"""🔔 <b>NEW {giveaway_type.upper()} WINNER - PAYMENT NEEDED</b>
-
-🎉 <b>Winner:</b> {first_name} ({winner_display})
-📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
-💰 <b>Prize:</b> ${winner['prize']} USD
-👤 <b>Draw executed by:</b> {executed_by}
-📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-⚠️ <b>ACTION REQUIRED:</b>
-💸 Transfer ${winner['prize']} USD to account {winner['mt5_account']}
-💡 Use <code>/admin_confirm_{giveaway_type} {username if username else winner['telegram_id']}</code> after transfer
-
-🎯 <b>Your permission level allows you to confirm this payment.</b>"""
-        
-        for admin_id in admins_who_can_confirm:
-            try:
-                await context.bot.send_message(
-                    chat_id=admin_id,
-                    text=notification_message,
-                    parse_mode='HTML'
-                )
-                print(f"✅ Payment notification sent to admin {admin_id}")
-            except Exception as e:
-                logging.error(f"Error sending notification to admin {admin_id}: {e}")
+        """🔄 MODIFIED: Simplified notification - only main admin + channel"""
+        try:
+            logging.info(f"Sending {giveaway_type} winner notifications...")
+            
+            # 1️⃣ Notify main admin individually (detailed notification)
+            await self._notify_main_admin_only(winner, giveaway_type, executed_by)
+            
+            # 2️⃣ Notify admin channel (group notification)
+            await self._send_admin_channel_notification(giveaway_type, winner, 'winner')
+            
+            # ✅ SIMPLIFIED: No more individual spam to all admins
+            logging.info(f"{giveaway_type.title()} notifications sent: Main admin + Admin channel")
+            
+        except Exception as e:
+            logging.error(f"Error in simplified notification system: {e}")
 
 
     @require_permission(SystemAction.CONFIRM_DAILY_PAYMENTS)

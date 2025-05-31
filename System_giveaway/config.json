@@ -46,8 +46,8 @@
       },
       "draw_schedule": {
         "days": "mon-fri",
-        "hour": 11,
-        "minute": 45
+        "hour": 18,
+        "minute": 40
       }
     },
     "weekly": {
@@ -65,8 +65,8 @@
       },
       "draw_schedule": {
         "day": "friday",
-        "hour": 17,
-        "minute": 15
+        "hour": 18,
+        "minute": 43
       }
     },
     "monthly": {
@@ -82,22 +82,24 @@
       },
       "draw_schedule": {
         "day": "last_friday",
-        "hour": 17,
-        "minute": 30
+        "hour": 18,
+        "minute": 45
       }
     }
   },
   "admin_notifications": {
     "admin_channel_id": "-1001234567890",
+    "individual_admin_notifications": true,
+    "channel_notifications": true,
     "notification_types": {
       "automatic_draws": true,
       "draw_errors": true,
       "system_status": true,
       "winner_announcements": true,
+      "payment_confirmations": true,
       "no_participants": false
     }
   },
-  
   "database": {
     "type": "csv",
     "base_path": "./System_giveaway/data"
