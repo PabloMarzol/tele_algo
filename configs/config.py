@@ -8,7 +8,7 @@ load_dotenv()
 class Config:
     """Configuration manager for the Telegram Trading Bot."""
     
-    def __init__(self, config_path="./config/config.json"):
+    def __init__(self, config_path="./configs/config.json"):
         """Initialize config with specified config file path."""
         self.config_path = config_path
         self.config = {}

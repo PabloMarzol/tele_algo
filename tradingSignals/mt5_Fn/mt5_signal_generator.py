@@ -1,12 +1,11 @@
 import MetaTrader5 as mt5
 import polars as pl
 import numpy as np
-import talib  # Still useful for technical indicators
+import talib
 import logging
-from datetime import datetime, timedelta
-import time
+from datetime import datetime
 
-# Import our Hawkes strategy module
+
 from tradingSignals.algorithms.hawkes import calculate_hawkes_signal
 
 logging.basicConfig(
@@ -28,13 +27,13 @@ class MT5SignalGenerator:
         self.strategies = {
             'ma_crossover': {
                 'symbols': [
-                    'NAS100','US30', 'US500', 'BTCUSD'
+                    'NAS100','US30', 'US500'
                 ],
                 'timeframes': [
                     mt5.TIMEFRAME_M5 
                 ],
                 'confirmation_timeframe': mt5.TIMEFRAME_M3,  
-                'params': {'fast_length': 9, 'slow_length': 21}
+                'params': {'fast_length': 5, 'slow_length': 21}
             },
             'rsi_reversal': {
                 'symbols': [
@@ -72,6 +71,7 @@ class MT5SignalGenerator:
         
         # Track generated signals to avoid duplicates
         self.signal_history = {}
+        self.current_signals = {}  # Track signal states
         
         # Signal frequency control parameters
         self.max_signals_per_hour = 5   
@@ -176,9 +176,11 @@ class MT5SignalGenerator:
             self.logger.error(f"Error getting price data for {symbol}: {e}")
             return None
     
-    def calculate_ma_crossover(self, symbol, timeframe, fast_length=9, slow_length=21):
+    ## ------------------------------------------------------- ##
+    ## ----------------------- MCO Strategy ------------------ ##
+    def calculate_ma_crossover(self, symbol, timeframe, fast_length=5, slow_length=21):
         """
-        Calculate Moving Average Crossover signal using Polars with 3min confirmation
+        Calculate Moving Average Crossover signal with PERSISTENT signals like backtest
         """
         # Get data for primary timeframe
         df = self.get_price_data(symbol, timeframe, bars=slow_length*2)
@@ -191,73 +193,149 @@ class MT5SignalGenerator:
             pl.col("close").rolling_mean(slow_length).alias("slow_ma")
         ])
         
-        # Get last 2 rows
-        last_rows = df.tail(2)
-        
-        # Check for crossover
-        prev_fast = last_rows["fast_ma"][0]
-        prev_slow = last_rows["slow_ma"][0]
-        curr_fast = last_rows["fast_ma"][1]
-        curr_slow = last_rows["slow_ma"][1]
-        
-        # Initial crossover detection
-        crossover_detected = False
-        direction = None
-        
-        # Buy signal: fast MA crosses-over slow MA
-        if prev_fast <= prev_slow and curr_fast > curr_slow:
-            crossover_detected = True
-            direction = "BUY"
-        # Sell signal: fast MA crosses-under slow MA
-        elif prev_fast >= prev_slow and curr_fast < curr_slow:
-            crossover_detected = True
-            direction = "SELL"
-        
-        # If no crossover detected, exit early
-        if not crossover_detected:
-            return None
-        
-        # If crossover detected, confirm with 3min timeframe
-        confirmation_timeframe = self.strategies['ma_crossover'].get('confirmation_timeframe', mt5.TIMEFRAME_M3)
-        
-        # Get confirmation timeframe data - FIX: Request more bars
-        conf_df = self.get_price_data(symbol, confirmation_timeframe, bars=slow_length*3)
-        if conf_df is None or conf_df.height < slow_length:
-            self.logger.warning(f"Could not get confirmation data for {symbol} on {confirmation_timeframe}")
-            return None
-        
-        # Calculate MAs on confirmation timeframe
-        conf_df = conf_df.with_columns([
-            pl.col("close").rolling_mean(fast_length).alias("fast_ma"),
-            pl.col("close").rolling_mean(slow_length).alias("slow_ma")
+        # Calculate MA difference (like backtest)
+        df = df.with_columns([
+            (pl.col("fast_ma") - pl.col("slow_ma")).alias("ma_diff")
         ])
         
-        # Find the last row with non-null MA values
-        valid_conf_df = conf_df.filter(
-            pl.col("fast_ma").is_not_null() & pl.col("slow_ma").is_not_null()
-        )
-        
-        if valid_conf_df.height == 0:
-            self.logger.warning(f"No valid MA values in confirmation timeframe for {symbol}")
+        # Get last 2 rows for signal calculation
+        last_rows = df.tail(2)
+        if last_rows.height < 2:
             return None
+        
+        prev_ma_diff = last_rows["ma_diff"][0]
+        curr_ma_diff = last_rows["ma_diff"][1]
+        
+        # Skip if MA values are null
+        if prev_ma_diff is None or curr_ma_diff is None:
+            return None
+        
+        # Calculate current signal state (like backtest)
+        current_signal = 0
+        if curr_ma_diff > 0:
+            current_signal = 1  # BUY signal
+        elif curr_ma_diff < 0:
+            current_signal = -1  # SELL signal
+        
+        # Get previous signal state
+        prev_signal = self.current_signals.get(symbol, {}).get("signal", 0)
+        
+        # Check for signal state change (new signal)
+        new_signal = False
+        direction = None
+        
+        if current_signal == 1 and prev_signal != 1:
+            new_signal = True
+            direction = "BUY"
+        elif current_signal == -1 and prev_signal != -1:
+            new_signal = True
+            direction = "SELL"
+        
+        # Update current signal state
+        self.current_signals[symbol] = {
+            "signal": current_signal,
+            "timestamp": datetime.now()
+        }
+        
+        # If no new signal, return current state for exit checking
+        if not new_signal:
+            return {
+                "type": "state_update",
+                "symbol": symbol,
+                "current_signal": current_signal,
+                "prev_signal": prev_signal
+            }
+        
+        # Confirmation check for new signals
+        if new_signal:
+            confirmation_timeframe = self.strategies['ma_crossover'].get('confirmation_timeframe', mt5.TIMEFRAME_M3)
             
-        # Get latest valid MA values
-        latest_conf = valid_conf_df.tail(1)
-        latest_fast = latest_conf["fast_ma"][0]
-        latest_slow = latest_conf["slow_ma"][0]
+            # Get confirmation timeframe data
+            conf_df = self.get_price_data(symbol, confirmation_timeframe, bars=slow_length*3)
+            if conf_df is None or conf_df.height < slow_length:
+                self.logger.warning(f"Could not get confirmation data for {symbol}")
+                return None
+            
+            # Calculate MAs on confirmation timeframe
+            conf_df = conf_df.with_columns([
+                pl.col("close").rolling_mean(fast_length).alias("fast_ma"),
+                pl.col("close").rolling_mean(slow_length).alias("slow_ma")
+            ])
+            
+            # Get latest confirmation values
+            valid_conf_df = conf_df.filter(
+                pl.col("fast_ma").is_not_null() & pl.col("slow_ma").is_not_null()
+            )
+            
+            if valid_conf_df.height == 0:
+                return None
+            
+            latest_conf = valid_conf_df.tail(1)
+            latest_fast = latest_conf["fast_ma"][0]
+            latest_slow = latest_conf["slow_ma"][0]
+            
+            # Confirm signal
+            if direction == "BUY" and latest_fast > latest_slow:
+                return self.format_signal(symbol, "BUY", df, "MA_CROSS")
+            elif direction == "SELL" and latest_fast < latest_slow:
+                return self.format_signal(symbol, "SELL", df, "MA_CROSS")
         
-        # Confirm the signal based on direction
-        if direction == "BUY" and latest_fast > latest_slow:
-            # Confirmed BUY signal
-            return self.format_signal(symbol, "BUY", df, "MA_CROSS")
-        elif direction == "SELL" and latest_fast < latest_slow:
-            # Confirmed SELL signal
-            return self.format_signal(symbol, "SELL", df, "MA_CROSS")
-        
-        # Signal not confirmed by the shorter timeframe
-        self.logger.info(f"MA Crossover signal for {symbol} not confirmed on {confirmation_timeframe} timeframe")
         return None
     
+    def get_current_signal_state(self, symbol):
+        """Get current signal state for exit checking"""
+        # Quick signal calculation for this symbol
+        df = self.get_price_data(symbol, mt5.TIMEFRAME_M5, bars=42)
+        if df is None or df.height < 21:
+            return 0
+        
+        df = df.with_columns([
+            pl.col("close").rolling_mean(5).alias("fast_ma"),
+            pl.col("close").rolling_mean(21).alias("slow_ma")
+        ])
+        
+        last_row = df.tail(1)
+        fast_ma = last_row["fast_ma"][0]
+        slow_ma = last_row["slow_ma"][0]
+        
+        if fast_ma is None or slow_ma is None:
+            return 0
+        
+        return 1 if fast_ma > slow_ma else -1 if fast_ma < slow_ma else 0
+     
+    def check_exit_signals(self):
+        """Check for exit signals on active symbols"""
+        exit_signals = []
+        
+        # Get symbols that have active positions
+        positions = mt5.positions_get()
+        if not positions:
+            return exit_signals
+        
+        active_symbols = set()
+        for pos in positions:
+            if 123456 <= pos.magic < 123500:  # Our positions
+                active_symbols.add(pos.symbol)
+        
+        # Check each active symbol
+        for symbol in active_symbols:
+            current_signal = self.get_current_signal_state(symbol)
+            prev_signal = self.current_signals.get(symbol, 0)
+            
+            # If signal flipped from buy to sell or vice versa
+            if (prev_signal == 1 and current_signal == -1) or (prev_signal == -1 and current_signal == 1):
+                exit_signals.append({
+                    "symbol": symbol,
+                    "exit_reason": "opposite_signal"
+                })
+            
+            # Update stored signal
+            self.current_signals[symbol] = current_signal
+        
+        return exit_signals
+    
+    ## ------------------------------------------------------- ##
+    ## ----------------------- MCO Strategy ------------------ ##
     def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=2, overbought=95, oversold=5):
         """Calculate RSI reversal signal with Polars"""
         df = self.get_price_data(symbol, timeframe, bars=rsi_length*3)
@@ -287,6 +365,8 @@ class MT5SignalGenerator:
             
         return None
     
+    ## ------------------------------------------------------- ##
+    ## ----------------------- MCO Strategy ------------------ ##
     def calculate_support_resistance(self, symbol, timeframe, lookback=20, threshold=0.001):
         """Calculate support/resistance breakout signal using Polars"""
         df = self.get_price_data(symbol, timeframe, bars=lookback*2)
@@ -314,7 +394,9 @@ class MT5SignalGenerator:
             return self.format_signal(symbol, "SELL", df, "SUP_RES")
             
         return None
-    
+
+    ## ------------------------------------------------------- ##
+    ## ----------------------- MCO Strategy ------------------ ##    
     def calculate_hawkes_volatility(self, symbol, timeframe, atr_lookback=297, kappa=0.552, quantile_lookback=27):
         """Enhanced Hawkes volatility breakout signal with detailed logging"""
         try:
@@ -368,6 +450,9 @@ class MT5SignalGenerator:
             self.logger.error(f"Full traceback: {traceback.format_exc()}")
             return None
     
+    
+    ## ------------------------------------------------------- ##
+    ## ----------------------------------------- ## 
     def format_signal(self, symbol, direction, price_data, strategy_name="", additional_data=None):
         """Format the signal according to our template with enhanced styling and strategy identification"""
         # Get current price info

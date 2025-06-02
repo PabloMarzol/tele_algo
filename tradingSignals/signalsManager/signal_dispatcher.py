@@ -32,12 +32,12 @@ class SignalDispatcher:
         
         # Market hours configuration
         self.market_hours_config = {
-            'enabled': True,  # Set to False to disable market hours filtering
-            'timezone': 'Europe/London',  # Main timezone for market hours
-            'start_time': time(8, 30),  # 8:30 AM
-            'end_time': time(16, 30),   # 4:30 PM
-            'trading_days': [0, 1, 2, 3, 4],  # Monday to Friday (0=Monday, 6=Sunday)
-            'holiday_check': False,  # Set to True if you want to add holiday checking later
+            'enabled': True,  
+            'timezone': 'Europe/London',  
+            'start_time': time(8, 30),  
+            'end_time': time(16, 30),   
+            'trading_days': [0, 1, 2, 3, 4],  
+            'holiday_check': False, 
         }
         
         # Initialize timezone
@@ -50,7 +50,7 @@ class SignalDispatcher:
 
         
         # Track last signal time to control frequency
-        self.last_signal_time = datetime.now() - timedelta(hours=12)  # Start ready to send
+        self.last_signal_time = datetime.now() - timedelta(hours=12) 
         self.min_signal_interval_hours = 1  # Minimum hours between signals
         self.signals_sent_today = 0
         self.signals_sent_this_hour = 0

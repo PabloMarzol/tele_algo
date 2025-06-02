@@ -1,11 +1,13 @@
 import MetaTrader5 as mt5
 import logging
 import os
-from datetime import datetime
+import sys
+sys.path.append(os.path.abspath(".."))
 import time
-import polars as pl
-import numpy as np
+
+from datetime import datetime
 from dotenv import load_dotenv
+
 
 # Load environment variables
 load_dotenv()
@@ -22,11 +24,14 @@ class MT5SignalExecutor:
         self.initialized = False
         self.terminal_path = terminal_path
         
+        # Track active positions
+        self.active_positions = {}
+        
         # Connect to MT5
         self.initialize_mt5(username, password, server)
         
         # Parameters for signal execution
-        self.max_spread_multiplier = 1.5  # Max allowed spread as multiplier of average
+        self.max_spread_multiplier = 1.5  
         self.slippage_pips = 3  
         self.use_limit_orders = True  
         self.retry_attempts = 3  
@@ -614,6 +619,197 @@ class MT5SignalExecutor:
             
         except Exception as e:
             self.logger.error(f"Error executing signal: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def update_active_positions(self):
+        """Update our tracking of active positions"""
+        try:
+            # Get all current positions
+            positions = mt5.positions_get()
+            if not positions:
+                self.active_positions = {}
+                return
+            
+            # Reset active positions tracking
+            self.active_positions = {}
+            
+            # Group positions by symbol
+            for position in positions:
+                # Only track our positions (by magic number range)
+                if 123456 <= position.magic < 123500:
+                    symbol = position.symbol
+                    
+                    if symbol not in self.active_positions:
+                        self.active_positions[symbol] = []
+                    
+                    self.active_positions[symbol].append({
+                        "ticket": position.ticket,
+                        "symbol": symbol,
+                        "type": "BUY" if position.type == 0 else "SELL",
+                        "volume": position.volume,
+                        "open_price": position.price_open,
+                        "current_sl": position.sl,
+                        "current_tp": position.tp,
+                        "magic": position.magic,
+                        "profit": position.profit
+                    })
+            
+            self.logger.info(f"Updated active positions: {len(self.active_positions)} symbols with positions")
+            
+        except Exception as e:
+            self.logger.error(f"Error updating active positions: {e}")
+    
+    def check_and_apply_signal_exits(self, signal_generator):
+        """
+        Check for opposite signals and close positions accordingly 
+        
+        Args:
+            signal_generator: Instance of MT5SignalGenerator to check current signals
+        """
+        try:
+            # Update our position tracking first
+            self.update_active_positions()
+            
+            if not self.active_positions:
+                return {"success": True, "exits_processed": 0}
+            
+            # Get exit signals from the signal generator
+            exit_signals = signal_generator.check_exit_signals()
+            
+            exits_processed = 0
+            
+            for exit_signal in exit_signals:
+                symbol = exit_signal["symbol"]
+                exit_reason = exit_signal["exit_reason"]
+                
+                # Check if we have positions for this symbol
+                if symbol not in self.active_positions:
+                    continue
+                
+                self.logger.info(f"Exit signal detected for {symbol}: {exit_reason}")
+                
+                # Close all positions for this symbol
+                for position_info in self.active_positions[symbol]:
+                    result = self.close_position_by_ticket(position_info["ticket"], f"Exit: {exit_reason}")
+                    
+                    if result.get("success"):
+                        exits_processed += 1
+                        self.logger.info(f"Closed position {position_info['ticket']} for {symbol} due to {exit_reason}")
+                    else:
+                        self.logger.error(f"Failed to close position {position_info['ticket']}: {result.get('error')}")
+            
+            return {
+                "success": True,
+                "exits_processed": exits_processed,
+                "exit_signals": exit_signals
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error in check_and_apply_signal_exits: {e}")
+            return {"success": False, "error": str(e)}
+    
+        
+    def apply_automatic_trailing_stops(self):
+        """
+        Apply trailing stops to all active positions automatically (like backtest)
+        """
+        try:
+            # Update position tracking
+            self.update_active_positions()
+            
+            if not self.active_positions:
+                return {"success": True, "positions_updated": 0}
+            
+            positions_updated = 0
+            
+            for symbol, positions in self.active_positions.items():
+                for position_info in positions:
+                    # Apply trailing stop using existing method
+                    # Find the signal_id for this position
+                    signal_id = None
+                    for sig_id, sig_info in self.executed_signals.items():
+                        if sig_info.get("symbol") == symbol:
+                            for order in sig_info.get("orders", []):
+                                if order["order_id"] == position_info["ticket"]:
+                                    signal_id = sig_id
+                                    break
+                            if signal_id:
+                                break
+                    
+                    if signal_id:
+                        # Apply trailing stop for this specific signal
+                        result = self.apply_trailing_stop(signal_id)
+                        if result.get("success") and result.get("positions_updated", 0) > 0:
+                            positions_updated += result["positions_updated"]
+            
+            return {
+                "success": True,
+                "positions_updated": positions_updated,
+                "symbols_processed": len(self.active_positions)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error in apply_automatic_trailing_stops: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def check_signal_exits(self, signal_generator):
+        """Check and execute signal-based exits"""
+        try:
+            exit_signals = signal_generator.check_exit_signals()
+            exits_processed = 0
+            
+            for exit_signal in exit_signals:
+                symbol = exit_signal["symbol"]
+                
+                # Get positions for this symbol
+                positions = mt5.positions_get(symbol=symbol)
+                if not positions:
+                    continue
+                
+                # Close our positions for this symbol
+                for position in positions:
+                    if 123456 <= position.magic < 123500:
+                        result = self.close_position_by_ticket(position.ticket, "Signal exit")
+                        if result.get("success"):
+                            exits_processed += 1
+                            self.logger.info(f"Closed {symbol} position due to opposite signal")
+            
+            return {"success": True, "exits": exits_processed}
+            
+        except Exception as e:
+            self.logger.error(f"Error checking signal exits: {e}")
+            return {"success": False, "error": str(e)}
+        
+    
+    def close_position_by_ticket(self, ticket, comment="Exit"):
+        """Close position by ticket"""
+        try:
+            position = mt5.positions_get(ticket=ticket)
+            if not position:
+                return {"success": False, "error": "Position not found"}
+            
+            position = position[0]
+            close_type = mt5.ORDER_TYPE_SELL if position.type == 0 else mt5.ORDER_TYPE_BUY
+            tick = mt5.symbol_info_tick(position.symbol)
+            
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": position.symbol,
+                "volume": position.volume,
+                "type": close_type,
+                "position": ticket,
+                "price": tick.bid if position.type == 0 else tick.ask,
+                "deviation": self.slippage_pips,
+                "magic": position.magic,
+                "comment": comment,
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_IOC,
+            }
+            
+            result = mt5.order_send(request)
+            return {"success": result.retcode == mt5.TRADE_RETCODE_DONE if result else False}
+            
+        except Exception as e:
             return {"success": False, "error": str(e)}
     
     def calculate_position_size(self, symbol, entry_price, stop_loss, direction):

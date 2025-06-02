@@ -1,22 +1,28 @@
 user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_account,is_verified,join_date,last_active,banned,notes,trading_interest,vip_channels,vip_added_date,copier_forwarded,copier_forwarded_date,source_channel,first_contact_date,auto_welcomed,auto_welcome_date,risk_profile_text,last_response,last_response_time
-0,"",James,"",0,0,"",false,2025-05-27 14:08:24,2025-05-27 14:08:24,false,"","","","",false,"",main_channel,2025-05-27 14:08:24,false,"","","",""
-0,verdanttrading,Verdant,,0,0,"",false,2025-05-27 15:33:40,2025-05-27 15:33:40,false,"","","","",false,"",main_channel,2025-05-27 15:33:40,false,"","","",""
-0,PaulDenon,Paul,,5,300,,false,2025-05-27 15:57:26,2025-05-27 15:57:26,false,"",all,"","",false,"","","",false,"",medium,300,2025-05-27 16:01:39
-0,MagusQuant,Magus,Quant,5,300,300739,true,2025-05-27 23:33:10,2025-05-27 23:33:10,false,"",all,signals,2025-05-27 23:34:14,false,"","","",false,"",medium,300,2025-05-27 23:33:32
-0,Lamech_ordained5,MATTY,ICE,0,0,"",false,2025-05-27 15:44:55,2025-05-27 15:44:55,false,"","","","",false,"",main_channel,2025-05-27 15:44:55,false,"","","",""
-0,birdcapri,Bird,Bill,5,5000,"",false,2025-05-27 15:58:15,2025-05-27 15:58:15,false,"",signals,"","",false,"","","",false,"",medium,5000,2025-05-27 15:58:51
-0,dbart1989,D,B,0,0,"",false,2025-05-27 17:47:22,2025-05-27 17:47:22,false,"","","","",false,"",signals_channel,2025-05-27 17:47:22,false,"","","",""
-0,TRADEXCELLENT,TRADEX,,0,0,"",false,2025-05-27 23:31:49,2025-05-27 23:31:49,false,"","","","",false,"",main_channel,2025-05-27 23:31:49,true,2025-05-27 23:31:50,"","",""
-0,,༺ཊཽWAZZཏཽ༻,,0,0,"",false,2025-05-27 23:32:20,2025-05-27 23:32:20,false,"","","","",false,"",main_channel,2025-05-27 23:32:20,false,"","","",""
-0,,,,,,,,,,,,,,,,,,,,,,,
-0,kash11412,Kerry,Delva,0,0,"",false,2025-05-28 05:54:23,2025-05-28 05:54:23,false,"","","","",false,"",main_channel,2025-05-28 05:54:23,false,"","","",""
-0,GEEQUE,GQ,,0,0,"",false,2025-05-28 05:54:41,2025-05-28 05:54:41,false,"","","","",false,"",main_channel,2025-05-28 05:54:41,false,"","","",""
-0,VFPdragon,VFP,Dragon,0,0,"",false,2025-05-28 05:55:01,2025-05-28 05:55:01,false,"","","","",false,"",main_channel,2025-05-28 05:55:01,false,"","","",""
-0,dlarsen1,Himothy,Hamilton,5,250,300903,true,2025-05-28 13:05:34,2025-05-28 13:05:34,false,"",all,"","",false,"",main_channel,2025-05-28 05:55:18,false,"",medium,$250,2025-05-28 13:05:53
-0,Joseph3792,Joseph,,0,0,"",false,2025-05-28 06:38:48,2025-05-28 06:38:48,false,"","","","",false,"",main_channel,2025-05-28 06:38:48,false,"","","",""
-0,Rohittiwari4,Rohit-,Money Expo India / Colombia / Chile / Dubai,0,0,"",false,2025-05-28 08:27:25,2025-05-28 08:27:25,false,"","","","",false,"",main_channel,2025-05-28 08:27:25,false,"","","",""
-0,Muzzymn,Muzzy,man,8,500,,false,2025-05-28 09:36:56,2025-05-28 09:36:56,false,"",strategy,"","",false,"",main_channel,2025-05-28 09:33:28,false,"",high,500,2025-05-28 09:38:05
-0,,ثائر,صالح,0,0,"",false,2025-05-28 17:13:20,2025-05-28 17:13:20,false,"","","","",false,"","","",false,"","","",""
-0,,,,,,,,,,,,,,,,,,,,,,,
-0,,,,,,,,,,,,,,,,,,,,,,,
-1127393419,MagusQuant,Magus,Quant,5,200,300740,true,2025-05-30 13:53:14,2025-05-30 13:53:14,false,"",all,"","",false,"",main_channel,2025-05-30 16:28:39,true,2025-05-30 16:28:39,medium,200,2025-05-30 16:29:12
+7588027351,"",James,"",0,0,"",false,2025-05-27 14:08:24,2025-05-27 14:08:24,false,"","","","",false,"",main_channel,2025-05-27 14:08:24,false,"","","",""
+5986151685,verdanttrading,Verdant,,0,0,"",false,2025-05-27 15:33:40,2025-05-27 15:33:40,false,"","","","",false,"",main_channel,2025-05-27 15:33:40,false,"","","",""
+7644558699,PaulDenon,Paul,,5,400,300739,true,2025-06-02 15:05:04,2025-06-02 15:05:04,false,"",all,"","",false,"",main_channel,2025-06-02 14:52:36,true,2025-06-02 15:05:04,medium,400,2025-06-02 15:05:36
+1127393419,MagusQuant,Magus,Quant,5,400,300740,true,2025-05-27 23:33:10,2025-05-27 23:33:10,false,"",all,signals,2025-05-27 23:34:14,false,"",main_channel,2025-06-02 14:24:09,true,2025-06-02 14:24:09,medium,400,2025-06-02 14:25:31
+470929170,Lamech_ordained5,MATTY,ICE,0,0,"",false,2025-05-27 15:44:55,2025-05-27 15:44:55,false,"","","","",false,"",main_channel,2025-05-27 15:44:55,false,"","","",""
+7097133726,birdcapri,Bird,Bill,5,5000,"",false,2025-05-27 15:58:15,2025-05-27 15:58:15,false,"",signals,"","",false,"","","",false,"",medium,5000,2025-05-27 15:58:51
+5001208252,dbart1989,D,B,0,0,"",false,2025-05-27 17:47:22,2025-05-27 17:47:22,false,"","","","",false,"",signals_channel,2025-05-27 17:47:22,false,"","","",""
+7369915384,TRADEXCELLENT,TRADEX,,0,0,"",false,2025-05-27 23:31:49,2025-05-27 23:31:49,false,"","","","",false,"",main_channel,2025-05-27 23:31:49,true,2025-05-27 23:31:50,"","",""
+720145405,,༺ཊཽWAZZཏཽ༻,,0,0,"",false,2025-05-27 23:32:20,2025-05-27 23:32:20,false,"","","","",false,"",main_channel,2025-05-27 23:32:20,false,"","","",""
+6284619526,kash11412,Kerry,Delva,0,0,"",false,2025-05-28 05:54:23,2025-05-28 05:54:23,false,"","","","",false,"",main_channel,2025-05-28 05:54:23,false,"","","",""
+773381277,GEEQUE,GQ,,0,0,"",false,2025-05-28 05:54:41,2025-05-28 05:54:41,false,"","","","",false,"",main_channel,2025-05-28 05:54:41,false,"","","",""
+694903440,VFPdragon,VFP,Dragon,0,0,"",false,2025-05-28 05:55:01,2025-05-28 05:55:01,false,"","","","",false,"",main_channel,2025-05-28 05:55:01,false,"","","",""
+1243732048,dlarsen1,Himothy,Hamilton,5,250,300903,true,2025-05-28 13:05:34,2025-05-28 13:05:34,false,"",all,"","",false,"",main_channel,2025-05-28 05:55:18,false,"",medium,$250,2025-05-28 13:05:53
+1961325635,Joseph3792,Joseph,,0,0,"",false,2025-05-28 06:38:48,2025-05-28 06:38:48,false,"","","","",false,"",main_channel,2025-05-28 06:38:48,false,"","","",""
+6567567105,Rohittiwari4,Rohit-,Money Expo India / Colombia / Chile / Dubai,0,0,"",false,2025-05-28 08:27:25,2025-05-28 08:27:25,false,"","","","",false,"",main_channel,2025-05-28 08:27:25,false,"","","",""
+6376915981,Muzzymn,Muzzy,man,8,500,,false,2025-05-28 09:36:56,2025-05-28 09:36:56,false,"",strategy,"","",false,"",main_channel,2025-05-28 09:33:28,false,"",high,500,2025-05-28 09:38:05
+5494495178,,ثائر,صالح,0,0,"",false,2025-05-28 17:13:20,2025-05-28 17:13:20,false,"","","","",false,"","","",false,"","","",""
+5881264434,DSSmartfren,DS (Smartfren),,5,100,"",false,2025-05-29 12:59:12,2025-05-29 12:59:12,false,"",all,"","",false,"",main_channel,2025-05-29 10:32:15,false,"",medium,100,2025-05-29 12:59:53
+5236948725,Robitesso,Ro,,0,0,,false,2025-05-31 08:30:54,2025-05-31 08:30:54,false,"","","","",false,"","","",false,"",medium,"",2025-05-31 08:31:03
+6017901377,,Марина,,0,0,,false,2025-06-01 10:12:08,2025-06-01 10:12:08,false,"","","","",false,"","","",false,"",low,"",2025-06-01 10:12:13
+7585696033,,Aizen,Rai,0,0,"",false,2025-06-01 13:14:21,2025-06-01 13:14:21,false,"","","","",false,"",main_channel,2025-06-01 13:14:21,false,"","","",""
+673626920,JomarAbad,Jose Mari N,Abad,0,0,"",false,2025-06-01 13:14:47,2025-06-01 13:14:47,false,"","","","",false,"",main_channel,2025-06-01 13:15:00,false,"","","",""
+447043958,,Hemant,Pote,2,5000,,false,2025-06-02 12:03:35,2025-06-02 12:03:35,false,"",strategy,"","",false,"","","",false,"",low,5000,2025-06-02 12:04:13
+5053991557,thusharadxb,Dennis,Sampath,0,0,"",false,2025-06-02 12:51:09,2025-06-02 12:51:09,false,"","","","",false,"",main_channel,2025-06-02 12:51:09,false,"","","",""
+1249110904,Trarco,Marco,Traina,0,0,,false,2025-06-02 14:11:09,2025-06-02 14:11:09,false,"",strategy,"","",false,"","","",false,"",low,500,2025-06-02 13:55:18
+8066328569,,Ahmed,Idrissa,8,0,"",false,2025-06-02 14:41:23,2025-06-02 14:41:23,false,"","","","",false,"",main_channel,2025-06-02 14:13:47,false,"",high,"",2025-06-02 15:00:42
+7396303047,VFX_FX,VFX,,0,0,"",false,2025-06-02 14:14:21,2025-06-02 14:14:21,false,"","","","",false,"","","",false,"","","",""

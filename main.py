@@ -35,8 +35,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if await check_existing_registration(update, context, user_id):
         return
     
-    # Handle referral parameter in a separate async function to avoid message leakage
+    # Handle referral parameter and determine source channel
     referral_admin = None
+    source_channel = "main_channel"  # Default source
+    
     if context.args and context.args[0].startswith("ref_"):
         try:
             # Extract the referring admin's ID
@@ -47,7 +49,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             db.add_user({
                 "user_id": user_id,
                 "referred_by": referral_admin,
-                "referral_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "referral_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "source_channel": source_channel  # Track source
             })
             
             # Store in bot data for quick access
@@ -60,6 +63,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 "name": user.first_name,
                 "status": "referred",
                 "referred_by": referral_admin,
+                "source_channel": source_channel,
                 "first_contact_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             
@@ -81,48 +85,91 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "username": user.username,
         "first_name": user.first_name,
         "last_name": user.last_name,
+        "source_channel": source_channel,
         "join_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "last_active": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
     
-    # If this is a referred user, start with welcome message from referring admin
+    # Get appropriate welcome message based on source channel (same logic as forwarded messages)
+    try:
+        if source_channel == "signals_channel":
+            welcome_msg = db.get_setting("signals_auto_welcome", 
+                                       config.get("messages.signals_auto_welcome", 
+                                                config.get("messages.admin_auto_welcome", 
+                                                         "Welcome to VFX Trading Signals!")))
+        else:
+            welcome_msg = db.get_setting("admin_auto_welcome", 
+                                       config.get("messages.admin_auto_welcome", 
+                                                "Welcome to VFX Trading!"))
+        
+        print(f"✅ Using welcome message: {welcome_msg[:50]}...")
+        
+    except Exception as e:
+        print(f"⚠️ Error getting welcome message: {e}")
+        welcome_msg = "Welcome to VFX Trading!"
+    
+    # Create guided setup buttons (same as forwarded messages)
+    keyboard = [
+        [InlineKeyboardButton("🚀 Start Guided Setup", callback_data="start_guided")],
+        [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Send the config-based welcome message with HTML formatting
+    try:
+        await update.message.reply_text(
+            welcome_msg,
+            parse_mode='HTML',
+            reply_markup=reply_markup
+        )
+        
+        # Mark user as auto-welcomed (same as forwarded flow)
+        db.add_user({
+            "user_id": user_id,
+            "auto_welcomed": True,
+            "auto_welcome_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        # Store in tracking (same as forwarded flow)
+        context.bot_data.setdefault("auto_welcoming_users", {})
+        context.bot_data["auto_welcoming_users"][user_id] = {
+            "name": user.first_name,
+            "status": "welcomed",
+            "source_channel": source_channel,
+            "welcome_sent": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        print(f"✅ Welcome message sent successfully to {user.first_name}")
+        
+    except Exception as e:
+        print(f"⚠️ Error sending welcome message: {e}")
+        # Fallback to simple message
+        await update.message.reply_text(
+            f"Hello {user.first_name}! Welcome to VFX Trading!",
+            reply_markup=reply_markup
+        )
+    
+    # Optional: Send referral confirmation if applicable
     if referral_admin:
         admin_info = db.get_user(referral_admin)
         admin_name = admin_info.get('first_name', 'Admin') if admin_info else 'Admin'
         
         await update.message.reply_text(
-            f"Welcome {user.first_name}! You've been connected to our registration system by {admin_name}. "
-            f"Let's get your account set up!"
+            f"📋 <b>Connected via {admin_name}</b>\n\n"
+            f"You've been connected to our registration system by {admin_name}. "
+            f"Let's get your account set up! 🚀",
+            parse_mode='HTML'
         )
-    else:
-        # Standard welcome
-        await update.message.reply_text(f"Hello {user.first_name}! I'm your trading assistant bot.")
     
-    # Start guided setup with buttons right away
-    keyboard = [
-        [
-            InlineKeyboardButton("Low Risk", callback_data="risk_low"),
-            InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
-            InlineKeyboardButton("High Risk", callback_data="risk_high")
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        "<b>Let's start with your profile setup!</b>\n\n"
-        "What risk profile would you like on your account?",
-        parse_mode='HTML',
-        reply_markup=reply_markup
-    )
-    
-    # Set initial state
+    # Set initial state for guided setup
     context.bot_data.setdefault("user_states", {})
-    context.bot_data["user_states"][user_id] = "risk_profile"
+    context.bot_data["user_states"][user_id] = "awaiting_guided_setup"
     
     # Update analytics
     db.update_analytics(active_users=1)
     
-    return RISK_APPETITE
+    # No need to return conversation state since we're using button-based flow
+    print(f"✅ Start function completed for user {user_id}")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a help message with all available commands."""
@@ -2072,8 +2119,6 @@ async def copy_template_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 # -------------------------------------- MAIN ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
-
-
 def main() -> None:
     """Start both manager and signal bots from same main function."""
     print("Starting VFX Trading Bot System...")
@@ -2159,10 +2204,7 @@ def main() -> None:
     manager_application.add_handler(CommandHandler("debugdb", debug_db_command))
     manager_application.add_handler(CommandHandler("resetuser", reset_user_registration_command))
     
-    # Signal bot commands 
-    # manager_application.add_handler(CommandHandler("signalstatus", lambda u, c: signal_bot.signal_status_command(u, c)))
-    # manager_application.add_handler(CommandHandler("signalstats", lambda u, c: signal_bot.handle_signalstats(u, c)))
-    # manager_application.add_handler(CommandHandler("algostats", lambda u, c: signal_bot.signal_stats_command(u, c)))
+
     
     # MySQL commands
     manager_application.add_handler(CommandHandler("testmysql", test_mysql_command))
@@ -2371,7 +2413,7 @@ def main() -> None:
     
     # Trailing stops every 2 minutes
     job_queue.run_repeating(
-        lambda context: signal_bot.apply_trailing_stops(),
+        lambda context: signal_bot.apply_trailing_stops(),  # This already exists!
         interval=120,
         first=60
     )
