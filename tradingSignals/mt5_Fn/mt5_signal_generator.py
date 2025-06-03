@@ -672,13 +672,6 @@ class MT5SignalGenerator:
                                 config['params']['overbought'],
                                 config['params']['oversold']
                             )
-                        elif strategy_name == 'support_resistance':
-                            signal = self.calculate_support_resistance(
-                                symbol, 
-                                timeframe,
-                                config['params']['lookback'],
-                                config['params']['threshold']
-                            )
                         elif strategy_name == 'hawkes_volatility':
                             self.logger.info(f"Attempting Hawkes calculation for {symbol}")
                             signal = self.calculate_hawkes_volatility(
@@ -688,6 +681,13 @@ class MT5SignalGenerator:
                                 config['params']['kappa'],
                                 config['params']['quantile_lookback']
                             )
+                        # elif strategy_name == 'support_resistance':
+                        #     signal = self.calculate_support_resistance(
+                        #         symbol, 
+                        #         timeframe,
+                        #         config['params']['lookback'],
+                        #         config['params']['threshold']
+                        #     )
                             
                             # Enhanced logging for Hawkes strategy
                             if signal:

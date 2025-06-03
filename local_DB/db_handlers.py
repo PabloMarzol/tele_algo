@@ -71,7 +71,14 @@ async def check_my_status_callback(update: Update, context: ContextTypes.DEFAULT
         f"<b>🎯 VIP Access:</b> {'Granted' if registration_summary.get('vip_access_granted') else 'Pending'}\n"
         f"<b>📅 Member Since:</b> {registration_summary.get('join_date', 'Unknown')}\n"
         f"<b>🕒 Last Active:</b> {registration_summary.get('last_active', 'Unknown')}\n\n"
-        f"<b>Overall Status:</b> {registration_summary.get('registration_status', 'Unknown').upper()}"
+        f"<b>Overall Status:</b> {registration_summary.get('registration_status', 'Unknown').upper()}\n\n"
+        f"<b>🏠 Your Control Center:</b>\n"
+        f"<b>/myaccount</b> - Your personal dashboard 📊\n"
+        f"• View your complete profile\n"
+        f"• Edit your settings anytime\n"
+        f"• Check account status\n"
+        f"• Track VIP services\n"
+        f"• Contact support directly\n\n"
     )
     
     keyboard = [
@@ -371,27 +378,40 @@ async def show_summary(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> None
     if not user_info:
         await context.bot.send_message(
             chat_id=user_id,
-            text="⚠️ Error retrieving your information. Please contact an admin for assistance."
+            text="⚠️ Error retrieving your information. Please use <b>/myaccount</b> to check your status.",
+            parse_mode='HTML'
         )
         return
     
-    # Format summary
+    # Format enhanced summary
     summary = f"""<b>📋 Your Registration Summary</b>
 
 Thank you for providing your information! Here's what we've got:
 
+<b>✅ Profile Complete:</b>
 <b>Risk Profile:</b> {user_info.get('risk_profile_text', 'Not specified').capitalize()}
 <b>Deposit Amount:</b> ${user_info.get('deposit_amount', 'Not specified')}
-<b>Previous Experience:</b> {user_info.get('previous_experience', 'Not specified')}
+<b>Trading Interest:</b> {user_info.get('trading_interest', 'Not specified')}
 <b>MT5 Account:</b> {user_info.get('trading_account', 'Not specified')} {' ✅' if user_info.get('is_verified') else ''}
 
-<b>What's Next?</b>
-Our team will review your information and set up your account for our signals service. You should receive confirmation within the next 24 hours.
+<b>🎯 What's Next?</b>
+Our team will review your information and set up your account for our premium services. You should receive confirmation within the next 24 hours.
 
-If you need to make any changes or have questions, please let us know!"""
+<b>💡 Your Personal Dashboard:</b>
+Use <b>/myaccount</b> anytime to:
+• Check your account status 📊
+• Edit your profile settings ✏️
+• View verification progress 🔍
+• Contact our support team 💬
+• Track your VIP access 🌟
 
-    # Add buttons for edit or confirm
+<b>📱 Bookmark this command for quick access!</b>
+
+If you need to make any changes or have questions, just use your dashboard or contact us below! 👇"""
+
+    # Enhanced buttons with dashboard access
     keyboard = [
+        [InlineKeyboardButton("📊 Open My Dashboard", callback_data="back_to_dashboard")],
         [InlineKeyboardButton("✅ Confirm Information", callback_data="confirm_registration")],
         [InlineKeyboardButton("✏️ Edit Information", callback_data="edit_registration")],
         [InlineKeyboardButton("👨‍💼 Speak to an Advisor", callback_data="speak_advisor")]

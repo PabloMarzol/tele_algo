@@ -1,7 +1,6 @@
 user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_account,is_verified,join_date,last_active,banned,notes,trading_interest,vip_channels,vip_added_date,copier_forwarded,copier_forwarded_date,source_channel,first_contact_date,auto_welcomed,auto_welcome_date,risk_profile_text,last_response,last_response_time
 7588027351,"",James,"",0,0,"",false,2025-05-27 14:08:24,2025-05-27 14:08:24,false,"","","","",false,"",main_channel,2025-05-27 14:08:24,false,"","","",""
 5986151685,verdanttrading,Verdant,,0,0,"",false,2025-05-27 15:33:40,2025-05-27 15:33:40,false,"","","","",false,"",main_channel,2025-05-27 15:33:40,false,"","","",""
-7644558699,PaulDenon,Paul,,5,400,300739,true,2025-06-02 15:05:04,2025-06-02 15:05:04,false,"",all,"","",false,"",main_channel,2025-06-02 14:52:36,true,2025-06-02 15:05:04,medium,400,2025-06-02 15:05:36
 1127393419,MagusQuant,Magus,Quant,5,400,300740,true,2025-05-27 23:33:10,2025-05-27 23:33:10,false,"",all,signals,2025-05-27 23:34:14,false,"",main_channel,2025-06-02 14:24:09,true,2025-06-02 14:24:09,medium,400,2025-06-02 14:25:31
 470929170,Lamech_ordained5,MATTY,ICE,0,0,"",false,2025-05-27 15:44:55,2025-05-27 15:44:55,false,"","","","",false,"",main_channel,2025-05-27 15:44:55,false,"","","",""
 7097133726,birdcapri,Bird,Bill,5,5000,"",false,2025-05-27 15:58:15,2025-05-27 15:58:15,false,"",signals,"","",false,"","","",false,"",medium,5000,2025-05-27 15:58:51
@@ -24,5 +23,8 @@ user_id,username,first_name,last_name,risk_appetite,deposit_amount,trading_accou
 447043958,,Hemant,Pote,2,5000,,false,2025-06-02 12:03:35,2025-06-02 12:03:35,false,"",strategy,"","",false,"","","",false,"",low,5000,2025-06-02 12:04:13
 5053991557,thusharadxb,Dennis,Sampath,0,0,"",false,2025-06-02 12:51:09,2025-06-02 12:51:09,false,"","","","",false,"",main_channel,2025-06-02 12:51:09,false,"","","",""
 1249110904,Trarco,Marco,Traina,0,0,,false,2025-06-02 14:11:09,2025-06-02 14:11:09,false,"",strategy,"","",false,"","","",false,"",low,500,2025-06-02 13:55:18
-8066328569,,Ahmed,Idrissa,8,0,"",false,2025-06-02 14:41:23,2025-06-02 14:41:23,false,"","","","",false,"",main_channel,2025-06-02 14:13:47,false,"",high,"",2025-06-02 15:00:42
-7396303047,VFX_FX,VFX,,0,0,"",false,2025-06-02 14:14:21,2025-06-02 14:14:21,false,"","","","",false,"","","",false,"","","",""
+8066328569,,Ahmed,Idrissa,5,0,,false,2025-06-02 14:41:23,2025-06-02 14:41:23,false,"","","","",false,"",main_channel,2025-06-02 14:13:47,false,"",medium,"",2025-06-02 18:59:15
+7396303047,VFX_FX,VFX,,0,0,"",false,2025-06-03 09:11:54,2025-06-03 09:11:54,false,"","","","",false,"","","",false,"","","",""
+7644558699,PaulDenon,Paul,,5,100,300740,true,2025-06-02 17:10:31,2025-06-02 17:10:31,false,"",signals,"","",false,"",main_channel,2025-06-02 17:04:45,true,2025-06-02 17:04:45,medium,300,2025-06-03 13:24:40
+652010463,,TB,,0,0,"",false,2025-06-03 09:11:47,2025-06-03 09:11:47,false,"","","","",false,"",main_channel,2025-06-03 09:11:47,false,"","","",""
+7526617890,,ichigo,Yamamoto,0,0,"",false,2025-06-03 11:22:48,2025-06-03 11:22:48,false,"","","","",false,"",main_channel,2025-06-03 11:22:48,false,"","","",""

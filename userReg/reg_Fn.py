@@ -1270,6 +1270,471 @@ async def trading_interest_callback(update: Update, context: ContextTypes.DEFAUL
     return TRADING_ACCOUNT
 
 
+# --------------------------------------------- #
+# ------------- User Management System --------------- #
+# --------------------------------------------- #
+async def process_account_number_text(update, context, user_id, message_text):
+    """Enhanced account processing with VortexFX registration help."""
+    print(f"Processing account number: {message_text}")
+    
+    # Check if user needs to create an account first
+    if message_text.lower() in ["no", "don't have", "need account", "create account", "new account"]:
+        await handle_new_account_needed(update, context, user_id)
+        return
+    
+    if message_text.isdigit() and len(message_text) == 6:
+        account_number = message_text
+        
+        # Get user's stated deposit intention
+        user_info = db.get_user(user_id)
+        stated_amount = user_info.get("deposit_amount", 0) if user_info else 0
+        
+        print(f"===== ACCOUNT VERIFICATION =====")
+        print(f"Account: {account_number}, User: {user_id}, Stated: ${stated_amount}")
+        
+        await update.message.reply_text(
+            "<b>🔍 Verifying Your Account...</b>\n\n"
+            "Please wait while we check your account details and balance... ⏳",
+            parse_mode='HTML'
+        )
+        
+        # Validate and verify account
+        if not auth.validate_account_format(account_number):
+            await update.message.reply_text(
+                "<b>❌ Invalid Account Format</b>\n\n"
+                "Please enter a valid 6-digit trading account number.\n\n"
+                "<b>💡 Don't have an account yet?</b> Type 'new account' and I'll help you create one!",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🆕 Create New Account", callback_data="need_new_account")],
+                    [InlineKeyboardButton("🔄 Try Again", callback_data="restart_process")]
+                ])
+            )
+            return
+        
+        # Connect to MySQL and verify
+        mysql_db = get_mysql_connection()
+        if not mysql_db.is_connected():
+            await update.message.reply_text(
+                "<b>⚠️ Connection Issue</b>\n\n"
+                "Unable to verify account at the moment. Please try again later.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")]
+                ])
+            )
+            return
+        
+        try:
+            account_info = mysql_db.verify_account_exists(account_number)
+
+            if not account_info['exists']:
+                await handle_account_not_found(update, context, user_id, account_number)
+                return
+            elif not account_info.get('is_real_account', False):
+                await handle_demo_account(update, context, user_id, account_number, account_info)
+                return
+            
+            # Account exists and is real - proceed with balance check
+            await handle_real_account_found(update, context, user_id, account_info, stated_amount)
+            
+        except Exception as e:
+            print(f"Error in verification: {e}")
+            await update.message.reply_text(
+                f"<b>⚠️ Verification Error</b>\n\n"
+                f"There was an issue verifying your account. Please try again or contact support.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")],
+                    [InlineKeyboardButton("🔄 Try Again", callback_data="restart_process")]
+                ])
+            )
+    else:
+        await update.message.reply_text(
+            "<b>⚠️ Invalid Format</b>\n\n"
+            "Please provide a valid Vortex-FX MT5 account number.\n\n"
+            "<b>💡 Examples:</b> 123456, 789012\n\n"
+            "<b>🆕 Don't have an account?</b> I can help you create one!",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🆕 Create VortexFX Account", callback_data="need_new_account")],
+                [InlineKeyboardButton("💬 Get Help", callback_data="speak_advisor")]
+            ])
+        )
+
+async def handle_new_account_needed(update, context, user_id):
+    """Guide user through creating a new VortexFX account."""
+    user_info = db.get_user(user_id)
+    user_name = user_info.get('first_name', 'there') if user_info else 'there'
+    
+    account_creation_guide = (
+        f"<b>🆕 Let's Create Your VortexFX Account!</b>\n\n"
+        f"Hi {user_name}! No worries - creating a VortexFX account is quick and free! 🎉\n\n"
+        
+        f"<b>📋 What You'll Need:</b>\n"
+        f"• Valid email address\n"
+        f"• Phone number\n"
+        f"• 2-3 minutes of your time\n\n"
+        
+        f"<b>🚀 Quick Setup Process:</b>\n"
+        f"1. Click the registration link below\n"
+        f"2. Fill in your basic details\n"
+        f"3. Verify your email\n"
+        f"4. Get your Vortex-FX account number\n"
+        f"5. Come back here and enter it!\n\n"
+        
+        f"<b>💰 Ready to start?</b>\n"
+        f"Click below to create your FREE VortexFX account:"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔗 Create VortexFX Account (FREE)", 
+                            url="https://clients.vortexfx.com/register?referral=0195a843-2b1c-7339-9088-57b56b4aa753")],
+        [InlineKeyboardButton("✅ I Created My Account", callback_data="account_created")],
+        [InlineKeyboardButton("💬 Need Help?", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        account_creation_guide,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # Set state to waiting for new account
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "creating_new_account"
+
+async def need_new_account_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle 'Create New Account' button."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    await handle_new_account_needed(query, context, user_id)
+
+async def account_created_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle when user says they created their account."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    await query.edit_message_text(
+        "<b>🎉 Awesome! Welcome to VortexFX!</b>\n\n"
+        
+        "<b>📧 Check Your Email</b>\n"
+        "VortexFX should have sent you a welcome email with your account details.\n\n"
+        
+        "<b>🔢 Find Your Account Number</b>\n"
+        "Your Vortex-FX account number should be in:\n"
+        "• The welcome email\n"
+        "• Your VortexFX dashboard\n"
+        "• MT5 platform login details\n\n"
+        
+        "<b>💡 Example:</b> If you see 'Login ID: 123456', then your account number is <code>123456</code>\n\n"
+        
+        "<b>✍️ Please type your account number below:</b>",
+        parse_mode='HTML'
+    )
+    
+    # Set state to waiting for account number
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "account_number"
+
+async def handle_account_not_found(update, context, user_id, account_number):
+    """Handle when account is not found in database."""
+    not_found_message = (
+        f"<b>❌ Account Not Found</b>\n\n"
+        f"We couldn't find account <code>{account_number}</code> in our system.\n\n"
+        
+        f"<b>💡 Common Solutions:</b>\n\n"
+        
+        f"<b>1. Double-check the number:</b>\n"
+        f"• Make sure all 6 digits are correct\n"
+        f"• Check your VortexFX welcome email\n"
+        f"• Log into your VortexFX dashboard\n\n"
+        
+        f"<b>2. Account might be very new:</b>\n"
+        f"• Wait 1-5 minutes after creation\n"
+        f"• Then try again\n\n"
+        
+        f"<b>3. Need to create an account?</b>\n"
+        f"• Click below to register for free\n\n"
+        
+        f"<b>What would you like to do?</b>"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔄 Try Different Number", callback_data="retry_account_number")],
+        [InlineKeyboardButton("🆕 Create New Account", 
+                            url="https://clients.vortexfx.com/register?referral=0195a843-2b1c-7339-9088-57b56b4aa753")],
+        [InlineKeyboardButton("⏰ Wait & Try Again", callback_data="wait_and_retry")],
+        [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        not_found_message,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+
+async def handle_demo_account(update, context, user_id, account_number, account_info):
+    """Handle when user provides a demo account."""
+    demo_message = (
+        f"<b>⚠️ Demo Account Detected</b>\n\n"
+        f"<b>Account:</b> <code>{account_number}</code>\n"
+        f"<b>Type:</b> {account_info.get('account_type', 'Demo')}\n"
+        f"<b>Group:</b> {account_info.get('group', 'Unknown')}\n\n"
+        
+        f"<b>🚫 Demo accounts cannot be used for VIP services.</b>\n\n"
+        
+        f"<b>💡 What you need:</b>\n"
+        f"• A REAL/LIVE VortexFX trading account\n"
+        f"• Minimum $100 deposit for VIP access\n\n"
+        
+        f"<b>🆕 Don't have a real account yet?</b>\n"
+        f"No problem! Creating one is free and takes 2 minutes:\n\n"
+        
+        f"<b>What would you like to do?</b>"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🆕 Create Real Account (FREE)", 
+                            url="https://clients.vortexfx.com/register?referral=0195a843-2b1c-7339-9088-57b56b4aa753")],
+        [InlineKeyboardButton("🔢 Use Different Account", callback_data="retry_account_number")],
+        [InlineKeyboardButton("💬 Get Help", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        demo_message,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+
+async def handle_real_account_found(update, context, user_id, account_info, stated_amount):
+    """Handle when a real account is found and verified."""
+    real_balance = float(account_info.get('balance', 0))
+    account_name = account_info.get('name', 'Unknown')
+    account_number = account_info.get('account_number', 'Unknown')
+    
+    print(f"Real account found: {account_name}, Balance: ${real_balance}")
+    
+    # Store account info
+    db.add_user({
+        "user_id": user_id,
+        "trading_account": account_number,
+        "account_owner": account_name,
+        "account_balance": real_balance,
+        "is_verified": True,
+        "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    # Check balance status and guide user accordingly
+    if real_balance >= 100:
+        await handle_sufficient_balance(update, context, user_id, account_info, real_balance)
+    elif real_balance > 0:
+        await handle_partial_balance(update, context, user_id, account_info, real_balance, stated_amount)
+    else:
+        await handle_zero_balance(update, context, user_id, account_info, stated_amount)
+
+async def handle_sufficient_balance(update, context, user_id, account_info, balance):
+    """Handle user with sufficient balance for VIP access."""
+    success_message = (
+        f"<b>🎉 CONGRATULATIONS! 🎉</b>\n\n"
+        
+        f"<b>✅ Account Verified Successfully!</b>\n"
+        f"<b>📊 Account:</b> {account_info['account_number']}\n"
+        f"<b>👤 Owner:</b> {account_info['name']}\n"
+        f"<b>💰 Balance:</b> ${balance:,.2f}\n\n"
+        
+        f"<b>🌟 You qualify for FULL VIP ACCESS! 🌟</b>\n\n"
+        
+        f"<b>🎯 What You Get:</b>\n"
+        f"• 🔔 Premium Trading Signals\n"
+        f"• 🤖 Automated Trading Strategy\n"
+        f"• 📊 Professional Market Analysis\n"
+        f"• 👨‍💼 Priority Customer Support\n"
+        f"• 💰 Advanced Risk Management\n\n"
+        
+        f"<b>💡 Dashboard Access:</b>\n"
+        f"Use <b>/myaccount</b> anytime to:\n"
+        f"• Check your account status 📊\n"
+        f"• Edit your profile settings ✏️\n"
+        f"• View your VIP services 🌟\n"
+        f"• Contact support 💬\n\n"
+        
+        f"<b>🚀 Ready to activate your VIP services?</b>"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔔 Activate VIP Signals", callback_data="request_vip_signals")],
+        [InlineKeyboardButton("🤖 Activate Automated Trading", callback_data="request_vip_strategy")],
+        [InlineKeyboardButton("✨ Activate BOTH Services", callback_data="request_vip_both_services")],
+        [InlineKeyboardButton("📊 View My Dashboard", callback_data="back_to_dashboard")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(success_message, parse_mode='HTML', reply_markup=reply_markup)
+    
+    # Mark user as VIP eligible
+    db.add_user({
+        "user_id": user_id,
+        "vip_eligible": True,
+        "funding_status": "sufficient",
+        "vip_access_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+
+async def handle_partial_balance(update, context, user_id, account_info, balance, target_amount):
+    """Handle user with some balance but not enough for VIP."""
+    needed = max(100 - balance, 0)
+    percentage = (balance / 100) * 100
+    
+    partial_message = (
+        f"<b>✅ Account Verified Successfully!</b>\n\n"
+        
+        f"<b>📊 Account:</b> {account_info['account_number']}\n"
+        f"<b>👤 Owner:</b> {account_info['name']}\n"
+        f"<b>💰 Current Balance:</b> ${balance:,.2f}\n"
+        f"<b>🎯 VIP Requirement:</b> $100.00\n"
+        f"<b>📈 You're {percentage:.1f}% there!</b>\n\n"
+        
+        f"<b>💡 Almost Ready for VIP Access!</b>\n\n"
+        
+        f"<b>To unlock VIP services, you need:</b>\n"
+        f"• ${needed:,.2f} more in your account\n"
+        f"• Then you get full access to all premium features!\n\n"
+        
+        f"<b>What would you like to do?</b>"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton(f"💳 Deposit ${needed:,.0f} Now", callback_data=f"deposit_exact_{needed}")],
+        [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
+        [InlineKeyboardButton("📊 Use Current Balance", callback_data="proceed_with_current")],
+        [InlineKeyboardButton("📋 View My Dashboard", callback_data="back_to_dashboard")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(partial_message, parse_mode='HTML', reply_markup=reply_markup)
+
+async def handle_zero_balance(update, context, user_id, account_info, target_amount):
+    """Handle user with zero balance."""
+    minimum_deposit = max(target_amount or 100, 100)
+    
+    zero_balance_message = (
+        f"<b>✅ Account Verified Successfully!</b>\n\n"
+        
+        f"<b>📊 Account:</b> {account_info['account_number']}\n"
+        f"<b>👤 Owner:</b> {account_info['name']}\n"
+        f"<b>💰 Current Balance:</b> $0.00\n\n"
+        
+        f"<b>🚀 Ready to Start Your Trading Journey?</b>\n\n"
+        
+        f"<b>💎 To unlock VIP access:</b>\n"
+        f"• Minimum deposit: $100\n"
+        f"• Recommended: ${minimum_deposit:,} for better results\n\n"
+        
+        f"<b>🌟 What You'll Get:</b>\n"
+        f"• Professional trading signals\n"
+        f"• Automated trading strategies\n"
+        f"• 24/7 market monitoring\n"
+        f"• Expert support team\n\n"
+        
+        f"<b>How much would you like to deposit?</b>"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("💳 Deposit $100", callback_data="deposit_exact_100")],
+        [InlineKeyboardButton("💰 Deposit $500", callback_data="deposit_exact_500")],
+        [InlineKeyboardButton("💎 Deposit $1000", callback_data="deposit_exact_1000")],
+        [InlineKeyboardButton("🎯 Choose Custom Amount", callback_data="choose_deposit_amount")],
+        [InlineKeyboardButton("📋 View My Dashboard", callback_data="back_to_dashboard")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(zero_balance_message, parse_mode='HTML', reply_markup=reply_markup)
+
+# Additional helper callbacks
+async def retry_account_number_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Allow user to try a different account number."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    await query.edit_message_text(
+        "<b>🔢 Enter Your Account Number</b>\n\n"
+        "Please provide your VortexFX MT5 account number:\n\n"
+        "<b>💡 Tips:</b>\n"
+        "• Check your VortexFX welcome email\n"
+        "• Look in your MT5 platform\n"
+        "• Visit your VortexFX dashboard\n\n"
+        "<b>📝 Type your account number:</b>",
+        parse_mode='HTML'
+    )
+    
+    # Set state back to account number entry
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "account_number"
+
+async def wait_and_retry_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle wait and retry for new accounts."""
+    query = update.callback_query
+    await query.answer()
+    
+    await query.edit_message_text(
+        "<b>⏰ Account Processing...</b>\n\n"
+        "If you just created your VortexFX account, it might take a few minutes "
+        "to appear in our system.\n\n"
+        "<b>⏳ Please wait 1-5 minutes, then try again.</b>\n\n"
+        "In the meantime, make sure you:\n"
+        "• Verified your email address\n"
+        "• Completed the registration form\n"
+        "• Have your Vortex-FX MT5 account number ready\n\n"
+        "<b>Ready to try again?</b>",
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔄 Try Again Now", callback_data="retry_account_number")],
+            [InlineKeyboardButton("💬 Get Help", callback_data="speak_advisor")]
+        ])
+    )
+
+async def show_deposit_instructions_enhanced(query, context, amount):
+    """Enhanced deposit instructions with dashboard access."""
+    user_id = query.from_user.id
+    user_info = db.get_user(user_id) or {}
+    account_number = user_info.get("trading_account", "Unknown")
+    account_name = user_info.get("account_owner", "Unknown")
+    
+    message = (
+        f"<b>💰 How to Deposit ${amount:,.0f}</b>\n\n"
+        f"<b>📋 Account Details:</b>\n"
+        f"• Account: <b>{account_number}</b>\n"
+        f"• Holder: <b>{account_name}</b>\n\n"
+        f"<b>🌐 VortexFX Client Portal Steps:</b>\n\n"
+        f"<b>1.</b> Visit: <a href='https://clients.vortexfx.com/en/dashboard'>Vortex-FX</a> 🔗\n\n"
+        f"<b>2.</b> Login → <b>Funds</b> → <b>Deposit</b> 📥\n\n"
+        f"<b>3.</b> Select account → Amount: <b>${amount:,.0f}</b> 💰\n\n"
+        f"<b>4.</b> Complete the deposit process ✅\n\n"
+        f"<b>⏰ Processing Time:</b> 5-30 minutes\n\n"
+        
+        f"<b>💡 After Depositing:</b>\n"
+        f"• Use <b>/myaccount</b> to check your updated balance\n"
+        f"• Click 'Refresh Balance' to verify your deposit\n"
+        f"• Request VIP access once verified! 🌟"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔄 Check My Balance", callback_data="check_balance_now")],
+        [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")],
+        [InlineKeyboardButton("💬 Need Help?", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(message, parse_mode='HTML', reply_markup=reply_markup)
 
 
 # -------------------------------------- HELPER Flow Functions ---------------------------------------------------- #
@@ -1523,6 +1988,11 @@ async def handle_vip_request(query, context, user_id, callback_data):
         f"<b>💰 Balance:</b> ${account_balance:,.2f}\n\n"
         f"<b>🕒 Processing Time:</b> 5-15 minutes\n"
         f"<b>📧 You'll receive access links via this chat</b>\n\n"
+        f"<b>💡 While You Wait:</b>\n"
+        f"• Use <b>/myaccount</b> to check your dashboard\n"
+        f"• Your request status will be updated there\n"
+        f"• You can edit your profile anytime\n\n"
+      
         f"Thank you for choosing VFX Trading! 🚀",
         parse_mode='HTML'
     )
@@ -1597,7 +2067,13 @@ async def handle_advisor_request(query, context, user_id):
         "✅ <b>Your request has been sent to our team</b>\n"
         "✅ <b>An advisor will contact you shortly</b>\n"
         "✅ <b>Average response time: 5-15 minutes</b>\n\n"
-        "Please keep this chat open to receive their message! 💬",
+        
+        "<b>💡 While You Wait:</b>\n"
+        "• Use <b>/myaccount</b> to check your profile\n"
+        "• You can update your information anytime\n"
+        "• Keep this chat open for their response 💬\n\n"
+        
+        "Please keep this chat open to receive their message! 📱",
         parse_mode='HTML'
     )
     
@@ -1641,9 +2117,11 @@ async def check_balance(query, context, user_id):
     if not user_info or not user_info.get("trading_account"):
         await query.edit_message_text(
             "<b>⚠️ Account Information Missing</b>\n\n"
-            "No account information found. Please complete verification first.",
+            "No account information found. Please complete verification first.\n\n"
+            "<b>💡 Use /myaccount to check your registration status!</b>",
             parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")],
                 [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
             ])
         )
@@ -1654,20 +2132,22 @@ async def check_balance(query, context, user_id):
     # Show loading
     await query.edit_message_text(
         "<b>🔍 Checking Your Balance...</b>\n\n"
-        "Please wait while we verify your current account balance...",
+        "Please wait while we verify your current account balance...\n\n"
+        "<b>💡 Tip:</b> You can always check your status with /myaccount",
         parse_mode='HTML'
     )
     
-    # Check current balance
+    # Check current balance (existing logic)
     mysql_db = get_mysql_connection()
     if not mysql_db.is_connected():
         await context.bot.send_message(
             chat_id=user_id,
             text="<b>⚠️ Connection Issue</b>\n\n"
-                 "Unable to check balance at the moment. Please try again later.",
+                 "Unable to check balance at the moment. Please try again later.\n\n"
+                 "<b>💡 Use /myaccount to access your dashboard!</b>",
             parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+                [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")]
             ])
         )
         return
@@ -1679,10 +2159,12 @@ async def check_balance(query, context, user_id):
             await context.bot.send_message(
                 chat_id=user_id,
                 text="<b>⚠️ Account Not Found</b>\n\n"
-                     "Please contact support for assistance.",
+                     "Please contact support for assistance.\n\n"
+                     "<b>💡 Use /myaccount to view your profile and contact support!</b>",
                 parse_mode='HTML',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+                    [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")],
+                    [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")]
                 ])
             )
             return
@@ -1696,8 +2178,6 @@ async def check_balance(query, context, user_id):
             balance_change = current_balance - previous_balance
             status_emoji = "📈"
             status_text = f"<b>Increased by ${balance_change:,.2f}!</b> 🎉"
-            
-                
         elif current_balance < previous_balance:
             balance_change = previous_balance - current_balance  
             status_emoji = "📉"
@@ -1713,7 +2193,7 @@ async def check_balance(query, context, user_id):
             "last_balance_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
         
-        # Format response
+        # Format response with dashboard mention
         balance_message = (
             f"<b>{status_emoji} Balance Update</b>\n\n"
             f"<b>📋 Account:</b> {account_number}\n"
@@ -1721,29 +2201,33 @@ async def check_balance(query, context, user_id):
             f"<b>💰 Current Balance:</b> ${current_balance:,.2f}\n"
             f"<b>📊 Status:</b> {status_text}\n"
             f"<b>🕒 Last Checked:</b> {datetime.now().strftime('%H:%M:%S')}\n\n"
+            
+            f"<b>💡 Dashboard Access:</b>\n"
+            f"Use <b>/myaccount</b> to view your complete profile anytime! 📊\n\n"
         )
         
         # Add appropriate buttons
         target_amount = user_info.get("target_deposit_amount", 0) or user_info.get("deposit_amount", 0)
-        if current_balance >= target_amount and target_amount > 0:
+        if current_balance >= 100 and target_amount > 0:
             balance_message += "<b>🎉 You qualify for VIP access!</b>"
             keyboard = [
                 [InlineKeyboardButton("🎯 Request VIP Access", callback_data="request_vip_both_services")],
+                [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")],
                 [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")]
             ]
         elif target_amount > 0:
-            remaining = target_amount - current_balance
+            remaining = max(100 - current_balance, 0)
             balance_message += f"<b>💡 ${remaining:,.2f} more needed for VIP access</b>"
             keyboard = [
-                [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")],
-                [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+                [InlineKeyboardButton("💳 Add Funds", callback_data="choose_deposit_amount")],
+                [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")],
+                [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")]
             ]
         else:
             keyboard = [
+                [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")],
                 [InlineKeyboardButton("🔄 Check Again", callback_data="check_balance_now")],
-                [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+                [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")]
             ]
         
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1756,16 +2240,18 @@ async def check_balance(query, context, user_id):
         )
         
     except Exception as e:
-        print(f"Error in check_balance_integrated: {e}")
+        print(f"Error in enhanced balance check: {e}")
         await context.bot.send_message(
             chat_id=user_id,
             text=f"<b>⚠️ Balance Check Error</b>\n\n"
-                 f"Error checking balance: {str(e)[:100]}",
+                 f"Error checking balance. Please try again.\n\n"
+                 f"<b>💡 Use /myaccount to access your dashboard!</b>",
             parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+                [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")]
             ])
         )
+
 
 async def handle_text_response(update, context, user_id, message_text):
     """Handle all text message responses based on current state."""
@@ -2052,233 +2538,233 @@ async def process_deposit_amount_text(update, context, user_id, message_text):
             ])
         )
 
-async def process_account_number_text(update, context, user_id, message_text):
-    """Process MT5 account number from text input."""
-    print(f"Processing account number: {message_text}")
+# async def process_account_number_text(update, context, user_id, message_text):
+#     """Process MT5 account number from text input."""
+#     print(f"Processing account number: {message_text}")
     
-    if message_text.isdigit() and len(message_text) == 6:
-        account_number = message_text
+#     if message_text.isdigit() and len(message_text) == 6:
+#         account_number = message_text
         
-        # Get user's stated deposit intention
-        user_info = db.get_user(user_id)
-        stated_amount = user_info.get("deposit_amount", 0) if user_info else 0
+#         # Get user's stated deposit intention
+#         user_info = db.get_user(user_id)
+#         stated_amount = user_info.get("deposit_amount", 0) if user_info else 0
         
-        print(f"===== ENHANCED VERIFICATION =====")
-        print(f"Account: {account_number}, User: {user_id}, Stated: ${stated_amount}")
+#         print(f"===== ACCOUNT VERIFICATION =====")
+#         print(f"Account: {account_number}, User: {user_id}, Stated: ${stated_amount}")
         
-        await update.message.reply_text(
-            "<b>🔍 Verifying Account...</b>\n\n"
-            "Please wait while we verify your account and check balance... ⏳",
-            parse_mode='HTML'
-        )
+#         await update.message.reply_text(
+#             "<b>🔍 Verifying Account...</b>\n\n"
+#             "Please wait while we verify your account and check balance... ⏳",
+#             parse_mode='HTML'
+#         )
         
-        # Validate and verify account
-        if not auth.validate_account_format(account_number):
-            await update.message.reply_text(
-                "<b>❌ Invalid Account Format</b>\n\n"
-                "Please enter a valid trading account number.\n\n"
-                "<b>🔄 Try again or</b> <b>💬 speak to an advisor</b>",
-                parse_mode='HTML',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                    [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-                ])
-            )
-            return
+#         # Validate and verify account
+#         if not auth.validate_account_format(account_number):
+#             await update.message.reply_text(
+#                 "<b>❌ Invalid Account Format</b>\n\n"
+#                 "Please enter a valid trading account number.\n\n"
+#                 "<b>🔄 Try again or</b> <b>💬 speak to an advisor</b>",
+#                 parse_mode='HTML',
+#                 reply_markup=InlineKeyboardMarkup([
+#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
+#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+#                 ])
+#             )
+#             return
         
-        # Connect to MySQL and verify
-        mysql_db = get_mysql_connection()
-        if not mysql_db.is_connected():
-            await update.message.reply_text(
-                "<b>⚠️ Connection Issue</b>\n\n"
-                "Unable to verify account at the moment. Please try again later or speak to an advisor.",
-                parse_mode='HTML',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                    [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-                ])
-            )
-            return
+#         # Connect to MySQL and verify
+#         mysql_db = get_mysql_connection()
+#         if not mysql_db.is_connected():
+#             await update.message.reply_text(
+#                 "<b>⚠️ Connection Issue</b>\n\n"
+#                 "Unable to verify account at the moment. Please try again later or speak to an advisor.",
+#                 parse_mode='HTML',
+#                 reply_markup=InlineKeyboardMarkup([
+#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
+#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+#                 ])
+#             )
+#             return
         
-        try:
-            account_info = mysql_db.verify_account_exists(account_number)
+#         try:
+#             account_info = mysql_db.verify_account_exists(account_number)
 
-            if not account_info['exists']:
-                # Account not found message...
-                return
-            elif not account_info.get('is_real_account', False):
-                # NEW: Handle demo account
-                await update.message.reply_text(
-                    f"<b>⚠️ Demo Account Detected</b>\n\n"
-                    f"<b>Account:</b> {account_number}\n"
-                    f"<b>Type:</b> {account_info.get('account_type', 'Demo')}\n"
-                    f"<b>Group:</b> {account_info.get('group', 'Unknown')}\n\n"
-                    f"<b>🚫 Demo accounts are not eligible for VIP services</b>\n\n"
-                    f"<b>💡 Please provide a real/live trading account number</b>\n",
-                    parse_mode='HTML',
-                    reply_markup=InlineKeyboardMarkup([
-                        [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                        [InlineKeyboardButton("🔄 Try Different Account", callback_data="restart_process")]
-                    ])
-                )
-                return
+#             if not account_info['exists']:
+#                 # Account not found message...
+#                 return
+#             elif not account_info.get('is_real_account', False):
+#                 # NEW: Handle demo account
+#                 await update.message.reply_text(
+#                     f"<b>⚠️ Demo Account Detected</b>\n\n"
+#                     f"<b>Account:</b> {account_number}\n"
+#                     f"<b>Type:</b> {account_info.get('account_type', 'Demo')}\n"
+#                     f"<b>Group:</b> {account_info.get('group', 'Unknown')}\n\n"
+#                     f"<b>🚫 Demo accounts are not eligible for VIP services</b>\n\n"
+#                     f"<b>💡 Please provide a real/live trading account number</b>\n",
+#                     parse_mode='HTML',
+#                     reply_markup=InlineKeyboardMarkup([
+#                         [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
+#                         [InlineKeyboardButton("🔄 Try Different Account", callback_data="restart_process")]
+#                     ])
+#                 )
+#                 return
             
-            # Extract account details
-            real_balance = float(account_info.get('balance', 0))
-            account_name = account_info.get('name', 'Unknown')
-            account_status = account_info.get('status', 'Unknown')
+#             # Extract account details
+#             real_balance = float(account_info.get('balance', 0))
+#             account_name = account_info.get('name', 'Unknown')
+#             account_status = account_info.get('status', 'Unknown')
             
-            print(f"Account found: {account_name}, Balance: ${real_balance}")
+#             print(f"Account found: {account_name}, Balance: ${real_balance}")
             
-            # Store account info
-            db.add_user({
-                "user_id": user_id,
-                "trading_account": account_number,
-                "account_owner": account_name,
-                "account_balance": real_balance,
-                "account_status": account_status,
-                "is_verified": True,
-                "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
+#             # Store account info
+#             db.add_user({
+#                 "user_id": user_id,
+#                 "trading_account": account_number,
+#                 "account_owner": account_name,
+#                 "account_balance": real_balance,
+#                 "account_status": account_status,
+#                 "is_verified": True,
+#                 "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#             })
             
-            # ENHANCED DECISION LOGIC - REQUEST ACCESS MODEL
-            if real_balance >= stated_amount and stated_amount > 0:
-                # SUFFICIENT FUNDS - REQUEST ACCESS
-                success_message = (
-                    f"<b>✅ Account Verified Successfully!</b>\n\n"
-                    f"<b>📋 Account:</b> {account_number}\n"
-                    f"<b>👤 Account Holder:</b> {account_name}\n"
-                    f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
-                    f"<b>🎯 Required:</b> ${stated_amount:,.2f}\n\n"
-                    f"<b>🎉 Excellent!</b> You have sufficient funds! 💎\n\n"
-                    f"<b>📋 What would you like to request access to?</b>"
-                )
+#             # ENHANCED DECISION LOGIC - REQUEST ACCESS MODEL
+#             if real_balance >= stated_amount and stated_amount > 0:
+#                 # SUFFICIENT FUNDS - REQUEST ACCESS
+#                 success_message = (
+#                     f"<b>✅ Account Verified Successfully!</b>\n\n"
+#                     f"<b>📋 Account:</b> {account_number}\n"
+#                     f"<b>👤 Account Holder:</b> {account_name}\n"
+#                     f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
+#                     f"<b>🎯 Required:</b> ${stated_amount:,.2f}\n\n"
+#                     f"<b>🎉 Excellent!</b> You have sufficient funds! 💎\n\n"
+#                     f"<b>📋 What would you like to request access to?</b>"
+#                 )
                 
-                # REQUEST ACCESS BUTTONS
-                keyboard = [
-                    [
-                        InlineKeyboardButton("🔔 Request VIP Signals", callback_data="request_vip_signals"),
-                        InlineKeyboardButton("🤖 Request VIP Strategy", callback_data="request_vip_strategy")
-                    ],
-                    [
-                        InlineKeyboardButton("✨ Request Both Services", callback_data="request_vip_both_services"),
-                        InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")
-                    ],
-                    [
-                        InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")
-                    ]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
+#                 # REQUEST ACCESS BUTTONS
+#                 keyboard = [
+#                     [
+#                         InlineKeyboardButton("🔔 Request VIP Signals", callback_data="request_vip_signals"),
+#                         InlineKeyboardButton("🤖 Request VIP Strategy", callback_data="request_vip_strategy")
+#                     ],
+#                     [
+#                         InlineKeyboardButton("✨ Request Both Services", callback_data="request_vip_both_services"),
+#                         InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")
+#                     ],
+#                     [
+#                         InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")
+#                     ]
+#                 ]
+#                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
-                await update.message.reply_text(success_message, parse_mode='HTML', reply_markup=reply_markup)
+#                 await update.message.reply_text(success_message, parse_mode='HTML', reply_markup=reply_markup)
                 
-                # Update status
-                db.add_user({
-                    "user_id": user_id,
-                    "funding_status": "sufficient",
-                    "vip_eligible": True,
-                    "vip_access_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                })
+#                 # Update status
+#                 db.add_user({
+#                     "user_id": user_id,
+#                     "funding_status": "sufficient",
+#                     "vip_eligible": True,
+#                     "vip_access_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#                 })
                 
-                # Reset state
-                context.bot_data["user_states"][user_id] = "requesting_access"
+#                 # Reset state
+#                 context.bot_data["user_states"][user_id] = "requesting_access"
                 
-                # Notify admins
-                await notify_admins_sufficient_funds(context, user_id, account_info, stated_amount, real_balance)
+#                 # Notify admins
+#                 await notify_admins_sufficient_funds(context, user_id, account_info, stated_amount, real_balance)
                 
-            elif real_balance > 0 and stated_amount > 0:
-                # PARTIAL FUNDS
-                difference = stated_amount - real_balance
-                percentage = (real_balance / stated_amount) * 100
+#             elif real_balance > 0 and stated_amount > 0:
+#                 # PARTIAL FUNDS
+#                 difference = stated_amount - real_balance
+#                 percentage = (real_balance / stated_amount) * 100
                 
-                message = (
-                    f"<b>✅ Account Successfully Verified!</b>\n\n"
-                    f"<b>📋 Account:</b> {account_number}\n"
-                    f"<b>👤 Account Holder:</b> {account_name}\n"
-                    f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
-                    f"<b>🎯 Your Goal:</b> ${stated_amount:,.2f}\n"
-                    f"<b>📊 Remaining:</b> ${difference:,.2f}\n\n"
-                    f"<b>📈 You're {percentage:.1f}% there!</b> 🎯\n\n"
-                    f"<b>What would you like to do?</b>"
-                )
+#                 message = (
+#                     f"<b>✅ Account Successfully Verified!</b>\n\n"
+#                     f"<b>📋 Account:</b> {account_number}\n"
+#                     f"<b>👤 Account Holder:</b> {account_name}\n"
+#                     f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
+#                     f"<b>🎯 Your Goal:</b> ${stated_amount:,.2f}\n"
+#                     f"<b>📊 Remaining:</b> ${difference:,.2f}\n\n"
+#                     f"<b>📈 You're {percentage:.1f}% there!</b> 🎯\n\n"
+#                     f"<b>What would you like to do?</b>"
+#                 )
                 
-                keyboard = [
-                    [InlineKeyboardButton(f"💳 Deposit ${difference:,.0f} Now", callback_data=f"deposit_exact_{difference}")],
-                    [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
-                    [InlineKeyboardButton("🚀 Start with Current Balance", callback_data="start_with_current")],
-                    [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                    [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
+#                 keyboard = [
+#                     [InlineKeyboardButton(f"💳 Deposit ${difference:,.0f} Now", callback_data=f"deposit_exact_{difference}")],
+#                     [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
+#                     [InlineKeyboardButton("🚀 Start with Current Balance", callback_data="start_with_current")],
+#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
+#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+#                 ]
+#                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
-                await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
+#                 await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
                 
-                # Update status
-                db.add_user({
-                    "user_id": user_id,
-                    "funding_status": "partial",
-                    "funding_percentage": percentage,
-                    "remaining_amount": difference
-                })
+#                 # Update status
+#                 db.add_user({
+#                     "user_id": user_id,
+#                     "funding_status": "partial",
+#                     "funding_percentage": percentage,
+#                     "remaining_amount": difference
+#                 })
                 
-                context.bot_data["user_states"][user_id] = "partial_funding"
+#                 context.bot_data["user_states"][user_id] = "partial_funding"
                 
-            else:
-                # NO FUNDS OR NO STATED AMOUNT
-                target_amount = stated_amount if stated_amount > 0 else 1000
+#             else:
+#                 # NO FUNDS OR NO STATED AMOUNT
+#                 target_amount = stated_amount if stated_amount > 0 else 1000
                 
-                message = (
-                    f"<b>✅ Account Successfully Verified!</b>\n\n"
-                    f"<b>📋 Account:</b> {account_number}\n"
-                    f"<b>👤 Account Holder:</b> {account_name}\n"
-                    f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
-                    f"<b>💡 Suggested Amount:</b> ${target_amount:,.2f}\n\n"
-                    f"<b>🚀 Ready to start your trading journey?</b>\n\n"
-                    f"<b>How would you like to proceed?</b>"
-                )
+#                 message = (
+#                     f"<b>✅ Account Successfully Verified!</b>\n\n"
+#                     f"<b>📋 Account:</b> {account_number}\n"
+#                     f"<b>👤 Account Holder:</b> {account_name}\n"
+#                     f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
+#                     f"<b>💡 Suggested Amount:</b> ${target_amount:,.2f}\n\n"
+#                     f"<b>🚀 Ready to start your trading journey?</b>\n\n"
+#                     f"<b>How would you like to proceed?</b>"
+#                 )
                 
-                keyboard = [
-                    [InlineKeyboardButton(f"💳 Deposit ${target_amount:,.0f} Now", callback_data=f"deposit_exact_{target_amount}")],
-                    [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
-                    [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                    [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-                ]
-                reply_markup = InlineKeyboardMarkup(keyboard)
+#                 keyboard = [
+#                     [InlineKeyboardButton(f"💳 Deposit ${target_amount:,.0f} Now", callback_data=f"deposit_exact_{target_amount}")],
+#                     [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
+#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
+#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+#                 ]
+#                 reply_markup = InlineKeyboardMarkup(keyboard)
                 
-                await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
+#                 await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
                 
-                # Update status
-                db.add_user({
-                    "user_id": user_id,
-                    "funding_status": "none",
-                    "target_amount": target_amount
-                })
+#                 # Update status
+#                 db.add_user({
+#                     "user_id": user_id,
+#                     "funding_status": "none",
+#                     "target_amount": target_amount
+#                 })
                 
-                context.bot_data["user_states"][user_id] = "needs_funding"
+#                 context.bot_data["user_states"][user_id] = "needs_funding"
             
-        except Exception as e:
-            print(f"Error in verification: {e}")
-            await update.message.reply_text(
-                f"<b>⚠️ Verification Error</b>\n\n"
-                f"Error verifying account: {str(e)[:100]}\n\n"
-                f"Please try again or contact support.",
-                parse_mode='HTML',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-                    [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-                ])
-            )
-    else:
-        await update.message.reply_text(
-            "<b>⚠️ Invalid Account Format</b>\n\n"
-            "That doesn't look like a valid account number.\n\n"
-            "Please provide a <b>6-digit MT5 account number</b>. 📊",
-            parse_mode='HTML',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("💬 Need Help?", callback_data="speak_advisor")],
-                [InlineKeyboardButton("🔄 Restart", callback_data="restart_process")]
-            ])
-        )
+#         except Exception as e:
+#             print(f"Error in verification: {e}")
+#             await update.message.reply_text(
+#                 f"<b>⚠️ Verification Error</b>\n\n"
+#                 f"Error verifying account: {str(e)[:100]}\n\n"
+#                 f"Please try again or contact support.",
+#                 parse_mode='HTML',
+#                 reply_markup=InlineKeyboardMarkup([
+#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
+#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+#                 ])
+#             )
+#     else:
+#         await update.message.reply_text(
+#             "<b>⚠️ Invalid Account Format</b>\n\n"
+#             "That doesn't look like a valid account number.\n\n"
+#             "Please provide a <b>6-digit MT5 account number</b>. 📊",
+#             parse_mode='HTML',
+#             reply_markup=InlineKeyboardMarkup([
+#                 [InlineKeyboardButton("💬 Need Help?", callback_data="speak_advisor")],
+#                 [InlineKeyboardButton("🔄 Restart", callback_data="restart_process")]
+#             ])
+#         )
 
 async def notify_admins_sufficient_funds(context, user_id, account_info, stated_amount, real_balance):
     """Notify admins when user has sufficient funds."""

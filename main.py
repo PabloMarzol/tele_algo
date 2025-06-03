@@ -24,151 +24,141 @@ PRIVATE_WELCOME_MSG = db.get_setting("private_welcome_message", config.get("mess
 # -------------------------------------- Core Handles ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send welcome message when the command /start is issued."""
+    """Enhanced start function with direct registration support."""
     user = update.effective_user
     user_id = user.id
     
-    # Debug output to console only
     print(f"User ID {user_id} ({user.first_name}) started the bot")
     
     # SECURITY CHECK: Prevent duplicate registrations
     if await check_existing_registration(update, context, user_id):
         return
     
-    # Handle referral parameter and determine source channel
+    # Enhanced parameter handling for direct registration
     referral_admin = None
-    source_channel = "main_channel"  # Default source
+    source_channel = "main_channel"  # Default
+    is_direct_registration = False
     
-    if context.args and context.args[0].startswith("ref_"):
-        try:
-            # Extract the referring admin's ID
-            referral_admin = int(context.args[0].split("_")[1])
-            print(f"User {user_id} was referred by admin {referral_admin}")
-            
-            # Store this connection in the database
-            db.add_user({
-                "user_id": user_id,
-                "referred_by": referral_admin,
-                "referral_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "source_channel": source_channel  # Track source
-            })
-            
-            # Store in bot data for quick access
-            context.bot_data.setdefault("admin_user_connections", {})
-            context.bot_data["admin_user_connections"][user_id] = referral_admin
-            
-            # Also store in auto-welcoming users
-            context.bot_data.setdefault("auto_welcoming_users", {})
-            context.bot_data["auto_welcoming_users"][user_id] = {
-                "name": user.first_name,
-                "status": "referred",
-                "referred_by": referral_admin,
-                "source_channel": source_channel,
-                "first_contact_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            
-            # Notify admin of connection
+    if context.args and len(context.args) > 0:
+        arg = context.args[0]
+        
+        # Direct registration from main channel
+        if arg == "register" or arg == "signup" or arg == "join":
+            is_direct_registration = True
+            source_channel = "main_channel_direct"
+            print(f"✅ Direct registration from main channel")
+        
+        # Admin referral
+        elif arg.startswith("ref_"):
             try:
-                await context.bot.send_message(
-                    chat_id=referral_admin,
-                    text=f"✅ {user.first_name} (ID: {user_id}) has connected with the bot through your link! "
-                         f"They have started the registration process."
-                )
-            except Exception as e:
-                print(f"Error notifying admin {referral_admin}: {e}")
-        except Exception as e:
-            print(f"Error processing referral: {e}")
+                referral_admin = int(arg.split("_")[1])
+                source_channel = "admin_referral"
+                print(f"✅ Admin referral from {referral_admin}")
+            except:
+                pass
+        
+        # Source-specific registrations
+        elif arg.startswith("signals"):
+            source_channel = "signals_channel"
+            is_direct_registration = True
+        elif arg.startswith("strategy"):
+            source_channel = "strategy_channel" 
+            is_direct_registration = True
     
-    # Add user to database if not exists
+    # Store user with source tracking
     db.add_user({
         "user_id": user.id,
         "username": user.username,
         "first_name": user.first_name,
         "last_name": user.last_name,
         "source_channel": source_channel,
+        "is_direct_registration": is_direct_registration,
         "join_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "last_active": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
     
-    # Get appropriate welcome message based on source channel (same logic as forwarded messages)
+    # Handle referral notifications
+    if referral_admin:
+        try:
+            await context.bot.send_message(
+                chat_id=referral_admin,
+                text=f"✅ {user.first_name} (ID: {user_id}) connected through your referral link!"
+            )
+        except Exception as e:
+            print(f"Error notifying admin {referral_admin}: {e}")
+    
+    # Get appropriate welcome message
     try:
         if source_channel == "signals_channel":
-            welcome_msg = db.get_setting("signals_auto_welcome", 
-                                       config.get("messages.signals_auto_welcome", 
-                                                config.get("messages.admin_auto_welcome", 
-                                                         "Welcome to VFX Trading Signals!")))
+            welcome_msg = config.get("messages.signals_auto_welcome", 
+                                   "Welcome to VFX Trading Signals!")
+        elif is_direct_registration:
+            # Special welcome for direct registrations from main channel
+            welcome_msg = (
+                "<b>🎉 Welcome to VFX Trading Registration! 🎉</b>\n\n"
+                "Thank you for clicking our registration link! You're about to join "
+                "thousands of successful traders who trust VFX Trading.\n\n"
+                "<b>🚀 Quick Setup Process:</b>\n"
+                "• Answer a few quick questions about your trading style\n"
+                "• Get your Vortex-FX account set up (if you don't have one)\n"
+                "• Verify your account and deposit minimum $100\n"
+                "• Gain instant VIP access to our premium services!\n\n"
+                "<b>⏱️ This takes less than 5 minutes!</b>\n\n"
+                "Ready to start your trading journey? 🌟"
+            )
         else:
-            welcome_msg = db.get_setting("admin_auto_welcome", 
-                                       config.get("messages.admin_auto_welcome", 
-                                                "Welcome to VFX Trading!"))
-        
-        print(f"✅ Using welcome message: {welcome_msg[:50]}...")
+            welcome_msg = config.get("messages.admin_auto_welcome", 
+                                   "Welcome to VFX Trading!")
         
     except Exception as e:
-        print(f"⚠️ Error getting welcome message: {e}")
+        print(f"Error getting welcome message: {e}")
         welcome_msg = "Welcome to VFX Trading!"
     
-    # Create guided setup buttons (same as forwarded messages)
-    keyboard = [
-        [InlineKeyboardButton("🚀 Start Guided Setup", callback_data="start_guided")],
-        [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
-    ]
+    # Enhanced buttons for direct registration
+    if is_direct_registration:
+        keyboard = [
+            [InlineKeyboardButton("🚀 Start Registration", callback_data="start_guided")],
+            [InlineKeyboardButton("📋 What's Included?", callback_data="explain_services")],
+            [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+        ]
+    else:
+        keyboard = [
+            [InlineKeyboardButton("🚀 Start Guided Setup", callback_data="start_guided")],
+            [InlineKeyboardButton("📋 What's Included?", callback_data="explain_services")],
+            [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+        ]
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Send the config-based welcome message with HTML formatting
-    try:
-        await update.message.reply_text(
-            welcome_msg,
-            parse_mode='HTML',
-            reply_markup=reply_markup
-        )
-        
-        # Mark user as auto-welcomed (same as forwarded flow)
-        db.add_user({
-            "user_id": user_id,
-            "auto_welcomed": True,
-            "auto_welcome_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
-        
-        # Store in tracking (same as forwarded flow)
-        context.bot_data.setdefault("auto_welcoming_users", {})
-        context.bot_data["auto_welcoming_users"][user_id] = {
-            "name": user.first_name,
-            "status": "welcomed",
-            "source_channel": source_channel,
-            "welcome_sent": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        
-        print(f"✅ Welcome message sent successfully to {user.first_name}")
-        
-    except Exception as e:
-        print(f"⚠️ Error sending welcome message: {e}")
-        # Fallback to simple message
-        await update.message.reply_text(
-            f"Hello {user.first_name}! Welcome to VFX Trading!",
-            reply_markup=reply_markup
-        )
+    # Send welcome message
+    await update.message.reply_text(
+        welcome_msg,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    await update.message.reply_text(
+        "<b>💡 Quick Tip:</b>\n\n"
+        "After registration, you can always check your status and edit your profile using:\n\n"
+        "<b>/myaccount</b> - Your personal dashboard 📊\n\n"
+        "Let's get started! 🚀",
+        parse_mode='HTML'
+    )
     
-    # Optional: Send referral confirmation if applicable
-    if referral_admin:
-        admin_info = db.get_user(referral_admin)
-        admin_name = admin_info.get('first_name', 'Admin') if admin_info else 'Admin'
-        
-        await update.message.reply_text(
-            f"📋 <b>Connected via {admin_name}</b>\n\n"
-            f"You've been connected to our registration system by {admin_name}. "
-            f"Let's get your account set up! 🚀",
-            parse_mode='HTML'
-        )
+    # Track the user
+    context.bot_data.setdefault("auto_welcoming_users", {})
+    context.bot_data["auto_welcoming_users"][user_id] = {
+        "name": user.first_name,
+        "status": "welcomed",
+        "source_channel": source_channel,
+        "is_direct_registration": is_direct_registration,
+        "welcome_sent": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
     
-    # Set initial state for guided setup
+    # Set initial state
     context.bot_data.setdefault("user_states", {})
     context.bot_data["user_states"][user_id] = "awaiting_guided_setup"
     
-    # Update analytics
     db.update_analytics(active_users=1)
-    
-    # No need to return conversation state since we're using button-based flow
     print(f"✅ Start function completed for user {user_id}")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -292,6 +282,629 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             logger.info(f"User data: {context.user_data}")
         except:
             pass
+
+
+# -------------------------------------- User Management System ---------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+async def explain_services_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Explain VIP services to new users."""
+    query = update.callback_query
+    await query.answer()
+    
+    services_explanation = (
+        "<b>🌟 VFX Trading VIP Services Explained 🌟</b>\n\n"
+        
+        "<b>🔔 VIP Signals Service:</b>\n"
+        "• Live trading alerts sent directly to your phone\n"
+        "• Entry points, stop losses, and take profit levels\n"
+        "• Real-time market updates and trend analysis\n"
+        "• Perfect for busy traders who want expert guidance\n\n"
+        
+        "<b>🤖 VIP Automated Strategy:</b>\n"
+        "• Fully automated trading on your account\n"
+        "• Our algorithms trade for you 24/7\n"
+        "• No manual work required - set and forget\n"
+        "• Professional risk management built-in\n"
+        "• Perfect for passive income generation\n\n"
+        
+        "<b>💰 Investment Required:</b>\n"
+        "• Minimum deposit: $100 (to start with VIP access)\n"
+        "• Recommended: $500+ for optimal results\n"
+        "• No monthly fees - one-time verification\n\n"
+        
+        "<b>🎯 Which One Is Right for You?</b>\n"
+        "• <b>Choose Signals</b> if you want to learn and trade manually\n"
+        "• <b>Choose Automated</b> if you want passive income\n"
+        "• <b>Choose Both</b> for maximum profit potential!\n\n"
+        
+        "<b>Ready to get started?</b> 🚀"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🚀 Start Registration Now", callback_data="start_guided")],
+        [InlineKeyboardButton("💬 Ask Questions First", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        services_explanation,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+
+def generate_registration_link(bot_username: str) -> str:
+    """Generate direct registration link for main channel."""
+    return f"https://t.me/{bot_username}?start=register"
+
+async def my_account_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show user's account dashboard - main entry point."""
+    user_id = update.effective_user.id
+    
+    # Get user info
+    user_info = db.get_user(user_id)
+    if not user_info:
+        await update.message.reply_text(
+            "🔐 <b>Account Not Found</b>\n\n"
+            "It looks like you haven't registered yet! Use /start to begin registration.",
+            parse_mode='HTML'
+        )
+        return
+    
+    await show_account_dashboard(update, context, user_info, is_command=True)
+
+async def show_account_dashboard(update, context, user_info, is_command=False):
+    """Display user's account dashboard with all information."""
+    user_id = user_info.get('user_id')
+    first_name = user_info.get('first_name', 'User')
+    
+    # Get account status
+    trading_account = user_info.get('trading_account', 'Not provided')
+    is_verified = user_info.get('is_verified', False)
+    account_balance = user_info.get('account_balance', 0)
+    risk_profile = user_info.get('risk_profile_text', 'Not set')
+    deposit_amount = user_info.get('deposit_amount', 'Not set')
+    vip_access = user_info.get('vip_access_granted', False)
+    
+    # Create status indicators
+    verification_status = "✅ Verified" if is_verified else "⚠️ Pending"
+    vip_status = "🌟 Active" if vip_access else "🔒 Not Active"
+    balance_emoji = "💰" if account_balance >= 100 else "💳"
+    
+    # Build dashboard message
+    dashboard = (
+        f"<b>👤 Your VFX Trading Account</b>\n\n"
+        f"<b>🎯 Welcome back, {first_name}!</b>\n\n"
+        
+        f"<b>📊 Account Overview:</b>\n"
+        f"• Trading Account: <code>{trading_account}</code>\n"
+        f"• Verification: {verification_status}\n"
+        f"• Current Balance: {balance_emoji} ${account_balance:,.2f}\n"
+        f"• VIP Access: {vip_status}\n\n"
+        
+        f"<b>🎯 Your Profile:</b>\n"
+        f"• Risk Level: {risk_profile}\n"
+        f"• Target Deposit: ${deposit_amount}\n"
+        f"• Member Since: {user_info.get('join_date', 'Unknown')}\n\n"
+    )
+    
+    # Add status-specific information
+    if not is_verified:
+        dashboard += (
+            f"<b>⚠️ Next Steps:</b>\n"
+            f"• Complete account verification\n"
+            f"• Deposit minimum $100\n"
+            f"• Gain VIP access to premium services\n\n"
+            f"<b>💡 Pro Tip:</b>\n"
+            f"• Use <b>/myaccount</b> anytime to return to this dashboard\n"
+            f"• You can edit your profile settings anytime\n"
+            f"• Bookmark this command for quick access! 🔖\n\n"
+        )
+    elif account_balance < 100:
+        dashboard += (
+            f"<b>💳 Almost There!</b>\n"
+            f"• Deposit ${100 - account_balance:,.0f} more for VIP access\n"
+            f"• Access premium trading signals\n"
+            f"• Get automated trading strategies\n\n"
+            f"<b>💡 Pro Tip:</b>\n"
+            f"• Use <b>/myaccount</b> anytime to return to this dashboard\n"
+            f"• You can edit your profile settings anytime\n"
+            f"• Bookmark this command for quick access! 🔖\n\n"
+        )
+    else:
+        dashboard += (
+            f"<b>🎉 Congratulations!</b>\n"
+            f"• You have full VIP access\n"
+            f"• All premium features unlocked\n"
+            f"• Professional trading support available\n\n"
+            f"<b>💡 Pro Tip:</b>\n"
+            f"• Use <b>/myaccount</b> anytime to return to this dashboard\n"
+            f"• You can edit your profile settings anytime\n"
+            f"• Bookmark this command for quick access! 🔖\n\n"
+        )
+    
+    # Create action buttons based on user status
+    keyboard = []
+    
+    # Always available options
+    keyboard.append([
+        InlineKeyboardButton("✏️ Edit Profile", callback_data="edit_profile_menu"),
+        InlineKeyboardButton("🔄 Refresh Balance", callback_data="check_balance_now")
+    ])
+    
+    # Conditional options
+    if not is_verified or account_balance < 100:
+        keyboard.append([
+            InlineKeyboardButton("🚀 Complete Setup", callback_data="complete_setup")
+        ])
+    
+    if is_verified and account_balance >= 100:
+        keyboard.append([
+            InlineKeyboardButton("🌟 My VIP Services", callback_data="my_vip_services"),
+            InlineKeyboardButton("📊 Request New Service", callback_data="request_vip_both_services")
+        ])
+    
+    # Help and support
+    keyboard.append([
+        InlineKeyboardButton("❓ Need Help?", callback_data="help_menu"),
+        InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")
+    ])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    if is_command:
+        await update.message.reply_text(dashboard, parse_mode='HTML', reply_markup=reply_markup)
+    else:
+        await update.callback_query.edit_message_text(dashboard, parse_mode='HTML', reply_markup=reply_markup)
+
+async def edit_profile_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show profile editing options - FIXED VERSION."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user_info = db.get_user(user_id)
+    
+    if not user_info:
+        await query.edit_message_text("❌ User profile not found.")
+        return
+    
+    menu_text = (
+        "<b>✏️ Edit Your Profile</b>\n\n"
+        "<b>Current Information:</b>\n"
+        f"• Risk Level: {user_info.get('risk_profile_text', 'Not set')}\n"
+        f"• Target Deposit: ${user_info.get('deposit_amount', 'Not set')}\n"
+        f"• Trading Interest: {user_info.get('trading_interest', 'Not specified')}\n\n"
+        
+        "<b>What would you like to update?</b>\n\n"
+        "<i>Note: Account number and personal details cannot be changed for security reasons.</i>"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("🎯 Risk Level", callback_data="edit_risk_level"),
+            InlineKeyboardButton("💰 Target Deposit", callback_data="edit_deposit_amount")
+        ],
+        [
+            InlineKeyboardButton("📈 Trading Interest", callback_data="edit_trading_interest")
+        ],
+        [
+            InlineKeyboardButton("🔙 Back to Dashboard", callback_data="back_to_dashboard"),
+            InlineKeyboardButton("💬 Need Help?", callback_data="speak_advisor")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(menu_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def edit_risk_level_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Allow user to update their risk level."""
+    query = update.callback_query
+    await query.answer()
+    
+    risk_text = (
+        "<b>🎯 Update Your Risk Level</b>\n\n"
+        "<b>Choose your preferred trading style:</b>\n\n"
+        
+        "<b>🛡️ Conservative (Low Risk):</b>\n"
+        "• Safer trades with smaller profits\n"
+        "• Lower chance of losses\n"
+        "• Perfect for beginners\n\n"
+        
+        "<b>⚖️ Balanced (Medium Risk):</b>\n"
+        "• Good balance of safety and profit\n"
+        "• Moderate risk, moderate reward\n"
+        "• Most popular choice\n\n"
+        
+        "<b>🚀 Aggressive (High Risk):</b>\n"
+        "• Higher profit potential\n"
+        "• Bigger risks involved\n"
+        "• For experienced traders\n\n"
+        
+        "<b>What's your preference?</b>"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("🛡️ Conservative", callback_data="update_risk_low"),
+            InlineKeyboardButton("⚖️ Balanced", callback_data="update_risk_medium"),
+            InlineKeyboardButton("🚀 Aggressive", callback_data="update_risk_high")
+        ],
+        [InlineKeyboardButton("🔙 Back to Edit Menu", callback_data="edit_profile_menu")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(risk_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def update_risk_level_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Process risk level update."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    callback_data = query.data
+    
+    # Extract risk level
+    if "low" in callback_data:
+        risk_level = "conservative"
+        risk_value = 2
+        emoji = "🛡️"
+    elif "medium" in callback_data:
+        risk_level = "balanced"
+        risk_value = 5
+        emoji = "⚖️"
+    elif "high" in callback_data:
+        risk_level = "aggressive"
+        risk_value = 8
+        emoji = "🚀"
+    
+    # Update database
+    db.add_user({
+        "user_id": user_id,
+        "risk_profile_text": risk_level,
+        "risk_appetite": risk_value,
+        "profile_updated_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    await query.edit_message_text(
+        f"<b>✅ Risk Level Updated!</b>\n\n"
+        f"Your new risk level: {emoji} <b>{risk_level.capitalize()}</b>\n\n"
+        f"This change will be applied to all future trading activities.\n\n"
+        f"<i>Returning to your dashboard...</i>",
+        parse_mode='HTML'
+    )
+    
+    # Auto-return to dashboard after 2 seconds
+    import asyncio
+    await asyncio.sleep(2)
+    
+    user_info = db.get_user(user_id)
+    await show_account_dashboard(update, context, user_info)
+
+async def my_vip_services_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show user's VIP services status."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user_info = db.get_user(user_id)
+    
+    services_text = (
+        "<b>🌟 Your VIP Services</b>\n\n"
+        
+        "<b>🔔 VIP Signals:</b>\n"
+        f"Status: {'✅ Active' if user_info.get('vip_access_granted') else '🔒 Not Active'}\n"
+        "• Live trading alerts\n"
+        "• Entry/exit points\n"
+        "• Professional analysis\n\n"
+        
+        "<b>🤖 VIP Automated Strategy:</b>\n"
+        f"Status: {'✅ Active' if user_info.get('vip_access_granted') else '🔒 Not Active'}\n"
+        "• Fully automated trading\n"
+        "• 24/7 market monitoring\n"
+        "• Professional risk management\n\n"
+        
+        "<b>💰 Account Requirements:</b>\n"
+        f"• Minimum Balance: $100 ({'✅ Met' if user_info.get('account_balance', 0) >= 100 else '❌ Not Met'})\n"
+        f"• Account Verified: {'✅ Yes' if user_info.get('is_verified') else '❌ No'}\n\n"
+    )
+    
+    if user_info.get('vip_access_granted'):
+        services_text += "<b>🎉 All services are active and ready!</b>"
+    else:
+        services_text += "<b>⚠️ Complete verification and deposit $100+ to activate VIP services.</b>"
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("📊 Request Service", callback_data="request_vip_both_services"),
+            InlineKeyboardButton("💳 Add Funds", callback_data="choose_deposit_amount")
+        ],
+        [
+            InlineKeyboardButton("🔙 Back to Dashboard", callback_data="back_to_dashboard"),
+            InlineKeyboardButton("💬 Get Help", callback_data="speak_advisor")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(services_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def back_to_dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Return user to their dashboard."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user_info = db.get_user(user_id)
+    
+    if user_info:
+        await show_account_dashboard(update, context, user_info)
+    else:
+        await query.edit_message_text("❌ Unable to load dashboard. Please try /myaccount")
+
+async def help_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show comprehensive help menu."""
+    query = update.callback_query
+    await query.answer()
+    
+    help_text = (
+        "<b>❓ VFX Trading Help Center</b>\n\n"
+        
+        "<b>🏠 Your Control Center:</b>\n"
+        "<b>/myaccount</b> - Your personal dashboard 📊\n"
+        "• View your complete profile\n"
+        "• Edit your settings anytime\n"
+        "• Check account status\n"
+        "• Track VIP services\n"
+        "• Contact support directly\n\n"
+        
+        "<b>🔧 Quick Actions:</b>\n"
+        "• Refresh your balance anytime\n"
+        "• Update your risk profile\n"
+        "• Change deposit targets\n"
+        "• Request VIP services\n\n"
+        
+        "<b>💰 About VIP Services:</b>\n"
+        "• <b>Signals:</b> Get trading alerts on your phone 📱\n"
+        "• <b>Automated:</b> Let our bots trade for you 🤖\n"
+        "• Minimum $100 deposit required\n"
+        "• No monthly fees - one-time verification\n\n"
+        
+        "<b>🔐 Account Security:</b>\n"
+        "• Your account number cannot be changed\n"
+        "• Contact support for sensitive changes\n"
+        "• Always verify emails/messages from us\n\n"
+        
+        "<b>📞 Need Personal Help?</b>\n"
+        "Our support team is available 24/7!"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("📊 Open My Dashboard", callback_data="back_to_dashboard")],
+        [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")],
+        [InlineKeyboardButton("📋 Explain Services", callback_data="explain_services")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(help_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def edit_deposit_amount_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Allow user to update their target deposit amount."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user_info = db.get_user(user_id)
+    current_amount = user_info.get('deposit_amount', 0) if user_info else 0
+    
+    deposit_text = (
+        "<b>💰 Update Your Target Deposit</b>\n\n"
+        f"<b>Current Target:</b> ${current_amount}\n\n"
+        
+        "<b>💡 Choose your preferred deposit amount:</b>\n\n"
+        
+        "<b>💳 Starter Package ($100-$500):</b>\n"
+        "• Good for learning and testing\n"
+        "• Access to all VIP features\n"
+        "• Lower risk, steady growth\n\n"
+        
+        "<b>💰 Growth Package ($500-$2,000):</b>\n"
+        "• Better profit potential\n"
+        "• More trading opportunities\n"
+        "• Recommended for most users\n\n"
+        
+        "<b>💎 Premium Package ($2,000+):</b>\n"
+        "• Maximum profit potential\n"
+        "• Priority support\n"
+        "• Advanced strategies available\n\n"
+        
+        "<b>What's your target?</b>"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("💳 $100", callback_data="update_deposit_100"),
+            InlineKeyboardButton("💳 $250", callback_data="update_deposit_250"),
+            InlineKeyboardButton("💳 $500", callback_data="update_deposit_500")
+        ],
+        [
+            InlineKeyboardButton("💰 $1,000", callback_data="update_deposit_1000"),
+            InlineKeyboardButton("💰 $2,000", callback_data="update_deposit_2000"),
+            InlineKeyboardButton("💎 $5,000", callback_data="update_deposit_5000")
+        ],
+        [
+            InlineKeyboardButton("✏️ Custom Amount", callback_data="custom_deposit_edit"),
+            InlineKeyboardButton("🔙 Back", callback_data="edit_profile_menu")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(deposit_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def edit_trading_interest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Allow user to update their trading interest."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user_info = db.get_user(user_id)
+    current_interest = user_info.get('trading_interest', 'Not specified') if user_info else 'Not specified'
+    
+    interest_text = (
+        "<b>📈 Update Your Trading Interest</b>\n\n"
+        f"<b>Current Selection:</b> {current_interest}\n\n"
+        
+        "<b>🔔 VIP Signals Service:</b>\n"
+        "• Live trading alerts sent to your phone 📱\n"
+        "• Entry points, stop losses, take profits\n"
+        "• 75%+ win rate with expert analysis\n"
+        "• Perfect for active traders who want guidance\n\n"
+        
+        "<b>🤖 VIP Automated Strategy:</b>\n"
+        "• Fully automated trading on your account\n"
+        "• Our algorithms trade for you 24/7\n"
+        "• No manual work required - set and forget\n"
+        "• Perfect for passive income generation\n\n"
+        
+        "<b>✨ Both Services (Recommended):</b>\n"
+        "• Get the best of both worlds\n"
+        "• Learn from signals while earning passively\n"
+        "• Maximum profit potential\n"
+        "• Most popular choice among our users\n\n"
+        
+        "<b>What interests you most?</b>"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("🔔 VIP Signals", callback_data="update_interest_signals"),
+            InlineKeyboardButton("🤖 Automated Strategy", callback_data="update_interest_strategy")
+        ],
+        [
+            InlineKeyboardButton("✨ Both Services", callback_data="update_interest_all")
+        ],
+        [
+            InlineKeyboardButton("🔙 Back", callback_data="edit_profile_menu")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(interest_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def update_deposit_amount_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Process deposit amount update."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    callback_data = query.data
+    
+    # Extract amount from callback data
+    amount_str = callback_data.split("_")[-1]
+    try:
+        amount = int(amount_str)
+    except ValueError:
+        amount = 100
+    
+    # Update database
+    db.add_user({
+        "user_id": user_id,
+        "deposit_amount": amount,
+        "profile_updated_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    # Determine package type for display
+    if amount <= 500:
+        package = "💳 Starter Package"
+        benefits = "Access to all VIP features with steady growth potential"
+    elif amount <= 2000:
+        package = "💰 Growth Package"
+        benefits = "Enhanced profit potential with more trading opportunities"
+    else:
+        package = "💎 Premium Package"
+        benefits = "Maximum profit potential with priority support"
+    
+    await query.edit_message_text(
+        f"<b>✅ Target Deposit Updated!</b>\n\n"
+        f"<b>New Target:</b> ${amount:,}\n"
+        f"<b>Package:</b> {package}\n"
+        f"<b>Benefits:</b> {benefits}\n\n"
+        f"<i>💡 You can access your dashboard anytime with /myaccount</i>\n\n"
+        f"<i>Returning to your dashboard...</i>",
+        parse_mode='HTML'
+    )
+    
+    # Auto-return to dashboard after 2 seconds
+    import asyncio
+    await asyncio.sleep(2)
+    
+    user_info = db.get_user(user_id)
+    await show_account_dashboard(update, context, user_info)
+
+async def update_trading_interest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Process trading interest update."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    callback_data = query.data
+    
+    # Extract interest from callback data
+    if "signals" in callback_data:
+        interest = "signals"
+        display_name = "🔔 VIP Signals"
+        description = "You'll receive live trading alerts and professional analysis"
+    elif "strategy" in callback_data:
+        interest = "strategy"
+        display_name = "🤖 Automated Strategy"
+        description = "Our algorithms will trade automatically on your account"
+    elif "all" in callback_data:
+        interest = "all"
+        display_name = "✨ Both Services"
+        description = "You'll get signals AND automated trading for maximum results"
+    
+    # Update database
+    db.add_user({
+        "user_id": user_id,
+        "trading_interest": interest,
+        "profile_updated_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    await query.edit_message_text(
+        f"<b>✅ Trading Interest Updated!</b>\n\n"
+        f"<b>Your Choice:</b> {display_name}\n"
+        f"<b>What This Means:</b> {description}\n\n"
+        f"<i>💡 Tip: You can always view your full profile with /myaccount</i>\n\n"
+        f"<i>Returning to your dashboard...</i>",
+        parse_mode='HTML'
+    )
+    
+    # Auto-return to dashboard after 2 seconds
+    import asyncio
+    await asyncio.sleep(2)
+    
+    user_info = db.get_user(user_id)
+    await show_account_dashboard(update, context, user_info)
+
+async def custom_deposit_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle custom deposit amount entry."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    await query.edit_message_text(
+        "<b>✏️ Enter Custom Deposit Amount</b>\n\n"
+        "Please type your desired deposit amount:\n\n"
+        "<b>💡 Examples:</b>\n"
+        "• Type: 750\n"
+        "• Type: 1500\n"
+        "• Type: 3000\n\n"
+        "<b>📝 Just type the number (minimum $100):</b>",
+        parse_mode='HTML'
+    )
+    
+    # Set state for custom deposit editing
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "editing_custom_deposit"
 
 
 
@@ -2167,7 +2780,28 @@ def main() -> None:
     manager_application.add_handler(CallbackQueryHandler(check_my_status_callback, pattern=r"^check_my_status$"))
     manager_application.add_handler(CallbackQueryHandler(handle_privacy_welcome_link, pattern=r"^gen_welcome_privacy$"))
     manager_application.add_handler(CallbackQueryHandler(show_privacy_instructions, pattern=r"^show_privacy_instructions$"))
-
+    manager_application.add_handler(CallbackQueryHandler(explain_services_callback, pattern=r"^explain_services$"))
+    
+    # User Management System #
+    manager_application.add_handler(CommandHandler("myaccount", my_account_command))
+    manager_application.add_handler(CallbackQueryHandler(edit_profile_menu_callback, pattern=r"^edit_profile_menu$"))
+    manager_application.add_handler(CallbackQueryHandler(edit_risk_level_callback, pattern=r"^edit_risk_level$"))
+    manager_application.add_handler(CallbackQueryHandler(update_risk_level_callback, pattern=r"^update_risk_(low|medium|high)$"))
+    manager_application.add_handler(CallbackQueryHandler(my_vip_services_callback, pattern=r"^my_vip_services$"))
+    manager_application.add_handler(CallbackQueryHandler(back_to_dashboard_callback, pattern=r"^back_to_dashboard$"))
+    manager_application.add_handler(CallbackQueryHandler(help_menu_callback, pattern=r"^help_menu$"))
+    
+    manager_application.add_handler(CallbackQueryHandler(need_new_account_callback, pattern=r"^need_new_account$"))
+    manager_application.add_handler(CallbackQueryHandler(account_created_callback, pattern=r"^account_created$"))
+    manager_application.add_handler(CallbackQueryHandler(retry_account_number_callback, pattern=r"^retry_account_number$"))
+    manager_application.add_handler(CallbackQueryHandler(wait_and_retry_callback, pattern=r"^wait_and_retry$"))
+    
+    manager_application.add_handler(CallbackQueryHandler(edit_deposit_amount_callback, pattern=r"^edit_deposit_amount$"))
+    manager_application.add_handler(CallbackQueryHandler(edit_trading_interest_callback, pattern=r"^edit_trading_interest$"))
+    manager_application.add_handler(CallbackQueryHandler(update_deposit_amount_callback, pattern=r"^update_deposit_\d+$"))
+    manager_application.add_handler(CallbackQueryHandler(update_trading_interest_callback, pattern=r"^update_interest_(signals|strategy|all)$"))
+    manager_application.add_handler(CallbackQueryHandler(custom_deposit_edit_callback, pattern=r"^custom_deposit_edit$"))
+    
     # User registration flow
     manager_application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
