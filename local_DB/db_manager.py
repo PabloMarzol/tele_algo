@@ -29,6 +29,7 @@ class TradingBotDatabase:
         """Initialize all dataframes, creating them if they don't exist."""
         # Define schema with explicit types
         users_schema = {
+            # Existing fields
             "user_id": pl.Int64,
             "username": pl.Utf8,
             "first_name": pl.Utf8,
@@ -52,9 +53,34 @@ class TradingBotDatabase:
             "auto_welcome_date": pl.Utf8,        
             "risk_profile_text": pl.Utf8,       
             "last_response": pl.Utf8,           
-            "last_response_time": pl.Utf8
+            "last_response_time": pl.Utf8,
+            
+            # NEW VIP ACCESS FIELDS (CRITICAL)
+            "vip_access_granted": pl.Boolean,
+            "vip_eligible": pl.Boolean,
+            "vip_services": pl.Utf8,
+            "vip_services_list": pl.Utf8,
+            "vip_granted_date": pl.Utf8,
+            "vip_request_status": pl.Utf8,
+            "vip_links_sent": pl.Boolean,
+            "vip_granted_by": pl.Int64,
+            
+            # NEW BALANCE FIELDS (CRITICAL)
+            "account_balance": pl.Float64,
+            "funding_status": pl.Utf8,
+            "last_balance_update": pl.Utf8,
+            "qualification_balance": pl.Float64,
+            
+            # NEW TRACKING FIELDS
+            "registration_confirmed": pl.Boolean,
+            "vip_access_date": pl.Utf8,
+            "manual_vip_grant": pl.Boolean,
+            "manual_grant_date": pl.Utf8,
+            "last_vip_update": pl.Utf8,
+            "balance_source": pl.Utf8
         }
         
+        # Rest of the existing schema definitions...
         group_members_schema = {
             "user_id": pl.Int64,
             "join_date": pl.Utf8,
@@ -77,24 +103,40 @@ class TradingBotDatabase:
             "messages_sent": pl.Int64,
             "commands_used": pl.Int64
         }
-        
+            
         # Users table
         if os.path.exists(self.users_path):
             try:
-                # Read CSV and enforce schema
+                # Read existing CSV
                 self.users_df = pl.read_csv(self.users_path)
                 
-                # Convert columns to proper types
+                print(f"Loaded existing CSV with {self.users_df.height} rows and columns: {self.users_df.columns}")
+                
+                # Add any missing columns with default values
+                for col_name, dtype in users_schema.items():
+                    if col_name not in self.users_df.columns:
+                        print(f"Adding missing column: {col_name} ({dtype})")
+                        
+                        if dtype == pl.Int64:
+                            self.users_df = self.users_df.with_columns(pl.lit(0).cast(dtype).alias(col_name))
+                        elif dtype == pl.Float64:
+                            self.users_df = self.users_df.with_columns(pl.lit(0.0).cast(dtype).alias(col_name))
+                        elif dtype == pl.Boolean:
+                            self.users_df = self.users_df.with_columns(pl.lit(False).cast(dtype).alias(col_name))
+                        else:
+                            self.users_df = self.users_df.with_columns(pl.lit("").cast(dtype).alias(col_name))
+                
+                # Convert existing columns to proper types
                 for col_name, dtype in users_schema.items():
                     if col_name in self.users_df.columns:
                         try:
                             self.users_df = self.users_df.with_columns([
                                 pl.col(col_name).cast(dtype).alias(col_name)
                             ])
-                        except:
-                            # If casting fails, handle based on column type
+                        except Exception as e:
+                            print(f"Error casting column {col_name}: {e}")
+                            # Handle failed casting with safe defaults
                             if dtype == pl.Int64:
-                                # For numeric columns, replace with 0
                                 self.users_df = self.users_df.with_columns([
                                     pl.when(pl.col(col_name).is_null())
                                     .then(0)
@@ -102,8 +144,15 @@ class TradingBotDatabase:
                                     .cast(dtype)
                                     .alias(col_name)
                                 ])
+                            elif dtype == pl.Float64:
+                                self.users_df = self.users_df.with_columns([
+                                    pl.when(pl.col(col_name).is_null())
+                                    .then(0.0)
+                                    .otherwise(pl.lit(0.0))
+                                    .cast(dtype)
+                                    .alias(col_name)
+                                ])
                             elif dtype == pl.Boolean:
-                                # For boolean columns, replace with False
                                 self.users_df = self.users_df.with_columns([
                                     pl.when(pl.col(col_name).is_null())
                                     .then(False)
@@ -112,7 +161,6 @@ class TradingBotDatabase:
                                     .alias(col_name)
                                 ])
                             else:
-                                # For string columns, replace with empty string
                                 self.users_df = self.users_df.with_columns([
                                     pl.when(pl.col(col_name).is_null())
                                     .then("")
@@ -120,31 +168,33 @@ class TradingBotDatabase:
                                     .cast(dtype)
                                     .alias(col_name)
                                 ])
-                
-                # Add any missing columns with default values
-                for col_name, dtype in users_schema.items():
-                    if col_name not in self.users_df.columns:
-                        if dtype == pl.Int64:
-                            self.users_df = self.users_df.with_columns(pl.lit(0).cast(dtype).alias(col_name))
-                        elif dtype == pl.Boolean:
-                            self.users_df = self.users_df.with_columns(pl.lit(False).cast(dtype).alias(col_name))
-                        else:
-                            self.users_df = self.users_df.with_columns(pl.lit("").cast(dtype).alias(col_name))
+                print(f"✅ Users dataframe loaded with {len(self.users_df.columns)} columns")
+                print(f"New columns added: {[col for col in users_schema.keys() if col not in ['user_id', 'username', 'first_name']]}")
+            
             except Exception as e:
                 print(f"Error loading users CSV: {e}")
-                # Create a new dataframe with proper schema
+                # Create a new dataframe with complete schema
                 self.users_df = pl.DataFrame(
                     {col: [] for col in users_schema.keys()},
                     schema=users_schema
                 )
+                print("Created new users dataframe with complete schema")
+                
+            # CRITICAL: Save the updated dataframe with new columns
+            try:
                 self.users_df.write_csv(self.users_path)
+                print(f"✅ Saved updated users.csv with new VIP columns")
+            except Exception as e:
+                print(f"❌ Error saving updated CSV: {e}")
+                
         else:
-            # Create a new dataframe with proper schema
+            # Create new dataframe with complete schema
             self.users_df = pl.DataFrame(
                 {col: [] for col in users_schema.keys()},
                 schema=users_schema
             )
             self.users_df.write_csv(self.users_path)
+            print("Created new users.csv with complete schema")
         
         # Group members table - similar approach for other tables
         if os.path.exists(self.group_members_path):

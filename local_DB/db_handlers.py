@@ -945,12 +945,13 @@ async def handle_partial_funds(update, context, account_info, stated_amount, rea
 async def handle_no_funds(update, context, account_info, stated_amount):
     """Handle users with empty accounts."""
     print(f"User has no funds, needs ${stated_amount}")
+    real_balance = float(account_info.get('balance', 0))
     
     message = (
         f"<b>✅ Account Successfully Verified!</b>\n\n"
         f"<b>Account:</b> {account_info['account_number']}\n"
         f"<b>Account Holder:</b> {account_info['name']}\n"
-        f"<b>Current Balance:</b> $0.00\n"
+        f"<b>Current Balance:</b> ${real_balance}\n"
         f"<b>Target Amount:</b> ${stated_amount:,.2f}\n\n"
         f"<b>🚀 Ready to start your trading journey?</b>\n\n"
         f"To access our VIP services, you'll need to fund your account with ${stated_amount:,.2f}.\n\n"

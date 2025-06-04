@@ -1748,5 +1748,52 @@ async def check_accounts_table_sample_command(update: Update, context: ContextTy
     except Exception as e:
         await update.message.reply_text(f"❌ Error getting sample from mt5_accounts: {e}")
 
+async def get_fresh_balance(user_id, trading_account=None):
+    """
+    Fetch  balance from MySQL database.
+    Returns dict with balance info or None if account not found.
+    """
+    try:
+        # Get trading account if not provided
+        if not trading_account:
+            user_info = db.get_user(user_id)
+            if not user_info:
+                return None
+            trading_account = user_info.get("trading_account")
+            if not trading_account:
+                return None
+        
+        # Connect to MySQL and get fresh data
+        mysql_db = get_mysql_connection()
+        if not mysql_db.is_connected():
+            print(f"MySQL not connected for user {user_id}")
+            return None
+        
+        # Fetch current account info
+        account_info = mysql_db.verify_account_exists(trading_account)
+        
+        if not account_info['exists']:
+            return None
+        
+        current_balance = float(account_info.get('balance', 0))
+        
+        # Update local database with fresh balance
+        db.add_user({
+            "user_id": user_id,
+            "account_balance": current_balance,
+            "last_balance_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        
+        return {
+            "balance": current_balance,
+            "account_number": trading_account,
+            "account_name": account_info.get('name', 'Unknown'),
+            "account_status": account_info.get('status', 'Unknown'),
+            "is_real_account": account_info.get('is_real_account', False)
+        }
+        
+    except Exception as e:
+        print(f"Error getting fresh balance for user {user_id}: {e}")
+        return None
 
 

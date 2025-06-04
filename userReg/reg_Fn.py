@@ -1,6 +1,6 @@
 from imports import *
 from local_DB.db_handlers import check_existing_registration, handle_no_funds, handle_partial_funds, handle_sufficient_funds
-
+from mySQL.c_functions import get_fresh_balance
 
 # ---------------------------------------------------------------------------------------------------------- #
 # -------------------------------------- Reg Flow Functions ---------------------------------------------------- #
@@ -777,7 +777,7 @@ async def enhanced_trading_account(update: Update, context: ContextTypes.DEFAULT
 # ------------- Conversation state functions --------------- #
 # --------------------------------------------- #
 async def handle_grant_vip_access_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle admin granting VIP access."""
+    """Handle admin granting VIP access"""
     query = update.callback_query
     await query.answer()
     
@@ -789,7 +789,78 @@ async def handle_grant_vip_access_callbacks(update: Update, context: ContextType
             service_type = parts[2]  # signals, strategy, or all
             user_id = int(parts[3])
             
+            # CRITICAL: Update local database BEFORE sending links
+            await update_local_db_vip_status(user_id, service_type, query.from_user.id)
+            
+            # Then proceed with link generation
             await grant_vip_access_to_user(query, context, user_id, service_type)
+
+async def update_local_db_vip_status(user_id, service_type, granted_by_admin_id):
+    """Update local database with VIP status - separate function for reliability."""
+    try:
+        print(f"🔄 Updating local DB VIP status for user {user_id}")
+        
+        # Get fresh balance
+        user_info = db.get_user(user_id)
+        real_time_balance = 0.0
+        
+        if user_info and user_info.get('trading_account'):
+            try:
+                mysql_db = get_mysql_connection()
+                if mysql_db and mysql_db.is_connected():
+                    account_info = mysql_db.verify_account_exists(user_info.get('trading_account'))
+                    if account_info['exists']:
+                        real_time_balance = float(account_info.get('balance', 0))
+            except Exception as e:
+                print(f"Error getting fresh balance: {e}")
+        
+        # Service names mapping
+        service_names = {
+            "signals": "VIP Signals",
+            "strategy": "VIP Strategy", 
+            "all": "VIP Signals, VIP Strategy, VIP Prop Capital"
+        }
+        
+        # Create comprehensive VIP data update
+        vip_update = {
+            "user_id": user_id,
+            # Primary VIP flags
+            "vip_access_granted": True,
+            "vip_eligible": True,
+            "vip_services": service_type,
+            "vip_services_list": service_names.get(service_type, service_type),
+            "vip_granted_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "vip_request_status": "approved",
+            "vip_links_sent": True,
+            "vip_granted_by": granted_by_admin_id,
+            
+            # Balance sync
+            "account_balance": real_time_balance,
+            "funding_status": "sufficient" if real_time_balance >= 100 else "partial",
+            "last_balance_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            
+            # Tracking fields
+            "vip_callback_processed": True,
+            "last_vip_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        # Update the database
+        success = db.add_user(vip_update)
+        
+        if success:
+            print(f"✅ Local DB updated successfully for user {user_id}")
+            
+            # Verify the update
+            updated_user = db.get_user(user_id)
+            if updated_user and updated_user.get('vip_access_granted'):
+                print(f"✅ Verification passed: vip_access_granted = {updated_user.get('vip_access_granted')}")
+            else:
+                print(f"❌ Verification failed: VIP access not properly set")
+        else:
+            print(f"❌ Database update failed for user {user_id}")
+            
+    except Exception as e:
+        print(f"❌ Error updating local DB VIP status: {e}")
 
 async def grant_vip_access_to_user(query, context, user_id, service_type):
     """Grant VIP access to user and send invite links."""
@@ -889,13 +960,22 @@ async def grant_vip_access_to_user(query, context, user_id, service_type):
             )
             
             # Update database
-            db.add_user({
+            vip_update_data = {
                 "user_id": user_id,
-                "vip_access_granted": True,
+                "vip_access_granted": True,  # This is the key field!
                 "vip_services": service_type,
+                "vip_services_list": ", ".join(service_names),
                 "vip_granted_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "vip_request_status": "approved"
-            })
+                "vip_request_status": "approved",
+                "vip_links_sent": True,
+                "vip_granted_by": query.from_user.id,
+                "last_vip_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            # Update local database
+            db.add_user(vip_update_data)
+            
+            print(f"✅ LOCAL DB UPDATED: User {user_id} VIP access granted and recorded")
             
         else:
             await query.edit_message_text(
@@ -1335,7 +1415,15 @@ async def process_account_number_text(update, context, user_id, message_text):
                 await handle_demo_account(update, context, user_id, account_number, account_info)
                 return
             
-            # Account exists and is real - proceed with balance check
+            # Get fresh balance immediately
+            fresh_balance_info = await get_fresh_balance(user_id, account_number)
+            
+            if fresh_balance_info:
+                # Use real-time balance
+                account_info['balance'] = fresh_balance_info['balance']
+                print(f"Using real-time balance: ${fresh_balance_info['balance']}")
+            
+            # Account exists and is real - proceed with real-time balance
             await handle_real_account_found(update, context, user_id, account_info, stated_amount)
             
         except Exception as e:
@@ -1515,21 +1603,31 @@ async def handle_demo_account(update, context, user_id, account_number, account_
     )
 
 async def handle_real_account_found(update, context, user_id, account_info, stated_amount):
-    """Handle when a real account is found and verified."""
-    real_balance = float(account_info.get('balance', 0))
+    """Handle when a real account is found and verified - with real-time balance."""
+    
+    # Get fresh balance instead of using account_info balance
+    fresh_balance_info = await get_fresh_balance(user_id, account_info.get('account_number'))
+    
+    if not fresh_balance_info:
+        # Fallback to account_info balance if fresh fetch fails
+        real_balance = float(account_info.get('balance', 0))
+    else:
+        real_balance = fresh_balance_info['balance']
+    
     account_name = account_info.get('name', 'Unknown')
     account_number = account_info.get('account_number', 'Unknown')
     
-    print(f"Real account found: {account_name}, Balance: ${real_balance}")
+    print(f"Real account found: {account_name}, Real-time Balance: ${real_balance}")
     
-    # Store account info
+    # Store account info with fresh balance
     db.add_user({
         "user_id": user_id,
         "trading_account": account_number,
         "account_owner": account_name,
-        "account_balance": real_balance,
+        "account_balance": real_balance,  # Now using real-time balance
         "is_verified": True,
-        "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "balance_source": "real_time_mysql"  # Track that this is fresh data
     })
     
     # Check balance status and guide user accordingly
@@ -1580,12 +1678,19 @@ async def handle_sufficient_balance(update, context, user_id, account_info, bala
     await update.message.reply_text(success_message, parse_mode='HTML', reply_markup=reply_markup)
     
     # Mark user as VIP eligible
-    db.add_user({
+    sufficient_funds_data = {
         "user_id": user_id,
-        "vip_eligible": True,
+        "vip_eligible": True,  
         "funding_status": "sufficient",
-        "vip_access_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    })
+        "account_balance": balance,  
+        "vip_qualification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "qualification_balance": balance,
+        "vip_ready": True,  
+        "last_balance_verification": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+    
+    db.add_user(sufficient_funds_data)
+    print(f"✅ LOCAL DB UPDATED: User {user_id} marked as VIP eligible")
 
 async def handle_partial_balance(update, context, user_id, account_info, balance, target_amount):
     """Handle user with some balance but not enough for VIP."""
@@ -1623,13 +1728,14 @@ async def handle_partial_balance(update, context, user_id, account_info, balance
 async def handle_zero_balance(update, context, user_id, account_info, target_amount):
     """Handle user with zero balance."""
     minimum_deposit = max(target_amount or 100, 100)
+    real_balance = float(account_info.get('balance', 0))
     
     zero_balance_message = (
         f"<b>✅ Account Verified Successfully!</b>\n\n"
         
         f"<b>📊 Account:</b> {account_info['account_number']}\n"
         f"<b>👤 Owner:</b> {account_info['name']}\n"
-        f"<b>💰 Current Balance:</b> $0.00\n\n"
+        f"<b>💰 Current Balance:</b> ${real_balance}\n\n"
         
         f"<b>🚀 Ready to Start Your Trading Journey?</b>\n\n"
         
@@ -2112,6 +2218,7 @@ async def handle_advisor_request(query, context, user_id):
     })
 
 async def check_balance(query, context, user_id):
+    from mySQL.c_functions import get_fresh_balance
     """Handle balance check request."""
     user_info = db.get_user(user_id)
     if not user_info or not user_info.get("trading_account"):
@@ -2127,24 +2234,23 @@ async def check_balance(query, context, user_id):
         )
         return
     
-    account_number = user_info["trading_account"]
-    
-    # Show loading
+    # Show loading message
     await query.edit_message_text(
         "<b>🔍 Checking Your Balance...</b>\n\n"
-        "Please wait while we verify your current account balance...\n\n"
+        "Fetching real-time data from your trading account...\n\n"
         "<b>💡 Tip:</b> You can always check your status with /myaccount",
         parse_mode='HTML'
     )
     
-    # Check current balance (existing logic)
-    mysql_db = get_mysql_connection()
-    if not mysql_db.is_connected():
+    # Get fresh balance from MySQL
+    fresh_balance_info = await get_fresh_balance(user_id)
+    
+    if not fresh_balance_info:
         await context.bot.send_message(
             chat_id=user_id,
             text="<b>⚠️ Connection Issue</b>\n\n"
-                 "Unable to check balance at the moment. Please try again later.\n\n"
-                 "<b>💡 Use /myaccount to access your dashboard!</b>",
+                "Unable to check balance at the moment. Please try again later.\n\n"
+                "<b>💡 Use /myaccount to access your dashboard!</b>",
             parse_mode='HTML',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")]
@@ -2152,28 +2258,13 @@ async def check_balance(query, context, user_id):
         )
         return
     
-    try:
-        current_info = mysql_db.verify_account_exists(account_number)
-        
-        if not current_info['exists']:
-            await context.bot.send_message(
-                chat_id=user_id,
-                text="<b>⚠️ Account Not Found</b>\n\n"
-                     "Please contact support for assistance.\n\n"
-                     "<b>💡 Use /myaccount to view your profile and contact support!</b>",
-                parse_mode='HTML',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")],
-                    [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")]
-                ])
-            )
-            return
-        
-        current_balance = float(current_info.get('balance', 0))
-        previous_balance = user_info.get("account_balance", 0)
-        account_name = current_info.get('name', 'Unknown')
-        
-        # Check if balance increased
+    current_balance = fresh_balance_info['balance']
+    previous_balance = user_info.get("account_balance", 0) or 0
+    account_name = fresh_balance_info['account_name']
+    account_number = fresh_balance_info['account_number']
+    
+    try:    
+        # Check if balance changed
         if current_balance > previous_balance:
             balance_change = current_balance - previous_balance
             status_emoji = "📈"
@@ -2186,29 +2277,23 @@ async def check_balance(query, context, user_id):
             status_emoji = "💰"
             status_text = "<b>No change since last check</b>"
         
-        # Update stored balance
-        db.add_user({
-            "user_id": user_id,
-            "account_balance": current_balance,
-            "last_balance_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
-        
-        # Format response with dashboard mention
+        # Format response with real-time data
         balance_message = (
-            f"<b>{status_emoji} Balance Update</b>\n\n"
+            f"<b>{status_emoji} Real-Time Balance Update</b>\n\n"
             f"<b>📋 Account:</b> {account_number}\n"
             f"<b>👤 Holder:</b> {account_name}\n"
             f"<b>💰 Current Balance:</b> ${current_balance:,.2f}\n"
             f"<b>📊 Status:</b> {status_text}\n"
-            f"<b>🕒 Last Checked:</b> {datetime.now().strftime('%H:%M:%S')}\n\n"
+            f"<b>🕒 Last Checked:</b> {datetime.now().strftime('%H:%M:%S')}\n"
+
             
             f"<b>💡 Dashboard Access:</b>\n"
             f"Use <b>/myaccount</b> to view your complete profile anytime! 📊\n\n"
         )
         
-        # Add appropriate buttons
+        # Add appropriate buttons based on balance
         target_amount = user_info.get("target_deposit_amount", 0) or user_info.get("deposit_amount", 0)
-        if current_balance >= 100 and target_amount > 0:
+        if current_balance >= 100:
             balance_message += "<b>🎉 You qualify for VIP access!</b>"
             keyboard = [
                 [InlineKeyboardButton("🎯 Request VIP Access", callback_data="request_vip_both_services")],
@@ -2537,234 +2622,6 @@ async def process_deposit_amount_text(update, context, user_id, message_text):
                 [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
             ])
         )
-
-# async def process_account_number_text(update, context, user_id, message_text):
-#     """Process MT5 account number from text input."""
-#     print(f"Processing account number: {message_text}")
-    
-#     if message_text.isdigit() and len(message_text) == 6:
-#         account_number = message_text
-        
-#         # Get user's stated deposit intention
-#         user_info = db.get_user(user_id)
-#         stated_amount = user_info.get("deposit_amount", 0) if user_info else 0
-        
-#         print(f"===== ACCOUNT VERIFICATION =====")
-#         print(f"Account: {account_number}, User: {user_id}, Stated: ${stated_amount}")
-        
-#         await update.message.reply_text(
-#             "<b>🔍 Verifying Account...</b>\n\n"
-#             "Please wait while we verify your account and check balance... ⏳",
-#             parse_mode='HTML'
-#         )
-        
-#         # Validate and verify account
-#         if not auth.validate_account_format(account_number):
-#             await update.message.reply_text(
-#                 "<b>❌ Invalid Account Format</b>\n\n"
-#                 "Please enter a valid trading account number.\n\n"
-#                 "<b>🔄 Try again or</b> <b>💬 speak to an advisor</b>",
-#                 parse_mode='HTML',
-#                 reply_markup=InlineKeyboardMarkup([
-#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-#                 ])
-#             )
-#             return
-        
-#         # Connect to MySQL and verify
-#         mysql_db = get_mysql_connection()
-#         if not mysql_db.is_connected():
-#             await update.message.reply_text(
-#                 "<b>⚠️ Connection Issue</b>\n\n"
-#                 "Unable to verify account at the moment. Please try again later or speak to an advisor.",
-#                 parse_mode='HTML',
-#                 reply_markup=InlineKeyboardMarkup([
-#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-#                 ])
-#             )
-#             return
-        
-#         try:
-#             account_info = mysql_db.verify_account_exists(account_number)
-
-#             if not account_info['exists']:
-#                 # Account not found message...
-#                 return
-#             elif not account_info.get('is_real_account', False):
-#                 # NEW: Handle demo account
-#                 await update.message.reply_text(
-#                     f"<b>⚠️ Demo Account Detected</b>\n\n"
-#                     f"<b>Account:</b> {account_number}\n"
-#                     f"<b>Type:</b> {account_info.get('account_type', 'Demo')}\n"
-#                     f"<b>Group:</b> {account_info.get('group', 'Unknown')}\n\n"
-#                     f"<b>🚫 Demo accounts are not eligible for VIP services</b>\n\n"
-#                     f"<b>💡 Please provide a real/live trading account number</b>\n",
-#                     parse_mode='HTML',
-#                     reply_markup=InlineKeyboardMarkup([
-#                         [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-#                         [InlineKeyboardButton("🔄 Try Different Account", callback_data="restart_process")]
-#                     ])
-#                 )
-#                 return
-            
-#             # Extract account details
-#             real_balance = float(account_info.get('balance', 0))
-#             account_name = account_info.get('name', 'Unknown')
-#             account_status = account_info.get('status', 'Unknown')
-            
-#             print(f"Account found: {account_name}, Balance: ${real_balance}")
-            
-#             # Store account info
-#             db.add_user({
-#                 "user_id": user_id,
-#                 "trading_account": account_number,
-#                 "account_owner": account_name,
-#                 "account_balance": real_balance,
-#                 "account_status": account_status,
-#                 "is_verified": True,
-#                 "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#             })
-            
-#             # ENHANCED DECISION LOGIC - REQUEST ACCESS MODEL
-#             if real_balance >= stated_amount and stated_amount > 0:
-#                 # SUFFICIENT FUNDS - REQUEST ACCESS
-#                 success_message = (
-#                     f"<b>✅ Account Verified Successfully!</b>\n\n"
-#                     f"<b>📋 Account:</b> {account_number}\n"
-#                     f"<b>👤 Account Holder:</b> {account_name}\n"
-#                     f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
-#                     f"<b>🎯 Required:</b> ${stated_amount:,.2f}\n\n"
-#                     f"<b>🎉 Excellent!</b> You have sufficient funds! 💎\n\n"
-#                     f"<b>📋 What would you like to request access to?</b>"
-#                 )
-                
-#                 # REQUEST ACCESS BUTTONS
-#                 keyboard = [
-#                     [
-#                         InlineKeyboardButton("🔔 Request VIP Signals", callback_data="request_vip_signals"),
-#                         InlineKeyboardButton("🤖 Request VIP Strategy", callback_data="request_vip_strategy")
-#                     ],
-#                     [
-#                         InlineKeyboardButton("✨ Request Both Services", callback_data="request_vip_both_services"),
-#                         InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")
-#                     ],
-#                     [
-#                         InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")
-#                     ]
-#                 ]
-#                 reply_markup = InlineKeyboardMarkup(keyboard)
-                
-#                 await update.message.reply_text(success_message, parse_mode='HTML', reply_markup=reply_markup)
-                
-#                 # Update status
-#                 db.add_user({
-#                     "user_id": user_id,
-#                     "funding_status": "sufficient",
-#                     "vip_eligible": True,
-#                     "vip_access_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-#                 })
-                
-#                 # Reset state
-#                 context.bot_data["user_states"][user_id] = "requesting_access"
-                
-#                 # Notify admins
-#                 await notify_admins_sufficient_funds(context, user_id, account_info, stated_amount, real_balance)
-                
-#             elif real_balance > 0 and stated_amount > 0:
-#                 # PARTIAL FUNDS
-#                 difference = stated_amount - real_balance
-#                 percentage = (real_balance / stated_amount) * 100
-                
-#                 message = (
-#                     f"<b>✅ Account Successfully Verified!</b>\n\n"
-#                     f"<b>📋 Account:</b> {account_number}\n"
-#                     f"<b>👤 Account Holder:</b> {account_name}\n"
-#                     f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
-#                     f"<b>🎯 Your Goal:</b> ${stated_amount:,.2f}\n"
-#                     f"<b>📊 Remaining:</b> ${difference:,.2f}\n\n"
-#                     f"<b>📈 You're {percentage:.1f}% there!</b> 🎯\n\n"
-#                     f"<b>What would you like to do?</b>"
-#                 )
-                
-#                 keyboard = [
-#                     [InlineKeyboardButton(f"💳 Deposit ${difference:,.0f} Now", callback_data=f"deposit_exact_{difference}")],
-#                     [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
-#                     [InlineKeyboardButton("🚀 Start with Current Balance", callback_data="start_with_current")],
-#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-#                 ]
-#                 reply_markup = InlineKeyboardMarkup(keyboard)
-                
-#                 await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
-                
-#                 # Update status
-#                 db.add_user({
-#                     "user_id": user_id,
-#                     "funding_status": "partial",
-#                     "funding_percentage": percentage,
-#                     "remaining_amount": difference
-#                 })
-                
-#                 context.bot_data["user_states"][user_id] = "partial_funding"
-                
-#             else:
-#                 # NO FUNDS OR NO STATED AMOUNT
-#                 target_amount = stated_amount if stated_amount > 0 else 1000
-                
-#                 message = (
-#                     f"<b>✅ Account Successfully Verified!</b>\n\n"
-#                     f"<b>📋 Account:</b> {account_number}\n"
-#                     f"<b>👤 Account Holder:</b> {account_name}\n"
-#                     f"<b>💰 Current Balance:</b> ${real_balance:,.2f}\n"
-#                     f"<b>💡 Suggested Amount:</b> ${target_amount:,.2f}\n\n"
-#                     f"<b>🚀 Ready to start your trading journey?</b>\n\n"
-#                     f"<b>How would you like to proceed?</b>"
-#                 )
-                
-#                 keyboard = [
-#                     [InlineKeyboardButton(f"💳 Deposit ${target_amount:,.0f} Now", callback_data=f"deposit_exact_{target_amount}")],
-#                     [InlineKeyboardButton("💰 Choose Different Amount", callback_data="choose_deposit_amount")],
-#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-#                 ]
-#                 reply_markup = InlineKeyboardMarkup(keyboard)
-                
-#                 await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
-                
-#                 # Update status
-#                 db.add_user({
-#                     "user_id": user_id,
-#                     "funding_status": "none",
-#                     "target_amount": target_amount
-#                 })
-                
-#                 context.bot_data["user_states"][user_id] = "needs_funding"
-            
-#         except Exception as e:
-#             print(f"Error in verification: {e}")
-#             await update.message.reply_text(
-#                 f"<b>⚠️ Verification Error</b>\n\n"
-#                 f"Error verifying account: {str(e)[:100]}\n\n"
-#                 f"Please try again or contact support.",
-#                 parse_mode='HTML',
-#                 reply_markup=InlineKeyboardMarkup([
-#                     [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")],
-#                     [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
-#                 ])
-#             )
-#     else:
-#         await update.message.reply_text(
-#             "<b>⚠️ Invalid Account Format</b>\n\n"
-#             "That doesn't look like a valid account number.\n\n"
-#             "Please provide a <b>6-digit MT5 account number</b>. 📊",
-#             parse_mode='HTML',
-#             reply_markup=InlineKeyboardMarkup([
-#                 [InlineKeyboardButton("💬 Need Help?", callback_data="speak_advisor")],
-#                 [InlineKeyboardButton("🔄 Restart", callback_data="restart_process")]
-#             ])
-#         )
 
 async def notify_admins_sufficient_funds(context, user_id, account_info, stated_amount, real_balance):
     """Notify admins when user has sufficient funds."""

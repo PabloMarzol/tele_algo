@@ -217,8 +217,11 @@ class MT5SignalGenerator:
         elif curr_ma_diff < 0:
             current_signal = -1  # SELL signal
         
-        # Get previous signal state
-        prev_signal = self.current_signals.get(symbol, {}).get("signal", 0)
+        # Get previous signal state - initialize if doesn't exist
+        if symbol not in self.current_signals:
+            self.current_signals[symbol] = {"signal": 0, "timestamp": datetime.now()}
+        
+        prev_signal = self.current_signals[symbol]["signal"]
         
         # Check for signal state change (new signal)
         new_signal = False
@@ -227,9 +230,11 @@ class MT5SignalGenerator:
         if current_signal == 1 and prev_signal != 1:
             new_signal = True
             direction = "BUY"
+            self.logger.info(f"MA Crossover: New BUY signal for {symbol} (prev: {prev_signal}, curr: {current_signal})")
         elif current_signal == -1 and prev_signal != -1:
             new_signal = True
             direction = "SELL"
+            self.logger.info(f"MA Crossover: New SELL signal for {symbol} (prev: {prev_signal}, curr: {current_signal})")
         
         # Update current signal state
         self.current_signals[symbol] = {
@@ -237,14 +242,10 @@ class MT5SignalGenerator:
             "timestamp": datetime.now()
         }
         
-        # If no new signal, return current state for exit checking
+        # If no new signal, return None (not a dictionary)
         if not new_signal:
-            return {
-                "type": "state_update",
-                "symbol": symbol,
-                "current_signal": current_signal,
-                "prev_signal": prev_signal
-            }
+            self.logger.debug(f"MA Crossover: No new signal for {symbol} (current: {current_signal}, prev: {prev_signal})")
+            return None
         
         # Confirmation check for new signals
         if new_signal:
@@ -268,6 +269,7 @@ class MT5SignalGenerator:
             )
             
             if valid_conf_df.height == 0:
+                self.logger.warning(f"No valid confirmation data for {symbol}")
                 return None
             
             latest_conf = valid_conf_df.tail(1)
@@ -276,9 +278,14 @@ class MT5SignalGenerator:
             
             # Confirm signal
             if direction == "BUY" and latest_fast > latest_slow:
+                self.logger.info(f"MA Crossover: BUY signal confirmed for {symbol}")
                 return self.format_signal(symbol, "BUY", df, "MA_CROSS")
             elif direction == "SELL" and latest_fast < latest_slow:
+                self.logger.info(f"MA Crossover: SELL signal confirmed for {symbol}")
                 return self.format_signal(symbol, "SELL", df, "MA_CROSS")
+            else:
+                self.logger.info(f"MA Crossover: Signal for {symbol} not confirmed on lower timeframe")
+                return None
         
         return None
     
@@ -335,7 +342,7 @@ class MT5SignalGenerator:
         return exit_signals
     
     ## ------------------------------------------------------- ##
-    ## ----------------------- MCO Strategy ------------------ ##
+    ## ----------------------- RSI Strategy ------------------ ##
     def calculate_rsi_reversal(self, symbol, timeframe, rsi_length=2, overbought=95, oversold=5):
         """Calculate RSI reversal signal with Polars"""
         df = self.get_price_data(symbol, timeframe, bars=rsi_length*3)
@@ -366,7 +373,7 @@ class MT5SignalGenerator:
         return None
     
     ## ------------------------------------------------------- ##
-    ## ----------------------- MCO Strategy ------------------ ##
+    ## ----------------------- SP_Inference Strategy ------------------ ##
     def calculate_support_resistance(self, symbol, timeframe, lookback=20, threshold=0.001):
         """Calculate support/resistance breakout signal using Polars"""
         df = self.get_price_data(symbol, timeframe, bars=lookback*2)
@@ -396,7 +403,7 @@ class MT5SignalGenerator:
         return None
 
     ## ------------------------------------------------------- ##
-    ## ----------------------- MCO Strategy ------------------ ##    
+    ## ----------------------- HAWKES Strategy ------------------ ##    
     def calculate_hawkes_volatility(self, symbol, timeframe, atr_lookback=297, kappa=0.552, quantile_lookback=27):
         """Enhanced Hawkes volatility breakout signal with detailed logging"""
         try:

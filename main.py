@@ -104,6 +104,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 "• Verify your account and deposit minimum $100\n"
                 "• Gain instant VIP access to our premium services!\n\n"
                 "<b>⏱️ This takes less than 5 minutes!</b>\n\n"
+                "<b>💡 Quick Tip:</b>\n\n"
+                "After registration, you can always check your status and edit your profile using:\n\n"
+                "<b>/myaccount</b> - Your personal dashboard 📊\n\n"
+                "Let's get started! 🚀\n\n",
                 "Ready to start your trading journey? 🌟"
             )
         else:
@@ -135,13 +139,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         welcome_msg,
         parse_mode='HTML',
         reply_markup=reply_markup
-    )
-    await update.message.reply_text(
-        "<b>💡 Quick Tip:</b>\n\n"
-        "After registration, you can always check your status and edit your profile using:\n\n"
-        "<b>/myaccount</b> - Your personal dashboard 📊\n\n"
-        "Let's get started! 🚀",
-        parse_mode='HTML'
     )
     
     # Track the user
@@ -283,6 +280,62 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         except:
             pass
 
+async def debug_vip_status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Debug command to check VIP status in local database."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("Usage: /debugvip <user_id>")
+        return
+    
+    try:
+        user_id = int(context.args[0])
+        user_info = db.get_user(user_id)
+        
+        if not user_info:
+            await update.message.reply_text(f"User {user_id} not found in local database.")
+            return
+        
+        # Show all VIP-related fields
+        debug_msg = f"<b>🔍 VIP Status Debug for User {user_id}</b>\n\n"
+        debug_msg += f"<b>Basic Info:</b>\n"
+        debug_msg += f"• Name: {user_info.get('first_name', 'Unknown')}\n"
+        debug_msg += f"• Verified: {user_info.get('is_verified', False)}\n"
+        debug_msg += f"• Trading Account: {user_info.get('trading_account', 'None')}\n\n"
+        
+        debug_msg += f"<b>VIP Fields:</b>\n"
+        debug_msg += f"• vip_access_granted: {user_info.get('vip_access_granted', 'Not Set')}\n"
+        debug_msg += f"• vip_eligible: {user_info.get('vip_eligible', 'Not Set')}\n"
+        debug_msg += f"• vip_services: {user_info.get('vip_services', 'Not Set')}\n"
+        debug_msg += f"• vip_services_list: {user_info.get('vip_services_list', 'Not Set')}\n"
+        debug_msg += f"• vip_granted_date: {user_info.get('vip_granted_date', 'Not Set')}\n"
+        debug_msg += f"• vip_request_status: {user_info.get('vip_request_status', 'Not Set')}\n\n"
+        
+        debug_msg += f"<b>Balance Info:</b>\n"
+        debug_msg += f"• account_balance: {user_info.get('account_balance', 0)}\n"
+        debug_msg += f"• funding_status: {user_info.get('funding_status', 'Not Set')}\n"
+        
+        # Get real-time balance for comparison
+        if user_info.get('trading_account'):
+            try:
+                mysql_db = get_mysql_connection()
+                if mysql_db and mysql_db.is_connected():
+                    account_info = mysql_db.verify_account_exists(user_info.get('trading_account'))
+                    if account_info['exists']:
+                        real_time_balance = float(account_info.get('balance', 0))
+                        debug_msg += f"• real_time_balance: {real_time_balance}\n"
+            except Exception as e:
+                debug_msg += f"• real_time_balance: Error - {e}\n"
+        
+        await update.message.reply_text(debug_msg, parse_mode='HTML')
+        
+    except ValueError:
+        await update.message.reply_text("Invalid user ID format.")
+    except Exception as e:
+        await update.message.reply_text(f"Error: {e}")
+
 
 # -------------------------------------- User Management System ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -337,7 +390,7 @@ def generate_registration_link(bot_username: str) -> str:
     return f"https://t.me/{bot_username}?start=register"
 
 async def my_account_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show user's account dashboard - main entry point."""
+    """Show user's account dashboard - main entry point with real-time data."""
     user_id = update.effective_user.id
     
     # Get user info
@@ -350,27 +403,77 @@ async def my_account_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
     
+    # Show loading message for balance fetch
+    loading_msg = await update.message.reply_text(
+        "📊 <b>Loading Your Dashboard...</b>\n\n"
+        "Fetching real-time account data... ⏳",
+        parse_mode='HTML'
+    )
+    
+    # Small delay to show loading (optional)
+    await asyncio.sleep(1)
+    
+    # Delete loading message and show dashboard
+    await loading_msg.delete()
+    
     await show_account_dashboard(update, context, user_info, is_command=True)
 
 async def show_account_dashboard(update, context, user_info, is_command=False):
-    """Display user's account dashboard with all information."""
+    """Display user's account dashboard with real-time balance from MySQL."""
     user_id = user_info.get('user_id')
     first_name = user_info.get('first_name', 'User')
     
     # Get account status
     trading_account = user_info.get('trading_account', 'Not provided')
     is_verified = user_info.get('is_verified', False)
-    account_balance = user_info.get('account_balance', 0)
     risk_profile = user_info.get('risk_profile_text', 'Not set')
     deposit_amount = user_info.get('deposit_amount', 'Not set')
-    vip_access = user_info.get('vip_access_granted', False)
     
-    # Create status indicators
+    # VIP STATUS FROM LOCAL DB (FIXED)
+    vip_access_granted = user_info.get('vip_access_granted', False)
+    vip_services_list = user_info.get('vip_services_list', '')
+    vip_granted_date = user_info.get('vip_granted_date', '')
+    
+    # Real-time balance
+    real_time_balance = 0.0
+    balance_source = "cached"
+    
+    if trading_account and trading_account != "Not provided":
+        try:
+            mysql_db = get_mysql_connection()
+            if mysql_db and mysql_db.is_connected():
+                account_info = mysql_db.verify_account_exists(trading_account)
+                if account_info['exists']:
+                    real_time_balance = float(account_info.get('balance', 0))
+                    balance_source = "real-time MySQL"
+                    
+                    # Update local DB with fresh balance
+                    db.add_user({
+                        "user_id": user_id,
+                        "account_balance": real_time_balance,
+                        "last_balance_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    })
+        except Exception as e:
+            print(f"Error fetching balance: {e}")
+            real_time_balance = user_info.get('account_balance', 0) or 0.0
+            balance_source = "cached"
+    
+    # Status indicators
     verification_status = "✅ Verified" if is_verified else "⚠️ Pending"
-    vip_status = "🌟 Active" if vip_access else "🔒 Not Active"
-    balance_emoji = "💰" if account_balance >= 100 else "💳"
+    vip_status = "🌟 Active" if vip_access_granted else "🔒 Not Active"
     
-    # Build dashboard message
+    # Balance status
+    if real_time_balance >= 100:
+        balance_emoji = "💰"
+        balance_status = "✅ VIP Qualified"
+    elif real_time_balance > 0:
+        balance_emoji = "💳"
+        balance_status = f"⚠️ ${100 - real_time_balance:,.0f} more for VIP"
+    else:
+        balance_emoji = "💸"
+        balance_status = "❌ Funding Required"
+    
+    # Build dashboard with VIP info
     dashboard = (
         f"<b>👤 Your VFX Trading Account</b>\n\n"
         f"<b>🎯 Welcome back, {first_name}!</b>\n\n"
@@ -378,72 +481,79 @@ async def show_account_dashboard(update, context, user_info, is_command=False):
         f"<b>📊 Account Overview:</b>\n"
         f"• Trading Account: <code>{trading_account}</code>\n"
         f"• Verification: {verification_status}\n"
-        f"• Current Balance: {balance_emoji} ${account_balance:,.2f}\n"
-        f"• VIP Access: {vip_status}\n\n"
-        
+        f"• Current Balance: {balance_emoji} <b>${real_time_balance:,.2f}</b>\n"
+        f"• Balance Status: {balance_status}\n"
+        f"• VIP Access: {vip_status}\n"
+    )
+    
+    # Add VIP services info if granted
+    if vip_access_granted and vip_services_list:
+        dashboard += f"• Active Services: {vip_services_list}\n"
+        if vip_granted_date:
+            dashboard += f"• VIP Since: {vip_granted_date[:10]}\n"
+    
+    
+    dashboard += (
         f"<b>🎯 Your Profile:</b>\n"
         f"• Risk Level: {risk_profile}\n"
         f"• Target Deposit: ${deposit_amount}\n"
         f"• Member Since: {user_info.get('join_date', 'Unknown')}\n\n"
     )
     
-    # Add status-specific information
-    if not is_verified:
+    # Status-specific messaging
+    if vip_access_granted:
+        dashboard += (
+            f"<b>🎉 VIP Services Active!</b>\n"
+            f"• All premium features unlocked 🌟\n"
+            f"• Professional trading support available 👨‍💼\n"
+            f"• Priority customer service 📞\n\n"
+        )
+    elif not is_verified:
         dashboard += (
             f"<b>⚠️ Next Steps:</b>\n"
             f"• Complete account verification\n"
             f"• Deposit minimum $100\n"
             f"• Gain VIP access to premium services\n\n"
-            f"<b>💡 Pro Tip:</b>\n"
-            f"• Use <b>/myaccount</b> anytime to return to this dashboard\n"
-            f"• You can edit your profile settings anytime\n"
-            f"• Bookmark this command for quick access! 🔖\n\n"
         )
-    elif account_balance < 100:
+    elif real_time_balance < 100:
+        needed = 100 - real_time_balance
         dashboard += (
             f"<b>💳 Almost There!</b>\n"
-            f"• Deposit ${100 - account_balance:,.0f} more for VIP access\n"
+            f"• Deposit ${needed:,.0f} more for VIP access\n"
             f"• Access premium trading signals\n"
             f"• Get automated trading strategies\n\n"
-            f"<b>💡 Pro Tip:</b>\n"
-            f"• Use <b>/myaccount</b> anytime to return to this dashboard\n"
-            f"• You can edit your profile settings anytime\n"
-            f"• Bookmark this command for quick access! 🔖\n\n"
-        )
-    else:
-        dashboard += (
-            f"<b>🎉 Congratulations!</b>\n"
-            f"• You have full VIP access\n"
-            f"• All premium features unlocked\n"
-            f"• Professional trading support available\n\n"
-            f"<b>💡 Pro Tip:</b>\n"
-            f"• Use <b>/myaccount</b> anytime to return to this dashboard\n"
-            f"• You can edit your profile settings anytime\n"
-            f"• Bookmark this command for quick access! 🔖\n\n"
         )
     
-    # Create action buttons based on user status
+    dashboard += (
+        f"<b>💡 Pro Tip:</b>\n"
+        f"• Use <b>/myaccount</b> anytime to return here\n"
+        f"• Click 'Refresh Balance' for latest data\n"
+        f"• Your VIP status updates automatically! 🚀\n\n"
+    )
+    
+    # Buttons based on VIP status
     keyboard = []
     
-    # Always available options
     keyboard.append([
         InlineKeyboardButton("✏️ Edit Profile", callback_data="edit_profile_menu"),
         InlineKeyboardButton("🔄 Refresh Balance", callback_data="check_balance_now")
     ])
     
-    # Conditional options
-    if not is_verified or account_balance < 100:
-        keyboard.append([
-            InlineKeyboardButton("🚀 Complete Setup", callback_data="complete_setup")
-        ])
-    
-    if is_verified and account_balance >= 100:
+    if vip_access_granted:
         keyboard.append([
             InlineKeyboardButton("🌟 My VIP Services", callback_data="my_vip_services"),
-            InlineKeyboardButton("📊 Request New Service", callback_data="request_vip_both_services")
+            InlineKeyboardButton("📊 Request Additional Service", callback_data="request_vip_both_services")
         ])
+    else:
+        if is_verified and real_time_balance >= 100:
+            keyboard.append([
+                InlineKeyboardButton("🚀 Request VIP Access", callback_data="request_vip_both_services")
+            ])
+        else:
+            keyboard.append([
+                InlineKeyboardButton("🚀 Complete Setup", callback_data="complete_setup")
+            ])
     
-    # Help and support
     keyboard.append([
         InlineKeyboardButton("❓ Need Help?", callback_data="help_menu"),
         InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")
@@ -588,47 +698,100 @@ async def my_vip_services_callback(update: Update, context: ContextTypes.DEFAULT
     user_id = query.from_user.id
     user_info = db.get_user(user_id)
     
+    real_time_balance = 0.0
+    if user_info and user_info.get("trading_account"):
+        try:
+            mysql_db = get_mysql_connection()
+            if mysql_db and mysql_db.is_connected():
+                account_info = mysql_db.verify_account_exists(user_info.get("trading_account"))
+                if account_info['exists']:
+                    real_time_balance = float(account_info.get('balance', 0))
+        except Exception as e:
+            print(f"Error getting real-time balance for VIP services: {e}")
+            real_time_balance = user_info.get('account_balance', 0) or 0
+    
+    # Check VIP access status from multiple fields
+    vip_access_granted = user_info.get('vip_access_granted', False)
+    vip_eligible = user_info.get('vip_eligible', False)
+    is_verified = user_info.get('is_verified', False)
+    vip_services = user_info.get('vip_services', '')
+    vip_services_list = user_info.get('vip_services_list', '')
+    
+    # Determine overall VIP status
+    has_vip_access = vip_access_granted or (vip_eligible and is_verified and real_time_balance >= 100)
+    
     services_text = (
-        "<b>🌟 Your VIP Services</b>\n\n"
+        f"<b>🌟 Your VIP Services Status</b>\n\n"
         
-        "<b>🔔 VIP Signals:</b>\n"
-        f"Status: {'✅ Active' if user_info.get('vip_access_granted') else '🔒 Not Active'}\n"
-        "• Live trading alerts\n"
-        "• Entry/exit points\n"
-        "• Professional analysis\n\n"
+        f"<b>📊 Account Summary:</b>\n"
+        f"• Account Verified: {'✅ Yes' if is_verified else '❌ No'}\n"
+        f"• Current Balance: ${real_time_balance:,.2f}\n"
+        f"• VIP Eligible: {'✅ Yes' if vip_eligible else '❌ No'}\n"
+        f"• VIP Access Granted: {'✅ Yes' if vip_access_granted else '❌ No'}\n\n"
         
-        "<b>🤖 VIP Automated Strategy:</b>\n"
-        f"Status: {'✅ Active' if user_info.get('vip_access_granted') else '🔒 Not Active'}\n"
-        "• Fully automated trading\n"
-        "• 24/7 market monitoring\n"
-        "• Professional risk management\n\n"
+        f"<b>🔔 VIP Signals:</b>\n"
+        f"Status: {'✅ Active' if has_vip_access else '🔒 Not Active'}\n"
+        f"• Live trading alerts\n"
+        f"• Entry/exit points\n"
+        f"• Professional analysis\n\n"
         
-        "<b>💰 Account Requirements:</b>\n"
-        f"• Minimum Balance: $100 ({'✅ Met' if user_info.get('account_balance', 0) >= 100 else '❌ Not Met'})\n"
-        f"• Account Verified: {'✅ Yes' if user_info.get('is_verified') else '❌ No'}\n\n"
+        f"<b>🤖 VIP Automated Strategy:</b>\n"
+        f"Status: {'✅ Active' if has_vip_access else '🔒 Not Active'}\n"
+        f"• Fully automated trading\n"
+        f"• 24/7 market monitoring\n"
+        f"• Professional risk management\n\n"
+        
+        f"<b>💰 Access Requirements:</b>\n"
+        f"• Minimum Balance: $100 ({'✅ Met' if real_time_balance >= 100 else '❌ Not Met'})\n"
+        f"• Account Verified: {'✅ Yes' if is_verified else '❌ No'}\n\n"
     )
     
-    if user_info.get('vip_access_granted'):
-        services_text += "<b>🎉 All services are active and ready!</b>"
+    if has_vip_access:
+        services_text += f"<b>🎉 All services are active and ready!</b>\n\n"
+        if vip_services_list:
+            services_text += f"<b>Active Services:</b> {vip_services_list}\n"
     else:
-        services_text += "<b>⚠️ Complete verification and deposit $100+ to activate VIP services.</b>"
+        if not is_verified:
+            services_text += "<b>⚠️ Complete account verification first.</b>"
+        elif real_time_balance < 100:
+            needed = 100 - real_time_balance
+            services_text += f"<b>⚠️ Deposit ${needed:,.0f} more to activate VIP services.</b>"
+        else:
+            services_text += "<b>⚠️ VIP access pending - contact support.</b>"
     
-    keyboard = [
-        [
-            InlineKeyboardButton("📊 Request Service", callback_data="request_vip_both_services"),
-            InlineKeyboardButton("💳 Add Funds", callback_data="choose_deposit_amount")
-        ],
+    keyboard = []
+    
+    if has_vip_access:
+        keyboard.append([
+            InlineKeyboardButton("📊 Request Additional Service", callback_data="request_vip_both_services")
+        ])
+    else:
+        if is_verified and real_time_balance >= 100:
+            keyboard.append([
+                InlineKeyboardButton("🚀 Request VIP Access", callback_data="request_vip_both_services")
+            ])
+        elif real_time_balance < 100:
+            keyboard.append([
+                InlineKeyboardButton("💳 Add Funds", callback_data="choose_deposit_amount")
+            ])
+        else:
+            keyboard.append([
+                InlineKeyboardButton("🚀 Complete Setup", callback_data="complete_setup")
+            ])
+    
+    keyboard.extend([
         [
             InlineKeyboardButton("🔙 Back to Dashboard", callback_data="back_to_dashboard"),
             InlineKeyboardButton("💬 Get Help", callback_data="speak_advisor")
         ]
-    ]
+    ])
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.edit_message_text(services_text, parse_mode='HTML', reply_markup=reply_markup)
 
 async def back_to_dashboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Return user to their dashboard."""
+    """Return user to their dashboard with fresh balance data."""
     query = update.callback_query
     await query.answer()
     
@@ -636,6 +799,16 @@ async def back_to_dashboard_callback(update: Update, context: ContextTypes.DEFAU
     user_info = db.get_user(user_id)
     
     if user_info:
+        # Show loading state
+        await query.edit_message_text(
+            "📊 <b>Refreshing Dashboard...</b>\n\n"
+            "Fetching latest account data... ⏳",
+            parse_mode='HTML'
+        )
+        
+        # Small delay for UX
+        await asyncio.sleep(1)
+        
         await show_account_dashboard(update, context, user_info)
     else:
         await query.edit_message_text("❌ Unable to load dashboard. Please try /myaccount")
@@ -2837,7 +3010,7 @@ def main() -> None:
     manager_application.add_handler(CommandHandler("testaccount", test_account_command))
     manager_application.add_handler(CommandHandler("debugdb", debug_db_command))
     manager_application.add_handler(CommandHandler("resetuser", reset_user_registration_command))
-    
+    manager_application.add_handler(CommandHandler("debugvip", debug_vip_status_command))
 
     
     # MySQL commands
@@ -2865,7 +3038,7 @@ def main() -> None:
     manager_application.add_handler(CommandHandler("showtables", show_all_tables_command))
     manager_application.add_handler(CommandHandler("searchusertables", search_user_tables_command))
     manager_application.add_handler(CommandHandler("showdatabases", show_all_databases_command))
-    manager_application.add_handler(CommandHandler("checktable", check_table_for_high_accounts_command))
+    manager_application.add_handler(CommandHandler("check_table", check_table_for_high_accounts_command))
     manager_application.add_handler(CommandHandler("checkaccounts", check_mt5_accounts_table_command))
     manager_application.add_handler(CommandHandler("compareusers", compare_users_vs_accounts_command))
     manager_application.add_handler(CommandHandler("sampleaccounts", check_accounts_table_sample_command))
