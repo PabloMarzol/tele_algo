@@ -1763,7 +1763,7 @@ async def handle_zero_balance(update, context, user_id, account_info, target_amo
     
     await update.message.reply_text(zero_balance_message, parse_mode='HTML', reply_markup=reply_markup)
 
-# Additional helper callbacks
+# ----------- Additional helper callbacks ----------- #
 async def retry_account_number_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Allow user to try a different account number."""
     query = update.callback_query
@@ -1842,6 +1842,442 @@ async def show_deposit_instructions_enhanced(query, context, amount):
     
     await query.edit_message_text(message, parse_mode='HTML', reply_markup=reply_markup)
 
+async def have_account_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle 'Yes, I have an account' button."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    await query.edit_message_text(
+        "<b>✅ Perfect! Let's verify your account</b>\n\n"
+        
+        "<b>📊 Please enter your VortexFX MT5 account number:</b>\n\n"
+        
+        "<b>💡 Where to find it:</b>\n"
+        "• Check your VortexFX welcome email 📧\n"
+        "• Login to your VortexFX dashboard 🌐\n"
+        "• Look in your MT5 platform 📱\n\n"
+        
+        "<b>📝 Example:</b> 123456 (6-digit number)\n\n"
+        
+        "<b>⚠️ Important:</b> Must be a REAL/LIVE account (not demo)",
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❓ Can't find my account number?", callback_data="help_find_account")],
+            [InlineKeyboardButton("🔄 Actually, I need to create an account", callback_data="need_new_account")]
+        ])
+    )
+    
+    # Set state to expect account number
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "account_number"
+
+async def explain_vortexfx_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Explain what VortexFX is."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    explanation = (
+        "<b>🏦 About VortexFX</b>\n\n"
+        
+        "<b>What is VortexFX?</b>\n"
+        "VortexFX is our partner broker that provides MT5 trading accounts for our VIP services.\n\n"
+        
+        "<b>🎯 Why VortexFX?</b>\n"
+        "• ✅ Compatible with our trading systems\n"
+        "• ✅ Low spreads and fast execution\n"
+        "• ✅ 24/7 customer support\n\n"
+        
+        "<b>💰 Account Requirements:</b>\n"
+        "• Minimum deposit: $100\n"
+        "• Accessible via MT5 platform\n\n"
+        
+        "<b>🚀 Ready to proceed?</b>"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("✅ I have VortexFX account", callback_data="have_account"),
+            InlineKeyboardButton("🆕 Create VortexFX account", callback_data="need_new_account")
+        ],
+        [InlineKeyboardButton("🔙 Back to Service Selection", callback_data="back_to_services")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(explanation, parse_mode='HTML', reply_markup=reply_markup)
+
+async def help_find_account_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Help user find their account number."""
+    query = update.callback_query
+    await query.answer()
+    
+    help_text = (
+        "<b>🔍 How to Find Your VortexFX Account Number</b>\n\n"
+        
+        "<b>📧 Method 1: Check Your Email</b>\n"
+        "• Look for VortexFX welcome email\n"
+        "• Subject might be: 'Welcome to VortexFX' or 'Account Created'\n"
+        "• Your account number should be in the email\n\n"
+        
+        "<b>🌐 Method 2: VortexFX Dashboard</b>\n"
+        "• Visit: <a href='https://clients.vortexfx.com/en/dashboard'>VortexFX Portal</a>\n"
+        "• Login with your credentials\n"
+        "• Account number shown on dashboard\n\n"
+        
+        "<b>📱 Method 3: MT5 Platform</b>\n"
+        "• Open MetaTrader 5\n"
+        "• Your account number is your login ID\n"
+        "• Usually shown at top of platform\n\n"
+        
+        "<b>💡 Can't find it?</b>\n"
+        "No worries! Our support team can help you locate your account number.\n\n"
+        
+        "<b>What would you like to do?</b>"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("📝 I found it! Enter my number", callback_data="have_account")],
+        [InlineKeyboardButton("💬 Contact Support for Help", callback_data="speak_advisor")],
+        [InlineKeyboardButton("🆕 Create New Account Instead", callback_data="need_new_account")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(help_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def need_new_account_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Enhanced new account creation flow."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user_info = db.get_user(user_id)
+    user_name = user_info.get('first_name', 'there') if user_info else 'there'
+    
+    account_creation_guide = (
+        f"<b>🆕 Let's Create Your VortexFX Account!</b>\n\n"
+        f"Hi {user_name}! Creating a VortexFX account is quick, free, and takes just 2-3 minutes! 🎉\n\n"
+        
+        f"<b>📋 What You'll Need:</b>\n"
+        f"• Valid email address 📧\n"
+        f"• Phone number 📱\n"
+        f"• Government ID (for verification) 🆔\n\n"
+        
+        f"<b>🚀 Quick Setup Process:</b>\n"
+        f"1️⃣ Click the registration link below\n"
+        f"2️⃣ Fill in your basic details (2 mins)\n"
+        f"3️⃣ Verify your email ✅\n"
+        f"4️⃣ Upload ID for verification 📄\n"
+        f"5️⃣ Get your VortexFX account number 🎯\n"
+        f"6️⃣ Come back here and enter it! 🔄\n\n"
+        
+        f"<b>💰 Ready to start?</b>\n"
+        f"Click below to create your FREE VortexFX account:"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔗 Create FREE VortexFX Account", 
+                            url="https://clients.vortexfx.com/register?referral=0195a843-2b1c-7339-9088-57b56b4aa753")],
+        [InlineKeyboardButton("✅ I Created My Account", callback_data="account_created")],
+        [InlineKeyboardButton("❓ Need Help Creating Account?", callback_data="creation_help")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        account_creation_guide,
+        parse_mode='HTML',
+        reply_markup=reply_markup
+    )
+    
+    # Set state to creating new account
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "creating_new_account"
+
+async def creation_help_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Provide help for account creation."""
+    query = update.callback_query
+    await query.answer()
+    
+    help_text = (
+        "<b>🆘 Account Creation Help</b>\n\n"
+        
+        "<b>📋 Step-by-Step Guide:</b>\n\n"
+        
+        "<b>1️⃣ Registration Form:</b>\n"
+        "• Use your real name (must match ID)\n"
+        "• Provide valid email & phone\n"
+        "• Choose strong password\n\n"
+        
+        "<b>2️⃣ Email Verification:</b>\n"
+        "• Check your email (including spam folder)\n"
+        "• Click verification link\n"
+        "• This activates your account\n\n"
+        
+        "<b>3️⃣ Identity Verification:</b>\n"
+        "• Upload clear photo of government ID\n"
+        "• Ensure all text is readable\n"
+        "• This usually takes 5-30 minutes\n\n"
+        
+        "<b>4️⃣ Account Ready:</b>\n"
+        "• You'll receive account number via email\n"
+        "• Login to VortexFX dashboard to confirm\n"
+        "• Come back here with your account number\n\n"
+        
+        "<b>⚠️ Common Issues:</b>\n"
+        "• Check spam folder for emails\n"
+        "• Use clear, well-lit ID photos\n"
+        "• Ensure name matches exactly\n\n"
+        
+        "<b>🎯 Ready to try?</b>"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔗 Start Account Creation", 
+                            url="https://clients.vortexfx.com/register?referral=0195a843-2b1c-7339-9088-57b56b4aa753")],
+        [InlineKeyboardButton("💬 Speak to Human Support", callback_data="speak_advisor")],
+        [InlineKeyboardButton("🔙 Back to Previous Step", callback_data="need_new_account")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(help_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def account_created_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Enhanced account creation confirmation."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    await query.edit_message_text(
+        "<b>🎉 Awesome! Welcome to VortexFX!</b>\n\n"
+        
+        "<b>📧 Important: Check Your Email</b>\n"
+        "VortexFX should have sent you a welcome email with your account details.\n\n"
+        
+        "<b>🔢 Finding Your Account Number</b>\n"
+        "Your VortexFX account number should be:\n"
+        "• In the welcome email 📧\n"
+        "• On your VortexFX dashboard 🌐\n"
+        "• In your MT5 platform login details 📱\n\n"
+        
+        "<b>💡 Example:</b> If you see 'Login ID: 123456', then your account number is <code>123456</code>\n\n"
+        
+        "<b>⏰ Account Processing</b>\n"
+        "If you just created your account, it might take 1-5 minutes to appear in our system.\n\n"
+        
+        "<b>✍️ Ready to enter your account number?</b>",
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Yes, I have my account number", callback_data="have_account")],
+            [InlineKeyboardButton("⏰ Still waiting for email", callback_data="waiting_for_email")],
+            [InlineKeyboardButton("❓ Can't find account number", callback_data="help_find_account")]
+        ])
+    )
+
+async def waiting_for_email_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle users waiting for account creation email."""
+    query = update.callback_query
+    await query.answer()
+    
+    waiting_text = (
+        "<b>⏰ Waiting for VortexFX Email</b>\n\n"
+        
+        "<b>📧 Email should arrive within 1-10 minutes</b>\n\n"
+        
+        "<b>💡 While you wait:</b>\n"
+        "• Check your spam/junk folder 📁\n"
+        "• Add @vortexfx.com to your safe senders ✅\n"
+        "• Ensure your email was entered correctly 📧\n\n"
+        
+        "<b>🔍 Alternative Check:</b>\n"
+        "• Try logging into VortexFX dashboard\n"
+        "• Your account number will be displayed there\n\n"
+        
+        "<b>⚠️ Still no email after 15 minutes?</b>\n"
+        "Our support team can help you locate your account or resolve any issues.\n\n"
+        
+        "<b>What would you like to do?</b>"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("✅ Got it! Enter account number", callback_data="have_account")],
+        [InlineKeyboardButton("🌐 Check VortexFX Dashboard", 
+                            url="https://clients.vortexfx.com/en/dashboard")],
+        [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")],
+        [InlineKeyboardButton("🔄 Try Again Later", callback_data="try_later")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(waiting_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def try_later_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle users who want to complete verification later."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    # Store partial progress
+    db.add_user({
+        "user_id": user_id,
+        "registration_status": "pending_account_creation",
+        "account_creation_started": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    
+    later_text = (
+        "<b>⏰ No Problem! Complete This Later</b>\n\n"
+        
+        "<b>✅ Your progress has been saved:</b>\n"
+        "• Risk profile set ✅\n"
+        "• Deposit amount recorded ✅\n"
+        "• Service preferences saved ✅\n\n"
+        
+        "<b>🔄 To continue later:</b>\n"
+        "• Use <b>/myaccount</b> to return to your dashboard\n"
+        "• Click 'Complete Setup' when ready\n"
+        "• Your information will be preserved\n\n"
+        
+        "<b>📧 Don't forget to:</b>\n"
+        "• Check for VortexFX welcome email\n"
+        "• Complete identity verification\n"
+        "• Note down your account number\n\n"
+        
+        "<b>💡 Your Personal Dashboard:</b>\n"
+        "Use <b>/myaccount</b> anytime to check your status and continue where you left off! 📊"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("📊 Open My Dashboard", callback_data="back_to_dashboard")],
+        [InlineKeyboardButton("🚀 Actually, let's continue now", callback_data="have_account")],
+        [InlineKeyboardButton("💬 Speak to Advisor", callback_data="speak_advisor")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(later_text, parse_mode='HTML', reply_markup=reply_markup)
+
+async def complete_setup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the 'Complete Setup' button - FIXED!"""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    user_info = db.get_user(user_id)
+    
+    if not user_info:
+        await query.edit_message_text(
+            "❌ User profile not found. Please start registration with /start"
+        )
+        return
+    
+    # Check what still needs to be completed
+    is_verified = user_info.get('is_verified', False)
+    trading_account = user_info.get('trading_account')
+    risk_appetite = user_info.get('risk_appetite')
+    deposit_amount = user_info.get('deposit_amount')
+    trading_interest = user_info.get('trading_interest')
+    
+    # Determine what needs completion
+    if not risk_appetite:
+        # Missing risk profile
+        await query.edit_message_text(
+            "<b>🎯 Complete Your Risk Profile</b>\n\n"
+            "Let's finish setting up your account! First, what risk profile would you like?",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("🛡️ Conservative", callback_data="risk_low"),
+                    InlineKeyboardButton("⚖️ Balanced", callback_data="risk_medium"),
+                    InlineKeyboardButton("🚀 Aggressive", callback_data="risk_high")
+                ]
+            ])
+        )
+        context.bot_data["user_states"][user_id] = "risk_profile"
+        
+    elif not deposit_amount:
+        # Missing deposit amount
+        await query.edit_message_text(
+            "<b>💰 Set Your Target Deposit</b>\n\n"
+            "How much capital are you planning to fund your account with?\n\n"
+            "<b>Example:</b> 1000",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+            ])
+        )
+        context.bot_data["user_states"][user_id] = "deposit_amount"
+        
+    elif not trading_interest:
+        # Missing trading interest
+        await query.edit_message_text(
+            "<b>🎯 Choose Your VFX Services</b>\n\n"
+            "Which VFX services are you most interested in?",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("🔔 VFX Signals", callback_data="interest_signals"),
+                    InlineKeyboardButton("🤖 Automated Strategy", callback_data="interest_strategy")
+                ],
+                [InlineKeyboardButton("✨ Both Services", callback_data="interest_all")]
+            ])
+        )
+        context.bot_data["user_states"][user_id] = "service_selection"
+        
+    elif not trading_account:
+        # Missing trading account - show button options
+        await query.edit_message_text(
+            "<b>📊 Account Verification</b>\n\n"
+            "Do you have a VortexFX MT5 trading account?",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("✅ Yes, I have an account", callback_data="have_account"),
+                    InlineKeyboardButton("❌ No, I need to create one", callback_data="need_new_account")
+                ]
+            ])
+        )
+        context.bot_data["user_states"][user_id] = "account_verification_choice"
+        
+    elif not is_verified:
+        # Account provided but not verified
+        await query.edit_message_text(
+            f"<b>⚠️ Account Verification Pending</b>\n\n"
+            f"<b>Account:</b> {trading_account}\n"
+            f"<b>Status:</b> Not yet verified\n\n"
+            f"Our team will verify your account shortly. You can also contact support for assistance.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Check Balance Now", callback_data="check_balance_now")],
+                [InlineKeyboardButton("💬 Contact Support", callback_data="speak_advisor")],
+                [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")]
+            ])
+        )
+        
+    else:
+        # Everything completed - check VIP status
+        vip_access = user_info.get('vip_access_granted', False)
+        if vip_access:
+            await query.edit_message_text(
+                "<b>🎉 Setup Complete!</b>\n\n"
+                "Your account is fully set up and you have VIP access!\n\n"
+                "Use <b>/myaccount</b> to access your dashboard.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📊 Open Dashboard", callback_data="back_to_dashboard")]
+                ])
+            )
+        else:
+            await query.edit_message_text(
+                "<b>✅ Almost Complete!</b>\n\n"
+                "Your profile is set up. Let's check your account balance to activate VIP services.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔄 Check Balance & VIP Status", callback_data="check_balance_now")],
+                    [InlineKeyboardButton("📊 My Dashboard", callback_data="back_to_dashboard")]
+                ])
+            )
+
 
 # -------------------------------------- HELPER Flow Functions ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -1919,7 +2355,7 @@ async def handle_risk_selection(query, context, user_id, callback_data):
             print(f"Error notifying admin {admin_id}: {e}")
 
 async def handle_interest_selection(query, context, user_id, callback_data):
-    """Handle trading interest/service selection with progress."""
+    """Handle trading interest/service selection with enhanced account flow."""
     interest = callback_data.replace("interest_", "")
     
     # Store in database
@@ -1936,20 +2372,29 @@ async def handle_interest_selection(query, context, user_id, callback_data):
         "all": "Both VFX Services"
     }.get(interest, interest.capitalize())
     
+ 
     await query.edit_message_text(
         f"<b>✅ Step 3 Completed: Service Selection</b>\n\n"
         f"<b>Selected:</b> {interest_display} ✅\n\n"
         f"<b>Step 4 of 4: Account Verification</b>\n\n"
         f"<b>📊 Final Step!</b>\n\n"
-        f"Please enter your <b>Vortex-FX MT5 account number</b> for verification:\n\n",
+        f"Do you already have a <b>Vortex-FX MT5 trading account</b>?\n\n"
+        f"<b>💡 Note:</b> This must be a REAL/LIVE account (not demo)",
         parse_mode='HTML',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")]
+            [
+                InlineKeyboardButton("✅ Yes, I have an account", callback_data="have_account"),
+                InlineKeyboardButton("❌ No, I need to create one", callback_data="need_new_account")
+            ],
+            [
+                InlineKeyboardButton("❓ What's VortexFX?", callback_data="explain_vortexfx"),
+                InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")
+            ]
         ])
     )
     
     # Update state
-    context.bot_data["user_states"][user_id] = "account_number"
+    context.bot_data["user_states"][user_id] = "account_verification_choice"
     
     # Notify admins
     for admin_id in ADMIN_USER_ID:

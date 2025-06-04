@@ -1177,9 +1177,9 @@ class MT5SignalExecutor:
             "BTCUSD": {"pip_multiplier": 100.0, "min_profit_pips": 5000, "trailing_pips": 10000},  # Bitcoin needs much wider stops
             "US30": {"pip_multiplier": 5.0, "min_profit_pips": 1100, "trailing_pips": 550},  # Dow Jones
             "US500": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # S&P 500
-            "NAS100": {"pip_multiplier": 5.0, "min_profit_pips": 1150, "trailing_pips": 850},  # Nasdaq
-            "UK100": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # FTSE 100
-            "FRA40": {"pip_multiplier": 5.0, "min_profit_pips": 950, "trailing_pips": 550},  # CAC 40
+            "NAS100": {"pip_multiplier": 5.0, "min_profit_pips": 1150, "trailing_pips": 1050},  # Nasdaq
+            "UK100": {"pip_multiplier": 5.0, "min_profit_pips": 1150, "trailing_pips": 950},  # FTSE 100
+            "FRA40": {"pip_multiplier": 5.0, "min_profit_pips": 1150, "trailing_pips": 950},  # CAC 40
             "GER40": {"pip_multiplier": 5.0, "min_profit_pips": 1100, "trailing_pips": 850},  # DAX
             "default": {"pip_multiplier": 1.0, "min_profit_pips": 5, "trailing_pips": 3}  # Default for forex pairs
         }

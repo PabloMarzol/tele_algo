@@ -2975,6 +2975,20 @@ def main() -> None:
     manager_application.add_handler(CallbackQueryHandler(update_trading_interest_callback, pattern=r"^update_interest_(signals|strategy|all)$"))
     manager_application.add_handler(CallbackQueryHandler(custom_deposit_edit_callback, pattern=r"^custom_deposit_edit$"))
     
+    # Account verification choice handlers
+    manager_application.add_handler(CallbackQueryHandler(have_account_callback, pattern=r"^have_account$"))
+    manager_application.add_handler(CallbackQueryHandler(explain_vortexfx_callback, pattern=r"^explain_vortexfx$"))
+    manager_application.add_handler(CallbackQueryHandler(help_find_account_callback, pattern=r"^help_find_account$"))
+    
+    # Account creation flow handlers  
+    manager_application.add_handler(CallbackQueryHandler(creation_help_callback, pattern=r"^creation_help$"))
+    manager_application.add_handler(CallbackQueryHandler(waiting_for_email_callback, pattern=r"^waiting_for_email$"))
+    manager_application.add_handler(CallbackQueryHandler(try_later_callback, pattern=r"^try_later$"))
+    manager_application.add_handler(CallbackQueryHandler(complete_setup_callback, pattern=r"^complete_setup$"))
+    
+    
+    
+    
     # User registration flow
     manager_application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE,
