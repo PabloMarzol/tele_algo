@@ -2278,7 +2278,55 @@ async def complete_setup_callback(update: Update, context: ContextTypes.DEFAULT_
                 ])
             )
 
-
+async def back_to_services_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle going back to service selection."""
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    # Show service selection again
+    await query.edit_message_text(
+        "<b>🎯 Choose Your VFX Services</b>\n\n"
+        
+        "<b>📢 Which service interests you most?</b>\n\n"
+        
+        "<b>🔔 VFX Signals:</b>\n"
+        "• Live trading alerts sent to your phone 📱\n"
+        "• Entry points, stop losses, take profits\n"
+        "• Professional market analysis\n"
+        "• Perfect for active traders\n\n"
+        
+        "<b>🤖 VFX Automated Strategy:</b>\n"
+        "• Fully automated trading on your account\n"
+        "• Our algorithms trade for you 24/7\n"
+        "• No manual work required\n"
+        "• Perfect for passive income\n\n"
+        
+        "<b>✨ Both Services (Recommended):</b>\n"
+        "• Get the best of both worlds\n"
+        "• Learn from signals while earning passively\n"
+        "• Maximum profit potential\n\n"
+        
+        "<b>What's your choice?</b>",
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("🔔 VFX Signals", callback_data="interest_signals"),
+                InlineKeyboardButton("🤖 Automated Strategy", callback_data="interest_strategy")
+            ],
+            [
+                InlineKeyboardButton("✨ Both Services", callback_data="interest_all")
+            ],
+            [
+                InlineKeyboardButton("🔄 Restart Process", callback_data="restart_process")
+            ]
+        ])
+    )
+    
+    # Reset state to service selection
+    context.bot_data.setdefault("user_states", {})
+    context.bot_data["user_states"][user_id] = "service_selection"
 # -------------------------------------- HELPER Flow Functions ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
 
