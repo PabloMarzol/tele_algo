@@ -1,7 +1,7 @@
 {
   "bot": {
     "token": "7980849363:AAFq_OjZL7i_HzZGz0PVxzFwjO4ng_ufL8E",
-    "channel_id": "-1002636028382",
+    "channel_id": "-1002586937373",
     "admin_id": "7823596188",
     "admin_username": "VFX_FX2"
   },
@@ -34,9 +34,9 @@
   "giveaway_configs": {
     "daily": {
       "prize": 250,
-      "cooldown_days": 30,
+      "cooldown_days": 0,
       "reset_frequency": "daily",
-      "min_balance": 100,
+      "min_balance": 50,
       "participation_window": {
         "days": "mon-fri",
         "start_hour": 1,
@@ -46,34 +46,34 @@
       },
       "draw_schedule": {
         "days": "mon-fri",
-        "hour": 18,
-        "minute": 40
+        "hour": 16,
+        "minute": 50
       }
     },
     "weekly": {
       "prize": 500,
-      "cooldown_days": 60,
+      "cooldown_days": 0,
       "reset_frequency": "weekly",
-      "min_balance": 100,
+      "min_balance": 150,
       "participation_window": {
         "start_day": "monday",
         "start_hour": 9,
         "start_minute": 0,
         "end_day": "friday",
-        "end_hour": 17,
-        "end_minute": 0
+        "end_hour": 16,
+        "end_minute": 55
       },
       "draw_schedule": {
         "day": "friday",
-        "hour": 18,
-        "minute": 43
+        "hour": 16,
+        "minute": 53
       }
     },
     "monthly": {
-      "prize": 1000,
-      "cooldown_days": 90,
+      "prize": 2500,
+      "cooldown_days": 0,
       "reset_frequency": "monthly",
-      "min_balance": 100,
+      "min_balance": 300,
       "participation_window": {
         "start_day": 1,
         "end_day": "last_friday",
@@ -82,13 +82,13 @@
       },
       "draw_schedule": {
         "day": "last_friday",
-        "hour": 18,
-        "minute": 45
+        "hour": 16,
+        "minute": 55
       }
     }
   },
   "admin_notifications": {
-    "admin_channel_id": "-1001234567890",
+    "admin_channel_id": "-1002518812559",
     "individual_admin_notifications": true,
     "channel_notifications": true,
     "notification_types": {

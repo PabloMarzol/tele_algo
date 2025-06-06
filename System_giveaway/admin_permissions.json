@@ -17,7 +17,7 @@
         "channel_notifications": true
       }
     },
-    "1127393419": {
+    "7823596188": {
       "name": "Administrator",
       "permission_group": "FULL_ADMIN",
       "active": true,
@@ -127,7 +127,7 @@
     }
   },
   "notification_config": {
-    "admin_channel_id": "-4283031860",
+    "admin_channel_id": "",
     "notification_types": {
       "winner_notifications": true,
       "payment_reminders": true,

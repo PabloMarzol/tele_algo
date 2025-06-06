@@ -27,6 +27,9 @@ from admin_permissions import (
     require_draw_permission_with_time_check
 )
 
+# from ..mySQL.mysql_manager import MySQLManager, get_mysql_connection
+
+
 class MultiGiveawayIntegration:
     """🆕 NEW: Multi-type giveaway integration system"""
     
@@ -216,15 +219,33 @@ class MultiGiveawayIntegration:
             self.app.add_handler(participate_handler)
         print("✅ Participation handlers registered (Priority 2)")
         
+        # nuevo prueba =================================================
+        # ===== 🆕 PRIORITY 4: ADMIN CHANNEL PAYMENT CONFIRMATIONS =====
+        # Solo capturar callbacks de confirmación directa, NO los del panel
+        # payment_confirmation_handler = CallbackQueryHandler(
+        #     self._handle_payment_from_admin_channel,
+        #     pattern="^confirm_payment_(daily|weekly|monthly)_[^_]+$"  # 🎯 MÁS ESPECÍFICO
+        # )
+        # self.app.add_handler(payment_confirmation_handler)
+        # print("✅ Payment confirmation handler registered (Priority 4)")
         
+        # ===== PRIORITY 5: PANEL CALLBACKS (INCLUYE PENDING) =====
         panel_callbacks_handler = CallbackQueryHandler(
             self._handle_admin_panel_callbacks,
-            pattern="^(panel_|analytics_|maintenance_|user_details_|user_full_analysis_|investigate_account_|no_action|type_selector_|unified_|view_only_)"
-            # pattern="^(panel_(?!refresh$)|analytics_(?!cross_type$)|maintenance_(?!health$)|automation_(?!control$)|user_details_|user_full_analysis_|investigate_account_|unified_(?!all_pending$)|type_selector_(?!main$)|view_only_(?!refresh$))"
-            # pattern="^(panel_|type_selector|maintenance_|automation_|unified_|no_action).*$"
+            # 🔄 FIXED: Restaurar patrón original SIN exclusiones
+            pattern="^(panel_|analytics_|maintenance_|user_details_|user_full_analysis_|investigate_account_|no_action|type_selector_|unified_|view_only_|confirm_payment_)"
         )
         self.app.add_handler(panel_callbacks_handler)
-        print("✅ Panel callbacks handler registered (Priority 3)")
+        # print("✅ Panel callbacks handler registered (Priority 3)")
+        #  nuevo prueba =================================================
+        
+        # panel_callbacks_handler = CallbackQueryHandler(
+        #     self._handle_admin_panel_callbacks,
+        #     # pattern="^(panel_|analytics_|maintenance_|user_details_|user_full_analysis_|investigate_account_|no_action|type_selector_|unified_|view_only_)"
+        #     pattern="^(panel_|analytics_|maintenance_|user_details_|user_full_analysis_|investigate_account_|no_action|type_selector_|unified_|view_only_)(?!confirm_payment)"
+        # )
+        # self.app.add_handler(panel_callbacks_handler)
+        # print("✅ Panel callbacks handler registered (Priority 3)")
         
         mt5_handler = MessageHandler(
                 filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND & filters.Regex(r'^\d+$'),
@@ -965,14 +986,14 @@ class MultiGiveawayIntegration:
             main_admin_message = f"""🤖 <b>AUTOMATIC {giveaway_type.upper()} WINNER - MAIN ADMIN NOTIFICATION</b>
 
     🎉 <b>Winner Selected:</b> {first_name} ({winner_display})
-    📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+    📊 <b>VFX MT5 Account:</b> <code>{winner['mt5_account']}</code>
     💰 <b>Prize:</b> ${prize} USD
     🎯 <b>Giveaway Type:</b> {giveaway_type.upper()}
     👤 <b>Executed by:</b> {executed_by}
     📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
     ⚠️ <b>PAYMENT REQUIRED:</b>
-    💸 Transfer ${prize} USD to MT5 account: <code>{winner['mt5_account']}</code>
+    💸 Transfer ${prize} USD to VFX MT5 account: <code>{winner['mt5_account']}</code>
 
     💡 <b>Confirmation Commands:</b>
     - <code>/admin_confirm_{giveaway_type} {username if username else winner['telegram_id']}</code>
@@ -984,7 +1005,7 @@ class MultiGiveawayIntegration:
     └─ Other Admins: ❌ No individual spam
 
     🎯 <b>Next Steps:</b>
-    1️⃣ Process payment to MT5 account
+    1️⃣ Process payment to VFX MT5 account
     2️⃣ Confirm using command or admin panel
     3️⃣ Winner will be announced automatically"""
 
@@ -1096,7 +1117,7 @@ class MultiGiveawayIntegration:
 
 🎯 <b>Giveaway:</b> {giveaway_type.upper()} (${prize} USD)
 🎉 <b>Winner:</b> {winner.get('first_name', 'N/A')} ({username_display})
-📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+📊 <b> VFX MT5 Account:</b> <code>{winner['mt5_account']}</code>
 📅 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 ⚠️ <b>PAYMENT REQUIRED</b> Pending manual transfer
@@ -1536,11 +1557,8 @@ class MultiGiveawayIntegration:
                     if remaining_attempts > 0:
                         invalid_message = f"""❌ <b>Invalid input</b>
 
-Please send only your MT5 account number.
+Please send only your Vortex-FX MT5 account number.
 
-💡 <b>Valid examples:</b>
-• 12345678
-• 87654321
 
 ❌ <b>Not valid:</b>
 • Text (like "{update.message.text[:10]}...")
@@ -1635,7 +1653,7 @@ Please send only your MT5 account number.
                 f"<b>Format:</b> <code>{config['command']} &lt;username_or_telegram_id&gt;</code>\n\n"
                 f"<b>Examples:</b>\n"
                 f"• <code>{config['command']} @username</code>\n"
-                f"• <code>{config['command']} 123456789</code>\n\n"
+                f"• <code>{config['command']} 123456</code>\n\n"
                 f"💡 Use <code>/admin_pending_{giveaway_type}</code> to see pending {giveaway_type} winners",
                 parse_mode='HTML'
             )
@@ -1773,7 +1791,7 @@ Please send only your MT5 account number.
                     command_identifier = winner['telegram_id']
                 
                 message += f"""{i}. <b>{first_name}</b> ({display_name_winner})
-   📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+   📊 <b>VFX MT5 Account:</b> <code>{winner['mt5_account']}</code>
    💰 <b>Prize:</b> ${winner['prize']} USD
    📅 <b>Selected:</b> {winner['selected_time']}
    💡 <b>Command:</b> <code>/admin_confirm_{giveaway_type} {command_identifier}</code>
@@ -1781,7 +1799,7 @@ Please send only your MT5 account number.
 """
             
             message += f"""💡 <b>Payment Instructions:</b>
-1️⃣ Transfer the prize amount to the corresponding MT5 account
+1️⃣ Transfer the prize amount to the corresponding VFX MT5 account
 2️⃣ Use the confirmation command shown above for each winner
 3️⃣ Bot will automatically announce the winner and send congratulations
 
@@ -2060,7 +2078,7 @@ Please send only your MT5 account number.
                     "❌ <b>Incorrect usage</b>\n\n"
                     "<b>Format:</b> <code>/admin_confirm_payment &lt;telegram_id_or_username&gt;</code>\n\n"
                     "<b>Examples:</b>\n"
-                    "• <code>/admin_confirm_payment 123456789</code>\n"
+                    "• <code>/admin_confirm_payment 123456</code>\n"
                     "• <code>/admin_confirm_payment @username</code>\n\n"
                     "💡 Use <code>/admin_pending_winners</code> to see pending winners",
                     parse_mode='HTML'
@@ -2293,6 +2311,138 @@ Please send only your MT5 account number.
     #     except Exception as e:
     #         logging.error(f"Error in admin panel: {e}")
     #         await update.message.reply_text("❌ Error loading admin panel")
+
+    # prueba=============================================================================
+    async def _handle_payment_from_admin_channel(self, update, context):
+        """🆕 NEW: Handle payment confirmations from admin channel notifications"""
+        try:
+            query = update.callback_query
+            await query.answer()
+            
+            user_id = query.from_user.id
+            callback_data = query.data
+            
+            print(f"💰 DEBUG: Admin channel payment callback: {callback_data} from user {user_id}")
+            
+            # Verify admin permissions using permission manager
+            permission_manager = self._get_permission_manager_from_callback()
+            if not permission_manager:
+                await query.edit_message_text("❌ Permission system not available")
+                return
+            
+            # Check if user has payment confirmation permissions
+            has_payment_permission = any([
+                permission_manager.has_permission(user_id, SystemAction.CONFIRM_DAILY_PAYMENTS),
+                permission_manager.has_permission(user_id, SystemAction.CONFIRM_WEEKLY_PAYMENTS),
+                permission_manager.has_permission(user_id, SystemAction.CONFIRM_MONTHLY_PAYMENTS),
+                permission_manager.has_permission(user_id, SystemAction.MANAGE_ADMINS)
+            ])
+            
+            if not has_payment_permission:
+                admin_info = permission_manager.get_admin_info(user_id)
+                await query.edit_message_text(
+                    f"❌ <b>Payment Confirmation Access Denied</b>\n\n"
+                    f"Required: PAYMENT_SPECIALIST+ permissions\n"
+                    f"Your level: {admin_info.get('permission_group', 'None') if admin_info else 'Not registered'}",
+                    parse_mode='HTML'
+                )
+                return
+            
+            # Parse callback: confirm_payment_<type>_<identifier>
+            parts = callback_data.split("_", 3)
+            if len(parts) < 4:
+                await query.edit_message_text("❌ Invalid payment callback format")
+                return
+            
+            giveaway_type = parts[2]  # daily, weekly, monthly
+            winner_identifier = parts[3]  # username or telegram_id
+            
+            # Validate giveaway type
+            if giveaway_type not in ['daily', 'weekly', 'monthly']:
+                await query.edit_message_text("❌ Invalid giveaway type")
+                return
+            
+            # Get giveaway system
+            giveaway_system = self.get_giveaway_system(giveaway_type)
+            if not giveaway_system:
+                await query.edit_message_text(f"❌ {giveaway_type.title()} system not available")
+                return
+            
+            # Find winner using helper function from ga_integration
+            winner_telegram_id = await self._find_winner_by_identifier_admin_channel(
+                winner_identifier, giveaway_type, giveaway_system
+            )
+            
+            if not winner_telegram_id:
+                await query.edit_message_text(
+                    f"❌ <b>{giveaway_type.title()} winner not found</b>\n\n"
+                    f"Winner '{winner_identifier}' not found in pending {giveaway_type} winners.\n\n"
+                    f"💡 The winner may have been processed already.",
+                    parse_mode='HTML'
+                )
+                return
+            
+            # Confirm payment using existing system
+            success, message = await giveaway_system.confirm_payment_and_announce(
+                winner_telegram_id, user_id, giveaway_type
+            )
+            
+            if success:
+                prize = giveaway_system.get_prize_amount(giveaway_type)
+                admin_info = permission_manager.get_admin_info(user_id)
+                admin_name = admin_info.get('name', 'Admin') if admin_info else 'Unknown'
+                
+                await query.edit_message_text(
+                    f"✅ <b>{giveaway_type.title()} Payment Confirmed Successfully</b>\n\n"
+                    f"🎉 Winner: {winner_identifier}\n"
+                    f"💰 Prize: ${prize} USD\n"
+                    f"👤 Confirmed by: {admin_name}\n"
+                    f"📅 Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                    f"✅ <b>Actions completed:</b>\n"
+                    f"├─ Winner announced in channel\n"
+                    f"├─ Private congratulation sent\n"
+                    f"├─ Payment record updated\n"
+                    f"└─ System ready for next {giveaway_type} draw",
+                    parse_mode='HTML'
+                )
+            else:
+                await query.edit_message_text(
+                    f"❌ <b>Error confirming {giveaway_type} payment</b>\n\n"
+                    f"<b>Reason:</b> {message}",
+                    parse_mode='HTML'
+                )
+            
+        except Exception as e:
+            logging.error(f"Error in admin channel payment confirmation: {e}")
+            await query.edit_message_text("❌ Error processing payment confirmation")
+
+    async def _find_winner_by_identifier_admin_channel(self, winner_identifier, giveaway_type, giveaway_system):
+        """🆕 NEW: Find winner by identifier for admin channel confirmations"""
+        try:
+            pending_winners = giveaway_system.get_pending_winners(giveaway_type)
+            
+            for winner in pending_winners:
+                winner_username = winner.get('username', '').strip()
+                winner_telegram_id = winner.get('telegram_id', '').strip()
+                winner_first_name = winner.get('first_name', '').strip()
+                
+                # Search by different criteria
+                if (
+                    winner_identifier == winner_telegram_id or
+                    winner_identifier.lower() == f"@{winner_username}".lower() or
+                    winner_identifier.lower() == winner_username.lower() or
+                    (not winner_username and winner_identifier.lower() == winner_first_name.lower())
+                ):
+                    return winner_telegram_id
+            
+            return None
+            
+        except Exception as e:
+            logging.error(f"Error finding {giveaway_type} winner by identifier: {e}")
+            return None
+
+    #  prueba ========================================================================
+
 
     async def admin_panel(self, update, context):
         """🔄 REFACTORED: Panel administrativo usando función base compartida"""
@@ -2731,14 +2881,14 @@ Please send only your MT5 account number.
                 response_message = f"""✅ <b>{giveaway_type.title()} draw executed successfully</b>
 
 🎯 <b>Winner selected:</b> {winner_display}
-📊 <b>MT5 Account:</b> {winner['mt5_account']}
+📊 <b>VFX MT5 Account:</b> {winner['mt5_account']}
 💰 <b>Prize:</b> ${prize} USD
 🎯 <b>Type:</b> {giveaway_type.upper()}
 ⏳ <b>Pending winners:</b> {pending_count}
 
 📬 <b>Next steps:</b>
 1️⃣ Check your private chat for complete details
-2️⃣ Transfer to MT5 account: {winner['mt5_account']}
+2️⃣ Transfer to VFX MT5 account: {winner['mt5_account']}
 3️⃣ Use `/admin_confirm_payment_{giveaway_type} {command_reference}` to confirm
 
 💡 Use `/admin_pending_{giveaway_type}` for complete details"""
@@ -2846,7 +2996,7 @@ Please send only your MT5 account number.
             message = f"""📋 <b>{giveaway_type.upper()} PENDING WINNERS</b>
 
 {pending_list}💡 <b>Instructions:</b>
-1️⃣ Transfer to the MT5 account
+1️⃣ Transfer to the VFX MT5 account
 2️⃣ Press the corresponding confirmation button
 3️⃣ Bot will announce the winner automatically
 
@@ -3560,31 +3710,31 @@ Please send only your MT5 account number.
             logging.error(f"Error in {giveaway_type} payment confirmation callback: {e}")
             await query.edit_message_text("❌ Error processing confirmation")
 
-    # async def _find_winner_by_identifier(self, identifier, giveaway_type):
-    #     """🔄 MODIFIED: Find winner by identifier for specific type"""
-    #     try:
-    #         # Get pending winners for specific type
-    #         giveaway_system = self.giveaway_systems[giveaway_type]
-    #         pending_winners = giveaway_system.get_pending_winners(giveaway_type)
+    async def _find_winner_by_identifier(self, identifier, giveaway_type):
+        """🔄 MODIFIED: Find winner by identifier for specific type"""
+        try:
+            # Get pending winners for specific type
+            giveaway_system = self.giveaway_systems[giveaway_type]
+            pending_winners = giveaway_system.get_pending_winners(giveaway_type)
             
-    #         for winner in pending_winners:
-    #             winner_username = winner.get('username', '').strip()
-    #             winner_telegram_id = winner.get('telegram_id', '').strip()
-    #             winner_first_name = winner.get('first_name', '').strip()
+            for winner in pending_winners:
+                winner_username = winner.get('username', '').strip()
+                winner_telegram_id = winner.get('telegram_id', '').strip()
+                winner_first_name = winner.get('first_name', '').strip()
                 
-    #             # Search by different criteria
-    #             if (
-    #                 identifier == winner_telegram_id or
-    #                 identifier.lower() == winner_username.lower() or
-    #                 (not winner_username and identifier.lower() == winner_first_name.lower())
-    #             ):
-    #                 return winner_telegram_id
+                # Search by different criteria
+                if (
+                    identifier == winner_telegram_id or
+                    identifier.lower() == winner_username.lower() or
+                    (not winner_username and identifier.lower() == winner_first_name.lower())
+                ):
+                    return winner_telegram_id
             
-    #         return None
+            return None
             
-    #     except Exception as e:
-    #         logging.error(f"Error finding {giveaway_type} winner by identifier: {e}")
-    #         return None
+        except Exception as e:
+            logging.error(f"Error finding {giveaway_type} winner by identifier: {e}")
+            return None
 
     async def _show_view_only_health(self, query):
         """🏥 Sistema de salud básico para VIEW_ONLY"""
@@ -3999,6 +4149,13 @@ Please send only your MT5 account number.
                 await self._handle_automation_callbacks(query, context)
                 # pri:nt(f"🔄 DEBUG: Automation callback {callback_data} - should be handled by automation handler")
                 return
+
+            # nuevo test ====================================
+            # 🆕 ADD: Routing para payment confirmations que vienen del panel
+            if callback_data.startswith("confirm_payment_"):
+                await self._handle_payment_from_admin_channel(update, context)
+                return
+            # nuevo test ======================================
             
             # ===== 🆕 PANEL PRINCIPAL CALLBACKS (LOS QUE FALTABAN) =====
             if callback_data == "panel_pending_winners":
@@ -4077,6 +4234,7 @@ Please send only your MT5 account number.
                         await self._show_account_report_for_type_inline(query, giveaway_type)
                         handled = True
                         break
+                    
                 
                 
                 if handled:
@@ -4280,7 +4438,7 @@ Please send only your MT5 account number.
                 message = f"""✅ <b>{giveaway_type.title()} draw executed</b>
 
 🎯 <b>Winner selected:</b> {winner_display}
-📊 <b>MT5 Account:</b> {winner['mt5_account']}
+📊 <b>VFX MT5 Account:</b> {winner['mt5_account']}
 💰 <b>Prize:</b> ${prize} USD
 ⏳ <b>Status:</b> Pending payment confirmation
 
@@ -4353,7 +4511,7 @@ Please send only your MT5 account number.
             message = f"""📋 <b>{giveaway_type.upper()} PENDING WINNERS</b>
 
 {pending_list}💡 <b>Instructions:</b>
-1️⃣ Transfer to MT5 account
+1️⃣ Transfer to VFX MT5 account
 2️⃣ Press confirmation button
 3️⃣ Bot will announce winner automatically
 
@@ -4933,7 +5091,7 @@ Please send only your MT5 account number.
             # Check parameters
             if not context.args or len(context.args) != 1:
                 await update.message.reply_text(
-                    "❌ <b>Incorrect usage</b>\n\n<b>Format:</b> <code>/admin_user_stats &lt;telegram_id&gt;</code>\n\n<b>Example:</b> <code>/admin_user_stats 123456789</code>",
+                    "❌ <b>Incorrect usage</b>\n\n<b>Format:</b> <code>/admin_user_stats &lt;telegram_id&gt;</code>\n\n<b>Example:</b> <code>/admin_user_stats 123456</code>",
                     parse_mode='HTML'
                 )
                 return
@@ -6858,7 +7016,7 @@ Please send only your MT5 account number.
 
     📈 <b>ENGAGEMENT INSIGHTS:</b>
     ├─ 🎯 Most Exclusive Audience: <b>{most_exclusive.title()}</b>
-    ├─ 🔄 Highest Cross-Participation: <b>{most_shared.Title()}</b>
+    ├─ 🔄 Highest Cross-Participation: <b>{most_shared.title()}</b>
     ├─ 📊 Average User Engagement: <b>{(total_shared + total_exclusive) / max(estimated_unique_users, 1):.1f}</b> giveaways per user
     └─ 🎪 Community Loyalty: <b>{(total_shared/2/max(estimated_unique_users,1)*100):.1f}%</b> participate in multiple types
 
@@ -7113,77 +7271,7 @@ Please send only your MT5 account number.
             await query.edit_message_text("❌ Error loading analytics feature")
 
 
-# ================== BACKWARD COMPATIBILITY CLASS ======================================================
-# ================== BACKWARD COMPATIBILITY CLASS ======================================================
 
-class GiveawayIntegration:
-    """🔄 MODIFIED: Backward compatibility wrapper for single-type usage"""
-    
-    def __init__(self, application, mt5_api, channel_id, admin_id, admin_username, giveaway_type='daily'):
-        """
-        Backward compatibility constructor
-        Creates a multi-giveaway integration but exposes single-type interface
-        """
-        # Create temporary config for backward compatibility
-        temp_config = {
-            'bot': {
-                'channel_id': channel_id,
-                'admin_id': admin_id,
-                'admin_username': admin_username
-            },
-            'giveaway_configs': {
-                'daily': {
-                    'prize': 250,
-                    'cooldown_days': 30,
-                    'reset_frequency': 'daily',
-                    'min_balance': 100,
-                    'participation_window': {
-                        'days': 'mon-fri',
-                        'start_hour': 1,
-                        'start_minute': 0,
-                        'end_hour': 16,
-                        'end_minute': 50
-                    },
-                    'draw_schedule': {
-                        'days': 'mon-fri',
-                        'hour': 17,
-                        'minute': 0
-                    }
-                }
-            }
-        }
-        
-        # Save temp config
-        import json
-        with open('temp_config.json', 'w') as f:
-            json.dump(temp_config, f)
-        
-        # Initialize multi-giveaway system
-        self.multi_integration = MultiGiveawayIntegration(application, mt5_api, 'temp_config.json')
-        self.giveaway_type = giveaway_type
-        self.giveaway_system = self.multi_integration.get_giveaway_system(giveaway_type)
-        
-        # Expose direct methods for backward compatibility
-        self.app = application
-        self.channel_id = channel_id
-        self.admin_id = admin_id
-        self.admin_username = admin_username
-    
-    # Delegate methods to maintain backward compatibility
-    async def send_daily_invitation(self):
-        return await self.multi_integration.send_daily_invitation()
-    
-    async def run_daily_draw(self):
-        await self.multi_integration.run_daily_draw()
-    
-    def get_pending_winners_count(self):
-        return self.multi_integration.get_pending_winners_count(self.giveaway_type)
-    
-    def get_giveaway_stats(self):
-        return self.multi_integration.get_giveaway_stats(self.giveaway_type)
-    
-    async def notify_admin_pending_winners(self):
-        return await self.multi_integration.notify_admin_pending_winners(self.giveaway_type)
 
 # ======================================================================================================
 # ======================================================================================================

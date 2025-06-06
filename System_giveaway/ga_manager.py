@@ -1,7 +1,6 @@
 import csv
 import json
 import random
-import os
 import calendar
 from datetime import datetime, timedelta
 import logging
@@ -11,9 +10,94 @@ from config_loader import ConfigLoader
 from async_manager import require_giveaway_lock, require_file_safety
 import threading
 import asyncio
+import sys
+import os
+import time
 
+# Agregar la ruta del directorio padre para poder importar mysql
+sys.path.append('../mySQL')
 
+try:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)  # tele_algo
+    mysql_repo_dir = os.path.join(parent_dir, 'mySQL')
+    mysql_file_path = os.path.join(mysql_repo_dir, 'mysql_manager.py')
+    
+    print(f"🔍 Looking for MySQL repo at: {mysql_repo_dir}")
+    
+    if os.path.exists(mysql_file_path):
+        # Añadir el directorio del repo al sys.path
+        if mysql_repo_dir not in sys.path:
+            sys.path.insert(0, mysql_repo_dir)
+            print(f"✅ Added MySQL repo to path: {mysql_repo_dir}")
+        
+        # 🎯 IMPORT directo ahora que sabemos las dependencias
+        from mysql_manager import MySQLManager, get_mysql_connection
+        
+        MYSQL_AVAILABLE = True
+        print("✅ MySQL Manager loaded from external repo")
+        print(f"📁 Source: {mysql_file_path}")
+        
+        # Test básico de disponibilidad
+        try:
+            test_connection = get_mysql_connection()
+            if test_connection:
+                print("✅ MySQL connection test: Available")
+            else:
+                print("⚠️ MySQL loaded but connection requires configuration")
+        except Exception as e:
+            print(f"💡 MySQL loaded, connection test: {e}")
+        
+    else:
+        raise ImportError(f"MySQL repo file not found: {mysql_file_path}")
+        
+except ImportError as e:
+    print(f"⚠️ MySQL import failed: {e}")
+    print("💡 Install with: pip install mysql-connector-python")
+    MYSQL_AVAILABLE = False
+    MySQLManager = None
+    get_mysql_connection = None
+    print("💾 Using CSV-only mode (fully functional)")
+    
+except Exception as e:
+    print(f"❌ Unexpected MySQL error: {e}")
+    MYSQL_AVAILABLE = False
+    MySQLManager = None
+    get_mysql_connection = None
+    print("💾 Using CSV-only mode (fully functional)")
 
+if MYSQL_AVAILABLE:
+        try:
+            # Test de conexión básico para verificar que el repo funciona
+            test_connection = get_mysql_connection()
+            if test_connection:
+                print("✅ MySQL repo connection test: SUCCESS")
+            else:
+                print("⚠️ MySQL repo loaded but connection failed")
+        except Exception as test_error:
+            print(f"⚠️ MySQL repo test failed: {test_error}")
+            print("💡 This is normal if database credentials are not configured")
+
+def debug_mysql_path():
+    """🔍 Debug function to verify MySQL path resolution"""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    mysql_dir = os.path.join(parent_dir, 'mySQL')
+    mysql_file = os.path.join(mysql_dir, 'mysql_manager.py')
+    
+    print("🔍 PATH DEBUG:")
+    print(f"   Current file: {__file__}")
+    print(f"   Current dir: {current_dir}")
+    print(f"   Parent dir: {parent_dir}")
+    print(f"   MySQL dir: {mysql_dir}")
+    print(f"   MySQL file: {mysql_file}")
+    print(f"   MySQL dir exists: {os.path.exists(mysql_dir)}")
+    print(f"   MySQL file exists: {os.path.exists(mysql_file)}")
+    print(f"   Directory contents: {os.listdir(parent_dir) if os.path.exists(parent_dir) else 'N/A'}")
+# __name__ == "__main__":
+    
+# # 🧪 Ejecutar debug al importar (temporal)
+#     debug_mysql_path()    
 
 class GiveawaySystem:
     """Sistema completo de giveaways para bot de Telegram con validación MT5 y proceso de pago manual"""
@@ -66,6 +150,20 @@ class GiveawaySystem:
         self.winner_cooldown_days = self.config['cooldown_days']
 
         self._file_lock = threading.Lock()
+
+        self.mysql_db = get_mysql_connection()
+        # if MYSQL_AVAILABLE:
+        #     try:
+        #         self.mysql_db = get_mysql_connection()
+        #         self.use_mysql = True
+        #         self.logger.info(f"MySQL connection established for {giveaway_type}")
+        #     except Exception as e:
+        #         self.logger.warning(f"MySQL connection failed, falling back to CSV: {e}")
+        #         self.mysql_db = None
+        #         self.use_mysql = False
+        # else:
+        #     self.mysql_db = None
+        #     self.use_mysql = False
         
         # 🆕 NEW: Configure logging from file
         logging_config = self.config_loader.get_logging_config()
@@ -208,8 +306,26 @@ class GiveawaySystem:
             import pytz
             london_tz = pytz.timezone("Europe/London")
         
+        # ORIGINAL
         now = datetime.now(london_tz)
+
+        # 🎭 TESTING SIMULAR QUE ES VIERNES 16:30 (dentro de ventana de participación)
+        # from datetime import timedelta
+        # base_time = datetime.now(london_tz).replace(hour=16, minute=30, second=0, microsecond=0)
+        # current_weekday = base_time.weekday()
         
+        # # Calcular días hasta el próximo viernes (o mantener si ya es viernes)
+        # if current_weekday <= 4:  # Lunes a viernes
+        #     days_to_friday = 4 - current_weekday  # 0 si ya es viernes
+        # else:  # Sábado o domingo
+        #     days_to_friday = 7 - current_weekday + 4  # Ir al próximo viernes
+        
+        # now = base_time + timedelta(days=days_to_friday)
+        
+        # # 🧪 DEBUG: Mostrar fecha simulada
+        # print(f"🎭 TESTING: Simulating {now.strftime('%A, %Y-%m-%d %H:%M')} (weekday: {now.weekday()})")
+        
+        # ==============================================================
         if giveaway_type == 'daily':
             # Monday to Friday, 1:00 AM - 4:50 PM
             return (now.weekday() < 5 and 
@@ -288,8 +404,23 @@ class GiveawaySystem:
             import pytz
             london_tz = pytz.timezone("Europe/London")
         
+        # ORIGINAL
         now = datetime.now(london_tz)
+
+        # 🎭 TESTING OVERRIDE  SIMULAR QUE ES VIERNES 14:30 
+        # from datetime import timedelta
+        # base_time = datetime.now(london_tz).replace(hour=16, minute=30, second=0, microsecond=0)
+        # current_weekday = base_time.weekday()
         
+        # # Calcular días hasta el próximo viernes
+        # if current_weekday <= 4:  # Lunes a viernes
+        #     days_to_friday = 4 - current_weekday
+        # else:  # Sábado o domingo
+        #     days_to_friday = 7 - current_weekday + 4
+        
+        # now = base_time + timedelta(days=days_to_friday)
+        
+        # =======================================testend===============
         if giveaway_type == 'daily':
             # Next weekday at 5:00 PM
             next_draw = now.replace(hour=schedule['hour'], minute=schedule['minute'], second=0, microsecond=0)
@@ -441,6 +572,7 @@ class GiveawaySystem:
             return
         # Base messages for this giveaway type
         prize = self.config['prize']
+        min_balance = self.config['min_balance']  # 🎯 Dynamic min_balance
         
         if self.giveaway_type == 'daily':
             draw_schedule = "Monday to Friday at 5:00 PM London Time"
@@ -451,9 +583,15 @@ class GiveawaySystem:
         elif self.giveaway_type == 'monthly':
             draw_schedule = "Last Friday of each month at 5:30 PM London Time"
             next_draw = "Last Friday of next month at 5:30 PM London Time"
+
+        period_name = {
+            'daily': 'day',
+            'weekly': 'week',
+            'monthly': 'month'
+        }.get(self.giveaway_type, 'period')
         
         self.messages = {
-            "invitation": f"🎁 <b>{self.giveaway_type.upper()} GIVEAWAY ${prize} USD</b> 🎁\n\n💰 <b>Prize:</b> ${prize} USD\n⏰ <b>Draw:</b> {draw_schedule}\n\n<b>📋 Requirements to participate:</b>\n✅ Active MT5 LIVE account\n✅ Minimum balance $100 USD\n✅ Be a channel member\n\n👆 Press the button to participate",
+            "invitation": f"🎁 <b>{self.giveaway_type.upper()} GIVEAWAY ${prize} USD</b> 🎁\n\n💰 <b>Prize:</b> ${prize} USD\n⏰ <b>Draw:</b> {draw_schedule}\n\n<b>📋 Requirements to participate:</b>\n✅ Active VFX MT5 LIVE account\n✅ Minimum balance of ${min_balance} USD\n✅ Be a channel member\n\n👆 Press the button to participate",
             
             "success": f"✅ <b>Successfully registered!</b>\n\nYou are participating in the {self.giveaway_type} giveaway of ${prize} USD.\n\n🍀 Good luck!\n\n⏰ Draw: {draw_schedule}",
             
@@ -462,43 +600,46 @@ class GiveawaySystem:
             "success_first_time": f"✅ <b>Successfully registered!</b>\n\n🎉 This is your first participation! You are in the {self.giveaway_type} giveaway of ${prize} USD.\n\n🍀 Good luck!\n\n⏰ Draw: {draw_schedule}",
             
             "already_registered": f"ℹ️ <b>Already registered</b>\n\nYou are already participating in today's {self.giveaway_type} giveaway.\n\n🍀 Good luck in the draw!\n\n⏰ Draw: {draw_schedule}",
+
+            "already_participated_period": f"❌ <b>Already participated this {period_name}</b>\n\nYou already participated in this {period_name}'s {self.giveaway_type.upper()} giveaway with MT5 account {{previous_account}}.\n\n💡 <b>Rule:</b> Only one participation per user per {self.giveaway_type} {period_name}, regardless of the MT5 account used.\n\n🎁 You can participate in the next {self.giveaway_type} {period_name}.",
             
-            "registration_in_progress": "⏳ <b>Registration in progress</b>\n\nYou already have a pending registration.\n\nPlease send your MT5 account number to complete your participation.",
+            "registration_in_progress": "⏳ <b>Registration in progress</b>\n\nYou already have a pending registration.\n\nPlease send your VFX MT5 account number to complete your participation.",
             
-            "account_already_used_today": f"❌ <b>Account already registered today</b>\n\nThis MT5 account was already used today by another user.\n\n💡 <b>Rule:</b> Each account can only participate once per {self.giveaway_type} period.\n\n🎁 You can participate in the next {self.giveaway_type} giveaway with any valid account.",
+            "account_already_used_today": f"❌ <b>Account already registered today</b>\n\nThis VFX MT5 account was already used today by another user.\n\n💡 <b>Rule:</b> Each account can only participate once per {self.giveaway_type} period.\n\n🎁 You can participate in the next {self.giveaway_type} giveaway with any valid account.",
             
-            "account_owned_by_other_user": "❌ <b>Account belongs to another user</b>\n\nThis MT5 account was previously registered by another participant on {first_used}.\n\n💡 <b>Rule:</b> Each MT5 account belongs exclusively to the first user who registered it.\n\n🎯 Use an MT5 account that is exclusively yours.",
+            "account_owned_by_other_user": "❌ <b>Account belongs to another user</b>\n\nThis VFX MT5 account was previously registered by another participant on {first_used}.\n\n💡 <b>Rule:</b> Each VFX MT5 account belongs exclusively to the first user who registered it.\n\n🎯 Use an MT5 account that is exclusively yours.",
             
-            "insufficient_balance": "❌ <b>Insufficient balance</b>\n\nMinimum balance of $100 USD required\nYour current balance: <b>${balance}</b>\n\n💡 Deposit more funds to participate in future giveaways.",
+            "insufficient_balance": "❌ <b>Insufficient balance</b>\n\nMinimum balance of ${min_balance} USD required\nYour current balance: <b>${balance}</b>\n\n💡 Deposit more funds to participate in future giveaways.",
             
-            "not_live": "❌ <b>Invalid account</b>\n\nOnly MT5 LIVE accounts can participate in the giveaway.\n\n💡 Verify that you entered the correct number of your LIVE account.",
+            "not_live": "❌ <b>Invalid account</b>\n\nOnly VFX MT5 LIVE accounts can participate in the giveaway.\n\n💡 Verify that you entered the correct number of your LIVE account.",
             
-            "account_not_found": "❌ <b>Account not found</b>\n\nMT5 account #{account} was not found in our records.\n\n💡 Verify that the account number is correct.",
+            "account_not_found": "❌ <b>Account not found</b>\n\n VFX MT5 account #{account} was not found in our records.\n\n💡 Verify that the account number is correct.",
             
             "not_channel_member": "❌ <b>Not a channel member</b>\n\nYou must be a member of the main channel to participate.\n\n💡 Join the channel and try again.",
             
-            "request_mt5": "🔢 <b>Enter your MT5 account number</b>\n\nPlease send your MT5 LIVE account number to verify that you meet the giveaway requirements.\n\n💡 Example: 12345678\n\n⚠️ <b>Important:</b> You can only register ONE account per day.",
+            "request_mt5": "🔢 <b>Enter your VFX MT5 account number</b>\n\nPlease send your VFX MT5 LIVE account number to verify that you meet the giveaway requirements.\n\n⚠️ <b>Important:</b> You can only register ONE account per day.\n\n📋 <b>Requirements for {self.giveaway_type.upper()}:</b>\n✅ LIVE account (not demo)\n✅ Minimum balance: ${min_balance} USD",
             
-            "invalid_format_retry": "❌ <b>Invalid format</b>\n\nAccount number must contain only numbers.\n\n💡 Example: 12345678\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n⚠️ Try again:",
+            "invalid_format_retry": "❌ <b>Invalid format</b>\n\nAccount number must contain only numbers.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n⚠️ Try again:",
             
-            "max_attempts_reached": "❌ <b>Maximum attempts reached</b>\n\nYou have tried {max_attempts} times without success.\n\n🔄 <b>To participate again:</b>\n1. Go to the main channel\n2. Press \"PARTICIPATE NOW\" again\n3. Send a valid MT5 account\n\n💡 Remember: Only LIVE accounts with balance ≥ $100 USD",
+            "max_attempts_reached": "❌ <b>Maximum attempts reached</b>\n\nYou have tried {max_attempts} times without success.\n\n🔄 <b>To participate again:</b>\n1. Go to the main channel\n2. Press \"PARTICIPATE NOW\" again\n3. Send a valid VFX MT5 account\n\n💡 Remember: Only LIVE accounts with balance ≥ ${min_balance} USD",
             
-            "processing": "⏳ Verifying your MT5 account...\n\nThis may take a few seconds.",
+            "processing": "⏳ Verifying your VFX MT5 account...\n\nThis may take a few seconds.",
             
             "api_error": "❌ <b>Verification error</b>\n\nWe couldn't verify your account at this time.\n\n💡 Try again in a few minutes.",
             
             "no_eligible_participants": f"⚠️ No eligible participants for today's {self.giveaway_type} giveaway.\n\n📢 Join the next giveaway!",
             
-            "winner_announcement": f"🏆 <b>{self.giveaway_type.upper()} GIVEAWAY WINNER!</b> 🏆\n\n🎉 Congratulations: {{username}}\n💰 Prize: <b>${prize} USD</b>\n📊 MT5 Account: <b>{{account}}</b>\n👥 Total participants: <b>{{total_participants}}</b>\n\n📅 Next draw: {next_draw}\n\n🎁 Participate too!",
+            "winner_announcement": f"🏆 <b>{self.giveaway_type.upper()} GIVEAWAY WINNER!</b> 🏆\n\n🎉 Congratulations: {{username}}\n💰 Prize: <b>${prize} USD</b>\n📊 VFX MT5 Account: <b>{{account}}</b>\n👥 Total participants: <b>{{total_participants}}</b>\n\n📅 Next draw: {next_draw}\n\n🎁 Participate too!",
             
-            "winner_private_congratulation": f"🎉 <b>CONGRATULATIONS!</b> 🎉\n\n🏆 <b>You won the {self.giveaway_type} giveaway of ${prize} USD!</b>\n\n💰 <b>Your MT5 account {{account}} has been credited</b>\n\n📸 <b>IMPORTANT - Confirmation required:</b>\n• Check your MT5 account\n• Confirm that you received the ${prize} USD\n• Send a screenshot as evidence\n\n🙏 This confirmation helps us improve the service",
+            "winner_private_congratulation": f"🎉 <b>CONGRATULATIONS!</b> 🎉\n\n🏆 <b>You won the {self.giveaway_type} giveaway of ${prize} USD!</b>\n\n💰 <b>Your VFX MT5 account {{account}} has been credited</b>\n\n📸 <b>IMPORTANT - Confirmation required:</b>\n• Check your VFX MT5 account\n• Confirm that you received the ${prize} USD\n• Send a screenshot as evidence\n\n🙏 This confirmation helps us improve the service",
             
             "participation_window_closed": f"⏰ <b>Participation window closed</b>\n\nThe {self.giveaway_type} giveaway participation is currently closed.\n\n🔄 <b>Next participation window:</b>\n{{next_window}}\n\n💡 Stay tuned for the next opportunity!",
             
             "error_internal": "❌ Internal error. Try again in a few minutes.",
             
-            "help_main": f"🆘 <b>{self.giveaway_type.upper()} GIVEAWAY RULES</b>\n\n💰 <b>Prize:</b> ${prize} USD\n⏰ <b>Draw:</b> {draw_schedule}\n\n<b>📋 REQUIREMENTS TO PARTICIPATE:</b>\n✅ Be a member of this channel\n✅ Active MT5 LIVE account (not demo)\n✅ Minimum balance of $100 USD\n✅ One participation per user per {self.giveaway_type} period\n\n<b>🔒 IMPORTANT RULES:</b>\n• Each MT5 account belongs to the first user who registers it\n• You cannot win twice in {self.winner_cooldown_days} days\n• You must confirm receipt of prize if you win\n\n<b>❌ COMMON ERRORS:</b>\n• \"Account not found\" → Verify the number\n• \"Insufficient balance\" → Deposit more than $100 USD\n• \"Account is not LIVE\" → Use real account, not demo\n• \"Already registered\" → Only one participation per {self.giveaway_type} period\n• \"Account belongs to another\" → Use your own MT5 account\n\n<b>📞 NEED HELP?</b>\nContact administrator: @{self.admin_username}\n\n<b>⏰ NEXT DRAW:</b>\n{next_draw}"
+            "help_main": f"🆘 <b>{self.giveaway_type.upper()} GIVEAWAY RULES</b>\n\n💰 <b>Prize:</b> ${prize} USD\n⏰ <b>Draw:</b> {draw_schedule}\n\n<b>📋 REQUIREMENTS TO PARTICIPATE:</b>\n✅ Be a member of this channel\n✅ Active VFX MT5 LIVE account (not demo)\n✅ Minimum balance of ${min_balance} USD\n✅ One participation per user per {self.giveaway_type} period\n\n<b>🔒 IMPORTANT RULES:</b>\n• Each Vortex-FX MT5 account belongs to the first user who registers it\n• You cannot win twice in {self.winner_cooldown_days} days\n• You must confirm receipt of prize if you win\n\n<b>❌ COMMON ERRORS:</b>\n• \"Account not found\" → Verify the number\n• \"Insufficient balance\" → Deposit more than $100 USD\n• \"Account is not LIVE\" → Use real account, not demo\n• \"Already registered\" → Only one participation per {self.giveaway_type} period\n• \"Account belongs to another\" → Use your own VFX MT5 account\n\n<b>📞 NEED HELP?</b>\nContact administrator: @{self.admin_username}\n\n<b>⏰ NEXT DRAW:</b>\n{next_draw}"
         }
+
     
     def _save_messages(self):
         """🔄 MODIFIED: Save type-specific messages"""
@@ -601,7 +742,7 @@ class GiveawaySystem:
             # Request MT5 account
             await self.bot.send_message(
                 chat_id=user_id,
-                text=self.messages.get("request_mt5", "Enter your MT5 account number"),
+                text=self.messages.get("request_mt5", "Enter your VFX MT5 account number"),
                 parse_mode='HTML'
             )
             
@@ -676,6 +817,23 @@ class GiveawaySystem:
         
         try:
             user_id = user_info['id']
+
+            already_participated, previous_account = self._user_already_participated_today(user_id, giveaway_type)
+            if already_participated:
+                period_name = {
+                    'daily': 'day',
+                    'weekly': 'week', 
+                    'monthly': 'month'
+                }.get(giveaway_type, 'period')
+                
+                await update.message.reply_text(
+                    f"❌ <b>Already participated this {period_name}</b>\n\n"
+                    f"You already participated in this {period_name}'s {giveaway_type.upper()} giveaway with VFX MT5 account: <code>{previous_account}</code>\n\n"
+                    f"💡 <b>Rule:</b> Only one participation per user per {giveaway_type} {period_name}, regardless of the VFX MT5 account used.\n\n"
+                    f"🎁 You can participate in the next {giveaway_type} {period_name}.",
+                    parse_mode='HTML'
+                )
+                return True  # End process
             
             # VALIDATION 1: User already registered for this type today?
             if self._is_already_registered(user_id, giveaway_type):
@@ -689,7 +847,7 @@ class GiveawaySystem:
             account_used_today, other_user_id = self._is_account_already_used_today(mt5_account, giveaway_type)
             if account_used_today:
                 if remaining_attempts > 0:
-                    retry_message = f"❌ <b>Account already registered today</b>\n\nThis MT5 account was already used today for the {giveaway_type} giveaway by another user.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Try with a different account:"
+                    retry_message = f"❌ <b>Account already registered today</b>\n\nThis VFX MT5 account was already used today for the {giveaway_type} giveaway by another user.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Try with a different account:"
                     await update.message.reply_text(retry_message, parse_mode='HTML')
                     return False
                 else:
@@ -700,7 +858,7 @@ class GiveawaySystem:
             is_other_user_account, owner_id, first_used = self._is_account_owned_by_other_user(mt5_account, user_id, giveaway_type)
             if is_other_user_account:
                 if remaining_attempts > 0:
-                    retry_message = f"❌ <b>Account belongs to another user</b>\n\nThis MT5 account was previously registered by another participant.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Use an MT5 account that is exclusively yours:"
+                    retry_message = f"❌ <b>Account belongs to another user</b>\n\nThis VFX MT5 account was previously registered by another participant.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Use an MT5 account that is exclusively yours:"
                     await update.message.reply_text(retry_message, parse_mode='HTML')
                     return False
                 else:
@@ -708,19 +866,21 @@ class GiveawaySystem:
                     return True
             
             # VALIDATION 4: Validate MT5 account with API
-            validation_result = self.validate_mt5_account(mt5_account)
+            # validation_result = self.validate_mt5_account(mt5_account)
+            validation_result = self.validate_account_for_giveaway(mt5_account, user_id, giveaway_type)
             
             if not validation_result['valid']:
                 error_type = validation_result['error_type']
                 
                 if remaining_attempts > 0:
                     if error_type == 'not_found':
-                        retry_message = f"❌ <b>Account not found</b>\n\nMT5 account #{mt5_account} was not found in our records.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Verify the number and try again:"
+                        retry_message = f"❌ <b>Account not found</b>\n\n Vortex-FX MT5 account #{mt5_account} was not found in our records.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Verify the number and try again:"
                     elif error_type == 'not_live':
-                        retry_message = f"❌ <b>Invalid account</b>\n\nOnly MT5 LIVE accounts can participate in the giveaway.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Use a LIVE account and try again:"
+                        retry_message = f"❌ <b>Invalid account</b>\n\nOnly Vortex-FX MT5 LIVE accounts can participate in the giveaway.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Use a LIVE account and try again:"
                     elif error_type == 'insufficient_balance':
                         balance = validation_result.get('balance', 0)
-                        retry_message = f"❌ <b>Insufficient balance</b>\n\nMinimum balance of $100 USD required\nYour current balance: <b>${balance}</b>\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Use an account with sufficient balance:"
+                        required_balance = validation_result.get('required_balance', 100)
+                        retry_message = f"❌ <b>Insufficient balance {giveaway_type.upper()}</b>\n\nMinimum balance of ${required_balance} USD required for {giveaway_type} giveaway\nYour current balance: <b>${balance}</b>\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Use an account with sufficient balance:"
                     else:
                         retry_message = f"❌ <b>Verification error</b>\n\nWe couldn't verify your account at this time.\n\n🔄 Attempts remaining: <b>{remaining_attempts}</b>\n\n💡 Try with another account:"
                     
@@ -804,23 +964,78 @@ class GiveawaySystem:
     
     # ================== VALIDATIONS To MT5 Accounts ==================
     
-    def validate_mt5_account(self, account_number):
-        """✅ ORIGINAL: Validate MT5 account using API (no changes needed)"""
-        try:
-            account_info = self._simulate_mt5_api(account_number)
+    # def validate_mt5_account(self, account_number):
+    #     """✅ ORIGINAL: Validate MT5 account using API (no changes needed)"""
+    #     try:
+    #         account_info = self._simulate_mt5_api(account_number)
             
-            if account_info is None:
+    #         if account_info is None:
+    #             return {
+    #                 'valid': False,
+    #                 'error_type': 'not_found',
+    #                 'message': 'Account not found'
+    #             }
+            
+    #         if not account_info.get('is_live', False):
+    #             return {
+    #                 'valid': False,
+    #                 'error_type': 'not_live',
+    #                 'message': 'Account is not LIVE'
+    #             }
+            
+    #         balance = account_info.get('balance', 0)
+    #         if balance < self.min_balance:
+    #             return {
+    #                 'valid': False,
+    #                 'error_type': 'insufficient_balance',
+    #                 'balance': balance,
+    #                 'message': f'Insufficient balance: ${balance}'
+    #             }
+            
+    #         return {
+    #             'valid': True,
+    #             'balance': balance,
+    #             'message': 'Valid account'
+    #         }
+            
+    #     except Exception as e:
+    #         self.logger.error(f"Error validating MT5 account: {e}")
+    #         return {
+    #             'valid': False,
+    #             'error_type': 'api_error',
+    #             'message': 'Validation error'
+    #         }
+
+    def validate_mt5_account(self, account_number):
+        """Validate MT5 account using REAL MySQL database"""
+        try:
+            # 🎯 USAR LA FUNCIÓN HELPER (recomendado)
+            mysql_db = get_mysql_connection()
+            
+            if not mysql_db.is_connected():
+                return {
+                    'valid': False,
+                    'error_type': 'api_error',
+                    'message': 'Database connection failed'
+                }
+            
+            # ✅ Usar el método verify_account_exists de la clase
+            account_info = mysql_db.verify_account_exists(account_number)
+            
+            # Resto de tu lógica...
+            if not account_info.get('exists', False):
                 return {
                     'valid': False,
                     'error_type': 'not_found',
                     'message': 'Account not found'
                 }
             
-            if not account_info.get('is_live', False):
+            if not account_info.get('is_real_account', False):
                 return {
                     'valid': False,
                     'error_type': 'not_live',
-                    'message': 'Account is not LIVE'
+                    'message': 'Account is not LIVE (demo account detected)',
+                    'account_type': account_info.get('account_type', 'Demo')
                 }
             
             balance = account_info.get('balance', 0)
@@ -829,51 +1044,229 @@ class GiveawaySystem:
                     'valid': False,
                     'error_type': 'insufficient_balance',
                     'balance': balance,
-                    'message': f'Insufficient balance: ${balance}'
+                    'message': f'Insufficient balance: ${balance} (minimum: ${self.min_balance})'
                 }
             
             return {
                 'valid': True,
                 'balance': balance,
-                'message': 'Valid account'
+                'account_info': account_info,
+                'account_holder_name': account_info.get('name', ''),
+                'email': account_info.get('email', ''),
+                'country': account_info.get('country', ''),
+                'message': 'Valid LIVE account with sufficient balance'
             }
             
         except Exception as e:
-            self.logger.error(f"Error validating MT5 account: {e}")
+            self.logger.error(f"Error validating VFX MT5 account {account_number}: {e}")
             return {
                 'valid': False,
                 'error_type': 'api_error',
-                'message': 'Validation error'
+                'message': f'Validation error: {str(e)}'
             }
     
-    def _simulate_mt5_api(self, account_number):
-        """✅ ORIGINAL: MT5 API simulation (no changes needed)"""
-        test_accounts = {
-            # Valid accounts for testing
-            '1234': {'exists': True, 'is_live': True, 'balance': 150.50, 'currency': 'USD'},
-            '8765': {'exists': True, 'is_live': True, 'balance': 250.75, 'currency': 'USD'},
-            '3333': {'exists': True, 'is_live': True, 'balance': 300.00, 'currency': 'USD'},
-            '4444': {'exists': True, 'is_live': True, 'balance': 125.25, 'currency': 'USD'},
-            '5555': {'exists': True, 'is_live': True, 'balance': 500.00, 'currency': 'USD'},
-            '6666': {'exists': True, 'is_live': True, 'balance': 199.99, 'currency': 'USD'},
-            '7777': {'exists': True, 'is_live': True, 'balance': 1000.00, 'currency': 'USD'},
-            '8888': {'exists': True, 'is_live': True, 'balance': 750.50, 'currency': 'USD'},
-            '1010': {'exists': True, 'is_live': True, 'balance': 100.00, 'currency': 'USD'},
-            '2020': {'exists': True, 'is_live': True, 'balance': 100.01, 'currency': 'USD'},
+    # def _simulate_mt5_api(self, account_number):
+    #     """✅ ORIGINAL: MT5 API simulation (no changes needed)"""
+    #     test_accounts = {
+    #         # Valid accounts for testing
+    #         '1234': {'exists': True, 'is_live': True, 'balance': 150.50, 'currency': 'USD'},
+    #         '8765': {'exists': True, 'is_live': True, 'balance': 250.75, 'currency': 'USD'},
+    #         '3333': {'exists': True, 'is_live': True, 'balance': 300.00, 'currency': 'USD'},
+    #         '4444': {'exists': True, 'is_live': True, 'balance': 125.25, 'currency': 'USD'},
+    #         '5555': {'exists': True, 'is_live': True, 'balance': 500.00, 'currency': 'USD'},
+    #         '6666': {'exists': True, 'is_live': True, 'balance': 199.99, 'currency': 'USD'},
+    #         '7777': {'exists': True, 'is_live': True, 'balance': 1000.00, 'currency': 'USD'},
+    #         '8888': {'exists': True, 'is_live': True, 'balance': 750.50, 'currency': 'USD'},
+    #         '1010': {'exists': True, 'is_live': True, 'balance': 100.00, 'currency': 'USD'},
+    #         '2020': {'exists': True, 'is_live': True, 'balance': 100.01, 'currency': 'USD'},
             
-            # Insufficient balance
-            '2222': {'exists': True, 'is_live': True, 'balance': 50.00, 'currency': 'USD'},
-            '3030': {'exists': True, 'is_live': True, 'balance': 99.99, 'currency': 'USD'},
-            '4040': {'exists': True, 'is_live': True, 'balance': 25.50, 'currency': 'USD'},
-            '5050': {'exists': True, 'is_live': True, 'balance': 0.00, 'currency': 'USD'},
+    #         # Insufficient balance
+    #         '2222': {'exists': True, 'is_live': True, 'balance': 50.00, 'currency': 'USD'},
+    #         '3030': {'exists': True, 'is_live': True, 'balance': 99.99, 'currency': 'USD'},
+    #         '4040': {'exists': True, 'is_live': True, 'balance': 25.50, 'currency': 'USD'},
+    #         '5050': {'exists': True, 'is_live': True, 'balance': 0.00, 'currency': 'USD'},
             
-            # Demo accounts
-            '1111': {'exists': True, 'is_live': False, 'balance': 200.00, 'currency': 'USD'},
-            '6060': {'exists': True, 'is_live': False, 'balance': 500.00, 'currency': 'USD'},
-            '7070': {'exists': True, 'is_live': False, 'balance': 1000.00, 'currency': 'USD'},
-        }
+    #         # Demo accounts
+    #         '1111': {'exists': True, 'is_live': False, 'balance': 200.00, 'currency': 'USD'},
+    #         '6060': {'exists': True, 'is_live': False, 'balance': 500.00, 'currency': 'USD'},
+    #         '7070': {'exists': True, 'is_live': False, 'balance': 1000.00, 'currency': 'USD'},
+    #     }
         
-        return test_accounts.get(account_number)
+    #     return test_accounts.get(account_number)
+
+    # def validate_account_for_giveaway(self, account_number, user_id):
+    #     """Complete validation including giveaway-specific rules"""
+        
+    #     # 1. Validación básica de cuenta MT5
+    #     mt5_validation = self.validate_mt5_account(account_number)
+        
+    #     if not mt5_validation['valid']:
+    #         return mt5_validation
+        
+    #     # 2. Verificar si la cuenta ya fue usada hoy por otro usuario
+    #     account_used_today, other_user_id = self._is_account_already_used_today(account_number, self.giveaway_type)
+    #     if account_used_today:
+    #         return {
+    #             'valid': False,
+    #             'error_type': 'account_already_used_today',
+    #             'message': f'Account already used today by another participant',
+    #             'used_by': other_user_id
+    #         }
+        
+    #     # 3. Verificar ownership histórico
+    #     is_other_user_account, owner_id, first_used = self._is_account_owned_by_other_user(account_number, user_id, self.giveaway_type)
+    #     if is_other_user_account:
+    #         return {
+    #             'valid': False,
+    #             'error_type': 'account_owned_by_other_user',
+    #             'message': f'Account belongs to another user (first used: {first_used})',
+    #             'owner_id': owner_id
+    #         }
+        
+    #     # ✅ Todas las validaciones pasadas
+    #     return {
+    #         'valid': True,
+    #         'account_info': mt5_validation['account_info'],
+    #         'balance': mt5_validation['balance'],
+    #         'message': 'Account validated for giveaway participation'
+    #     }
+
+    def validate_account_for_giveaway(self, account_number, user_id, giveaway_type=None):
+        """🔄 ENHANCED: Complete validation including giveaway-specific rules and min_balance"""
+        
+        if giveaway_type is None:
+            giveaway_type = self.giveaway_type
+        
+        # 🆕 GET TYPE-SPECIFIC MIN_BALANCE from config
+        type_min_balance = self.GIVEAWAY_CONFIGS[giveaway_type]['min_balance']
+        
+        # 1. Validación básica de cuenta MT5 (with type-specific min_balance)
+        mt5_validation = self.validate_mt5_account_with_balance(account_number, type_min_balance)
+        
+        if not mt5_validation['valid']:
+            return mt5_validation
+        
+        # 2. Verificar si la cuenta ya fue usada hoy por otro usuario
+        account_used_today, other_user_id = self._is_account_already_used_today(account_number, giveaway_type)
+        if account_used_today:
+            return {
+                'valid': False,
+                'error_type': 'account_already_used_today',
+                'message': f'Account already used today by another participant',
+                'used_by': other_user_id
+            }
+        
+        # 3. Verificar ownership histórico
+        is_other_user_account, owner_id, first_used = self._is_account_owned_by_other_user(account_number, user_id, giveaway_type)
+        if is_other_user_account:
+            return {
+                'valid': False,
+                'error_type': 'account_owned_by_other_user',
+                'message': f'Account belongs to another user (first used: {first_used})',
+                'owner_id': owner_id
+            }
+        
+        # ✅ Todas las validaciones pasadas
+        return {
+            'valid': True,
+            'account_info': mt5_validation['account_info'],
+            'balance': mt5_validation['balance'],
+            'min_balance_required': type_min_balance,  # 🆕 Include for reference
+            'giveaway_type': giveaway_type,  # 🆕 Include for reference
+            'message': f'Account validated for {giveaway_type} giveaway (min: ${type_min_balance})'
+        }
+    
+    def validate_mt5_account_with_balance(self, account_number, required_min_balance):
+        """🆕 NEW: Validate MT5 account with custom minimum balance requirement"""
+        try:
+            mysql_db = get_mysql_connection()
+            
+            if not mysql_db.is_connected():
+                return {
+                    'valid': False,
+                    'error_type': 'api_error',
+                    'message': 'Database connection failed'
+                }
+            
+            # ✅ Usar el método verify_account_exists de la clase
+            account_info = mysql_db.verify_account_exists(account_number)
+            
+            if not account_info.get('exists', False):
+                return {
+                    'valid': False,
+                    'error_type': 'not_found',
+                    'message': 'Account not found'
+                }
+            
+            if not account_info.get('is_real_account', False):
+                return {
+                    'valid': False,
+                    'error_type': 'not_live',
+                    'message': 'Account is not LIVE (demo account detected)',
+                    'account_type': account_info.get('account_type', 'Demo')
+                }
+            
+            balance = account_info.get('balance', 0)
+            
+            # 🎯 USE THE PROVIDED MIN_BALANCE (type-specific)
+            if balance < required_min_balance:
+                return {
+                    'valid': False,
+                    'error_type': 'insufficient_balance',
+                    'balance': balance,
+                    'required_balance': required_min_balance,
+                    'message': f'Insufficient balance: ${balance} (minimum: ${required_min_balance})'
+                }
+            
+            return {
+                'valid': True,
+                'balance': balance,
+                'account_info': account_info,
+                'account_holder_name': account_info.get('name', ''),
+                'email': account_info.get('email', ''),
+                'country': account_info.get('country', ''),
+                'min_balance_met': True,
+                'required_min_balance': required_min_balance,
+                'message': f'Valid LIVE account with sufficient balance (${balance} >= ${required_min_balance})'
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error validating MT5 account {account_number} with min_balance {required_min_balance}: {e}")
+            return {
+                'valid': False,
+                'error_type': 'api_error',
+                'message': f'Validation error: {str(e)}'
+            }
+    def get_account_full_info(self, account_number):
+        """Get complete account information for logging/admin purposes"""
+        try:
+            mysql_db = get_mysql_connection()
+            
+            if not mysql_db.is_connected():
+                return None
+            
+            account_info = mysql_db.verify_account_exists(account_number)
+            
+            if account_info.get('exists'):
+                return {
+                    'account_number': account_info['account_number'],
+                    'name': account_info['name'],
+                    'email': account_info['email'],
+                    'balance': account_info['balance'],
+                    'group': account_info['group'],
+                    'status': account_info['status'],
+                    'country': account_info['country'],
+                    'company': account_info['company'],
+                    'account_type': account_info['account_type'],
+                    'is_real': account_info['is_real_account'],
+                    'creation_date': account_info['creation_date']
+                }
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting account info: {e}")
+            return None
     
     def _is_already_registered(self, user_id, giveaway_type=None):
         """🔄 MODIFIED: Check if user is registered for specific giveaway type"""
@@ -928,6 +1321,54 @@ class GiveawaySystem:
             self.logger.error(f"Error checking registration for {giveaway_type}: {e}")
             return False
     
+    def _user_already_participated_today(self, user_id, giveaway_type=None):
+        """Check if user already participated today with ANY account"""
+        if giveaway_type is None:
+            giveaway_type = self.giveaway_type
+        
+        try:
+            participants_file = self.get_file_paths(giveaway_type)['participants']
+        
+            if not os.path.exists(participants_file):
+                return False, None
+            
+            # 🔄 DIFFERENT PERIOD LOGIC based on giveaway type
+            if giveaway_type == 'daily':
+                # Check today only
+                today = datetime.now().strftime('%Y-%m-%d')
+                period_check = lambda date_str: date_str.startswith(today)
+                
+            elif giveaway_type == 'weekly':
+                # Check current week (Monday to current day)
+                current_date = datetime.now()
+                week_start = current_date - timedelta(days=current_date.weekday())  # Monday
+                week_start_str = week_start.strftime('%Y-%m-%d')
+                period_check = lambda date_str: date_str >= week_start_str
+                
+            elif giveaway_type == 'monthly':
+                # Check current month
+                current_month = datetime.now().strftime('%Y-%m')
+                period_check = lambda date_str: date_str.startswith(current_month)
+            
+            else:
+                # Fallback to daily
+                today = datetime.now().strftime('%Y-%m-%d')
+                period_check = lambda date_str: date_str.startswith(today)
+            
+            with open(participants_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if (row.get('telegram_id') == str(user_id) and 
+                        period_check(row.get('registration_date', '')) and 
+                        row.get('status') == 'active'):
+                        return True, row['mt5_account']
+            
+            return False, None
+            
+        except Exception as e:
+            self.logger.error(f"Error checking {giveaway_type} user participation: {e}")
+            return False, None
+
     def _has_pending_registration(self, user_id, context, giveaway_type=None):
         """🔄 MODIFIED: Check pending registration for specific type"""
         if giveaway_type is None:
@@ -1031,8 +1472,10 @@ class GiveawaySystem:
             if not eligible_participants:
                 # Save empty period to history
                 await self._save_empty_period_to_history(giveaway_type)
+                admin_config = self.config_loader.get_all_config().get('admin_channel_id', {})
+                admin_channel_id = admin_config.get('admin_channel_id')
                 await self.bot.send_message(
-                    chat_id=self.channel_id,
+                    chat_id=admin_channel_id,
                     text=self.messages.get("no_eligible_participants", "No eligible participants"),
                     parse_mode='HTML'
                 )
@@ -1192,7 +1635,7 @@ class GiveawaySystem:
 
     🎉 <b>Winner Selected:</b> {first_name} ({winner_display})
     💰 <b>Prize:</b> ${prize_amount} USD
-    📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+    📊 <b>VFX MT5 Account:</b> <code>{winner['mt5_account']}</code>
     🆔 <b>Telegram ID:</b> <code>{winner['telegram_id']}</code>
     👥 <b>Total participants:</b> {total_participants}
     📅 <b>Date:</b> {today}
@@ -1219,12 +1662,12 @@ class GiveawaySystem:
 
     🎯 <b>Winner:</b> {first_name} ({winner_display})
     💰 <b>Prize:</b> ${prize_amount} USD
-    📊 <b>MT5 Account:</b> <code>{winner['mt5_account']}</code>
+    📊 <b>VFX MT5 Account:</b> <code>{winner['mt5_account']}</code>
     🆔 <b>Telegram ID:</b> <code>{winner['telegram_id']}</code>
     👥 <b>Participants:</b> {total_participants}
 
     ⚠️ <b>ACTION REQUIRED:</b>
-    💸 Transfer ${prize_amount} USD to MT5 account: <code>{winner['mt5_account']}</code>
+    💸 Transfer ${prize_amount} USD to VFX MT5 account: <code>{winner['mt5_account']}</code>
     ✅ Press button below after completing transfer
 
     🎯 <b>Authorized for payment confirmation:</b>
@@ -1290,15 +1733,30 @@ class GiveawaySystem:
         # 🔒 SIMPLE CONCURRENCY CHECK
         operation_key = f"payment_{giveaway_type}_{winner_telegram_id}"
         
-        # Check if this exact payment is already being processed
-        if hasattr(self, '_active_payments'):
-            if operation_key in self._active_payments:
-                return False, "Payment confirmation already in progress"
-        else:
+        if not hasattr(self, '_active_payments'):
             self._active_payments = set()
+        # 🔧 ENHANCED: Check with timeout and forced cleanup
+        if operation_key in self._active_payments:
+            # Check if this is a stale lock (older than 30 seconds)
+            if not hasattr(self, '_payment_timestamps'):
+                self._payment_timestamps = {}
+            
+            # import time
+            current_time = time.time()
+            lock_time = self._payment_timestamps.get(operation_key, current_time)
+            
+            if current_time - lock_time > 30:  # 30 second timeout
+                print(f"🧹 DEBUG: Cleaning stale payment lock for {operation_key}")
+                self._active_payments.discard(operation_key)
+                self._payment_timestamps.pop(operation_key, None)
+            else:
+                return False, "Payment confirmation already in progress"
         
-        # Mark as active
+        # Mark as active with timestamp
         self._active_payments.add(operation_key)
+        if not hasattr(self, '_payment_timestamps'):
+            self._payment_timestamps = {}
+        self._payment_timestamps[operation_key] = time.time()
         
         try:
             print(f"🔍 DEBUG: ===== STARTING {giveaway_type.upper()} PAYMENT CONFIRMATION =====")
@@ -1371,6 +1829,16 @@ class GiveawaySystem:
             print(f"❌ DEBUG: EXCEPTION in {giveaway_type} payment confirmation: {e}")
             
             return False, f"Error: {e}"
+        finally:
+            # 🆕 CRITICAL: Always clean up the lock in finally block
+            try:
+                self._active_payments.discard(operation_key)
+                if hasattr(self, '_payment_timestamps'):
+                    self._payment_timestamps.pop(operation_key, None)
+                print(f"🧹 DEBUG: Cleaned up payment lock for {operation_key}")
+            except Exception as cleanup_error:
+                print(f"⚠️ DEBUG: Error cleaning payment lock: {cleanup_error}")
+    
     async def _announce_winner_public(self, winner_data, giveaway_type=None):
         """🔄 MODIFIED: Announce winner with type-specific message"""
         if giveaway_type is None:
@@ -1538,14 +2006,91 @@ class GiveawaySystem:
             return None
     
     # @require_file_safety()
-    def _update_winner_status(self, telegram_id, new_status, confirmed_by_admin_id, giveaway_type=None):
-        """🔄 ENHANCED: Update winner status for specific type + FILE PROTECTION"""
+    # def _update_winner_status(self, telegram_id, new_status, confirmed_by_admin_id, giveaway_type=None):
+    #     """🔄 ENHANCED: Update winner status for specific type + FILE PROTECTION"""
 
+    #     if giveaway_type is None:
+    #         giveaway_type = self.giveaway_type
+    #     with self._file_lock:
+    #         try:
+    #             print(f"🔍 DEBUG: Updating {giveaway_type} status for {telegram_id}")
+                
+    #             pending_file = self.get_file_paths(giveaway_type)['pending_winners']
+                
+    #             if not os.path.exists(pending_file):
+    #                 print(f"❌ DEBUG: {giveaway_type.title()} file does not exist: {pending_file}")
+    #                 return False
+                
+    #             # 🆕 VERIFICACIÓN ADICIONAL DE ESTADO ANTES DE MODIFICAR
+    #             # Verificar que el ganador aún esté en estado 'pending_payment'
+    #             current_status = self._get_winner_current_status(telegram_id, giveaway_type)
+    #             if current_status != 'pending_payment':
+    #                 print(f"⚠️ DEBUG: Winner {telegram_id} is not in pending_payment status (current: {current_status})")
+    #                 return False
+                
+    #             # Backup original file
+    #             backup_file = f"{pending_file}.backup"
+    #             import shutil
+    #             shutil.copy2(pending_file, backup_file)
+                
+    #             rows = []
+    #             updated = False
+    #             target_found = False
+                
+    #             # Read all rows
+    #             with open(pending_file, 'r', encoding='utf-8') as f:
+    #                 reader = csv.DictReader(f)
+    #                 for row in reader:
+    #                     if (row['telegram_id'] == str(telegram_id) and
+    #                         row.get('giveaway_type', 'daily') == giveaway_type):
+    #                         target_found = True
+                            
+    #                         if row['status'] == 'pending_payment':
+    #                             # Update status
+    #                             row['status'] = new_status
+    #                             row['confirmed_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    #                             row['confirmed_by'] = str(confirmed_by_admin_id)
+    #                             updated = True
+    #                             print(f"✅ DEBUG: {giveaway_type.title()} status updated to '{new_status}'")
+    #                         else:
+    #                             print(f"⚠️ DEBUG: Winner {telegram_id} status was '{row['status']}', not 'pending_payment'")
+                        
+    #                     rows.append(row)
+                
+    #             if not target_found:
+    #                 print(f"❌ DEBUG: {giveaway_type.title()} winner {telegram_id} NOT found")
+    #                 return False
+                
+    #             if not updated:
+    #                 print(f"❌ DEBUG: {giveaway_type.title()} status was not 'pending_payment'")
+    #                 return False
+                
+    #             # Write updated file
+    #             temp_file = f"{pending_file}.temp"
+    #             with open(temp_file, 'w', newline='', encoding='utf-8') as f:
+    #                 fieldnames = ['date', 'telegram_id', 'username', 'first_name', 'mt5_account', 'prize', 'status', 'selected_time', 'confirmed_time', 'confirmed_by', 'giveaway_type']
+    #                 writer = csv.DictWriter(f, fieldnames=fieldnames)
+    #                 writer.writeheader()
+    #                 writer.writerows(rows)
+                
+    #             # Replace original file
+    #             os.replace(temp_file, pending_file)
+    #             print(f"✅ DEBUG: {giveaway_type.title()} CSV file updated successfully")
+                
+    #             return True
+                
+    #         except Exception as e:
+    #             self.logger.error(f"Error updating {giveaway_type} winner status: {e}")
+    #             return False
+
+    def _update_winner_status(self, telegram_id, new_status, confirmed_by_admin_id, giveaway_type=None):
+        """🔄 ENHANCED: Update status and remove confirmed winners from pending"""
         if giveaway_type is None:
             giveaway_type = self.giveaway_type
+        
         with self._file_lock:
             try:
-                print(f"🔍 DEBUG: Updating {giveaway_type} status for {telegram_id}")
+                print(f"🔍 DEBUG: Updating {giveaway_type} status for {telegram_id} to {new_status}")
                 
                 pending_file = self.get_file_paths(giveaway_type)['pending_winners']
                 
@@ -1553,11 +2098,16 @@ class GiveawaySystem:
                     print(f"❌ DEBUG: {giveaway_type.title()} file does not exist: {pending_file}")
                     return False
                 
-                # 🆕 VERIFICACIÓN ADICIONAL DE ESTADO ANTES DE MODIFICAR
-                # Verificar que el ganador aún esté en estado 'pending_payment'
+                # 🆕 VERIFICACIÓN DE ESTADO ACTUAL
                 current_status = self._get_winner_current_status(telegram_id, giveaway_type)
-                if current_status != 'pending_payment':
-                    print(f"⚠️ DEBUG: Winner {telegram_id} is not in pending_payment status (current: {current_status})")
+                print(f"🔍 DEBUG: Current status for {telegram_id}: {current_status}")
+                
+                if current_status == 'payment_confirmed':
+                    print(f"✅ DEBUG: Winner {telegram_id} already confirmed, removing from pending")
+                    # 🆕 YA CONFIRMADO - SOLO REMOVER
+                    return self._remove_winner_from_pending(telegram_id, giveaway_type)
+                elif current_status != 'pending_payment':
+                    print(f"⚠️ DEBUG: Winner {telegram_id} in unexpected status: {current_status}")
                     return False
                 
                 # Backup original file
@@ -1574,30 +2124,33 @@ class GiveawaySystem:
                     reader = csv.DictReader(f)
                     for row in reader:
                         if (row['telegram_id'] == str(telegram_id) and
-                            row.get('giveaway_type', 'daily') == giveaway_type):
+                            row.get('giveaway_type', 'daily') == giveaway_type and
+                            row['status'] == 'pending_payment'):
                             target_found = True
                             
-                            if row['status'] == 'pending_payment':
-                                # Update status
+                            if new_status == 'payment_confirmed':
+                                # 🆕 DON'T add to rows - REMOVE the entry completely
+                                print(f"🗑️ DEBUG: Removing confirmed {giveaway_type} winner {telegram_id}")
+                                updated = True
+                                continue  # Skip adding this row
+                            else:
+                                # Update status for other cases
                                 row['status'] = new_status
                                 row['confirmed_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                 row['confirmed_by'] = str(confirmed_by_admin_id)
                                 updated = True
-                                print(f"✅ DEBUG: {giveaway_type.title()} status updated to '{new_status}'")
-                            else:
-                                print(f"⚠️ DEBUG: Winner {telegram_id} status was '{row['status']}', not 'pending_payment'")
                         
                         rows.append(row)
                 
                 if not target_found:
-                    print(f"❌ DEBUG: {giveaway_type.title()} winner {telegram_id} NOT found")
+                    print(f"❌ DEBUG: Winner {telegram_id} NOT found in pending")
                     return False
                 
                 if not updated:
-                    print(f"❌ DEBUG: {giveaway_type.title()} status was not 'pending_payment'")
+                    print(f"❌ DEBUG: No updates made for {telegram_id}")
                     return False
                 
-                # Write updated file
+                # Write updated file (without confirmed entries)
                 temp_file = f"{pending_file}.temp"
                 with open(temp_file, 'w', newline='', encoding='utf-8') as f:
                     fieldnames = ['date', 'telegram_id', 'username', 'first_name', 'mt5_account', 'prize', 'status', 'selected_time', 'confirmed_time', 'confirmed_by', 'giveaway_type']
@@ -1607,13 +2160,75 @@ class GiveawaySystem:
                 
                 # Replace original file
                 os.replace(temp_file, pending_file)
-                print(f"✅ DEBUG: {giveaway_type.title()} CSV file updated successfully")
+                print(f"✅ DEBUG: {giveaway_type.title()} CSV file updated - confirmed entries removed")
                 
                 return True
                 
             except Exception as e:
                 self.logger.error(f"Error updating {giveaway_type} winner status: {e}")
                 return False
+            
+    def _remove_winner_from_pending(self, telegram_id, giveaway_type=None):
+        """🆕 NEW: Remove winner from pending list (already confirmed case)"""
+        if giveaway_type is None:
+            giveaway_type = self.giveaway_type
+        
+        try:
+            pending_file = self.get_file_paths(giveaway_type)['pending_winners']
+            
+            if not os.path.exists(pending_file):
+                return False
+            
+            rows = []
+            removed = False
+            
+            with open(pending_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if (row['telegram_id'] == str(telegram_id) and 
+                        row.get('giveaway_type', 'daily') == giveaway_type):
+                        print(f"🧹 DEBUG: Removing already confirmed {giveaway_type} winner {telegram_id}")
+                        removed = True
+                        continue  # Don't add to rows
+                    rows.append(row)
+            
+            if removed:
+                # Write file without the confirmed winner
+                temp_file = f"{pending_file}.temp"
+                with open(temp_file, 'w', newline='', encoding='utf-8') as f:
+                    fieldnames = ['date', 'telegram_id', 'username', 'first_name', 'mt5_account', 'prize', 'status', 'selected_time', 'confirmed_time', 'confirmed_by', 'giveaway_type']
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(rows)
+                
+                os.replace(temp_file, pending_file)
+                print(f"✅ DEBUG: {giveaway_type.title()} confirmed winner removed from pending")
+                return True
+            
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"Error removing {giveaway_type} winner from pending: {e}")
+            return False
+
+    def _save_confirmed_winner_record(self, winner_data, confirmed_by_admin_id, giveaway_type=None):
+        """🆕 NEW: Save confirmation record when removing from pending"""
+        if giveaway_type is None:
+            giveaway_type = self.giveaway_type
+        
+        try:
+            # Update the winner_data with confirmation info
+            winner_data['status'] = 'payment_confirmed'
+            winner_data['confirmed_time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            winner_data['confirmed_by'] = str(confirmed_by_admin_id)
+            
+            # Save to confirmed winners file (if you have this functionality)
+            self._save_confirmed_winner(winner_data, giveaway_type)
+            
+            print(f"✅ DEBUG: Confirmed {giveaway_type} winner record saved for {winner_data['telegram_id']}")
+            
+        except Exception as e:
+            self.logger.error(f"Error saving confirmed {giveaway_type} winner record: {e}")
 
     def _get_winner_current_status(self, telegram_id, giveaway_type=None):
         """🆕 NEW: Obtener estado actual del ganador para verificación"""
@@ -1836,21 +2451,79 @@ class GiveawaySystem:
             eligible = []
             
             participants_file = self.get_file_paths(giveaway_type)['participants']
+            print(f"🔍 DEBUG ELIGIBILITY: Checking {giveaway_type} participants")
+            print(f"🔍 DEBUG ELIGIBILITY: File path: {participants_file}")
+            print(f"🔍 DEBUG ELIGIBILITY: Today's date: {today}")
+            print(f"🔍 DEBUG ELIGIBILITY: File exists: {os.path.exists(participants_file)}")
             
             if not os.path.exists(participants_file):
+                print(f"❌ DEBUG ELIGIBILITY: File doesn't exist")
                 return eligible
             
+            # Check file content first
+            with open(participants_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                print(f"🔍 DEBUG ELIGIBILITY: File size: {len(content)} characters")
+                print(f"🔍 DEBUG ELIGIBILITY: File content preview:")
+                print(f"🔍 DEBUG ELIGIBILITY: {repr(content[:500])}")
+
+             # Now process participants
+            total_rows = 0
+            today_rows = 0
+            active_rows = 0   
             # Get today's participants
             with open(participants_file, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    if (row['registration_date'].startswith(today) and 
-                        row['status'] == 'active'):
+                    total_rows += 1
+                    print(f"🔍 DEBUG ELIGIBILITY: Row {total_rows}:")
+                    print(f"   ID: '{row.get('telegram_id')}'")
+                    print(f"   Date: '{row.get('registration_date')}'")
+                    print(f"   Status: '{row.get('status')}'")
+                    print(f"   MT5: '{row.get('mt5_account')}'")
+                    
+                    # Check each condition
+                    date_match = row.get('registration_date', '').startswith(today)
+                    status_match = row.get('status') == 'active'
+                    
+                    print(f"   Date match ({today}): {date_match}")
+                    print(f"   Status match (active): {status_match}")
+                    
+                    if date_match:
+                        today_rows += 1
+                        
+                    if status_match:
+                        active_rows += 1
+                    
+                    if date_match and status_match:
+                        print(f"✅ DEBUG ELIGIBILITY: Row {total_rows} is eligible")
                         eligible.append(row)
+                    else:
+                        print(f"❌ DEBUG ELIGIBILITY: Row {total_rows} NOT eligible")
+            
+            print(f"🔍 DEBUG ELIGIBILITY SUMMARY:")
+            print(f"   Total rows: {total_rows}")
+            print(f"   Today's rows: {today_rows}")
+            print(f"   Active rows: {active_rows}")
+            print(f"   Eligible before recent winners filter: {len(eligible)}")
             
             # Filter recent winners for this type
             recent_winners = self._get_recent_winners(giveaway_type)
+            print(f"🔍 DEBUG ELIGIBILITY: Recent winners: {recent_winners}")
+            eligible_before_filter = len(eligible)
             eligible = [p for p in eligible if p['telegram_id'] not in recent_winners]
+
+            print(f"🔍 DEBUG ELIGIBILITY: Eligible after recent winners filter: {len(eligible)}")
+            print(f"🔍 DEBUG ELIGIBILITY: Filtered out: {eligible_before_filter - len(eligible)}")
+            
+            if eligible:
+                print(f"✅ DEBUG ELIGIBILITY: Final eligible participants:")
+                for i, p in enumerate(eligible):
+                    print(f"   {i+1}. ID: {p['telegram_id']}, MT5: {p['mt5_account']}")
+            else:
+                print(f"❌ DEBUG ELIGIBILITY: NO eligible participants found")
+            
+            # self.logger.info(f"Eligible participants for {giveaway_type}: {len(eligible)}")
             
             self.logger.info(f"Eligible participants for {giveaway_type}: {len(eligible)}")
             return eligible
