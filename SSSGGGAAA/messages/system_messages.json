@@ -1,0 +1,81 @@
+{
+  "user_interface": {
+    "welcome": {
+      "greeting": "🎁 <b>Hello {user_first_name}!</b>\n\nWelcome to the VFX Trading Multi-Giveaway Bot.",
+      "available_giveaways_header": "🌟 <b>AVAILABLE GIVEAWAYS:</b>",
+      "daily_description": "💰 <b>DAILY:</b> ${daily_prize} USD\n⏰ Monday to Friday at 5:00 PM London Time",
+      "weekly_description": "💰 <b>WEEKLY:</b> ${weekly_prize} USD\n⏰ Every Friday at 5:15 PM London Time",
+      "monthly_description": "💰 <b>MONTHLY:</b> ${monthly_prize} USD\n⏰ Last Friday of each month at 5:30 PM London Time",
+      "requirements_header": "📋 <b>Requirements by Type:</b>",
+      "requirements_text": "✅ Active MT5 LIVE account\n✅ Be a channel member\n💵 <b>Minimum Balances:</b>\n   • Daily: ${daily_min_balance} USD\n   • Weekly: ${weekly_min_balance} USD\n   • Monthly: ${monthly_min_balance} USD",
+      "requirements_fallback": "📋 <b>Requirements:</b>\n✅ Active Vortex-FX MT5 LIVE account\n✅ Minimum balance varies by type\n✅ Be a channel member",
+      "choose_giveaway": "🎯 <b>Choose which giveaway to participate in:</b>",
+      "group_message": "🎁 <b>VFX Trading Multi-Giveaway Bot</b>\n\nTo participate in any giveaway, send me a private message with /start"
+    },
+    "help": {
+      "header": "🆘 <b>MULTI-GIVEAWAY RULES</b>",
+      "available_giveaways_header": "🌟 <b>AVAILABLE GIVEAWAYS:</b>",
+      "daily_rules": "💰 <b>DAILY GIVEAWAY - ${daily_prize} USD</b>\n⏰ <b>Participation:</b> Monday-Friday, 1:00 AM - 16:50 PM London Time\n🎯 <b>Draw:</b> Monday-Friday at 17:00 PM London Time\n💵 <b>Min Balance:</b> ${daily_min_balance} USD",
+      "weekly_rules": "💰 <b>WEEKLY GIVEAWAY - ${weekly_prize} USD</b>\n⏰ <b>Participation:</b> Monday 9:00 AM - Friday 16:55 PM London Time\n🎯 <b>Draw:</b> Friday at 17:10 PM London Time\n💵 <b>Min Balance:</b> ${weekly_min_balance} USD",
+      "monthly_rules": "💰 <b>MONTHLY GIVEAWAY - ${monthly_prize} USD</b>\n⏰ <b>Participation:</b> Day 1 - Last Friday of month 16:55 PM, London Time\n🎯 <b>Draw:</b> Last Friday at 17:15 PM London Time\n💵 <b>Min Balance:</b> ${monthly_min_balance} USD",
+      "requirements_header": "📋 <b>REQUIREMENTS FOR ALL GIVEAWAYS:</b>",
+      "requirements_list": "✅ Be a member of this channel\n✅ Active Vortex-FX MT5 LIVE account (not demo)\n✅ Minimum balance varies by giveaway type (see above)\n✅ One participation per giveaway type per period",
+      "important_rules_header": "🔒 <b>IMPORTANT RULES:</b>",
+      "important_rules_list": "• Each MT5 account belongs to the first user who registers it\n• You can participate in ALL giveaway types simultaneously\n• Independent cooldowns for each giveaway type\n• Must confirm receipt of prize if you win",
+      "common_errors_header": "❌ <b>COMMON ERRORS:</b>",
+      "common_errors_list": "• \"Account not found\" → Verify the number\n• \"Insufficient balance\" → Deposit more than $100 USD\n• \"Account is not LIVE\" → Use real account, not demo\n• \"Already registered\" → Only one participation per type per period\n• \"Account belongs to another\" → Use your own MT5 account",
+      "need_help": "📞 <b>NEED HELP?</b>\nDM administrator: @{admin_username}",
+      "current_time": "⏰ <b>CURRENT LONDON TIME:</b>\n{current_time} UTC",
+      "footer": "🎯 <b>Use /start to participate in any giveaway!</b>"
+    },
+    "participation": {
+      "already_registered": "ℹ️ <b>Already registered for {giveaway_type}</b>\n\nYou are already participating in today's {giveaway_type} giveaway (${prize}).\n\n🍀 Good luck in the draw!\n\n⏰ Draw: Check schedule",
+      "window_closed": "⏰ <b>{giveaway_type} participation closed</b>\n\nParticipation window is currently closed.\n\n🔄 <b>Next window opens:</b>\n{next_window}\n\n💡 Stay tuned for the next opportunity!",
+      "registration_in_progress": "⏳ <b>{giveaway_type} registration in progress</b>\n\nYou already have a {giveaway_type} registration pending.\n\nPlease send your MT5 account number to complete your participation.",
+      "not_channel_member": "❌ <b>Not a channel member</b>\n\nYou must be a member of the main channel to participate.\n\n💡 Join the channel and try again.",
+      "request_mt5": "🎁 <b>Perfect {user_first_name}!</b>\n\n✅ You are a channel member\n✅ Ready to participate in {giveaway_type} giveaway\n\n💰 <b>Prize:</b> ${prize} USD\n\n🔢 <b>Send your MT5 account number:</b>\n\n💡 <b>Valid examples:</b>\n• 1234, 4444, 5555, 7777\n• 8765, 3333, 6666, 8888\n\n⚠️ <b>Only numbers, no spaces</b>"
+    },
+    "view_only": {
+      "header": "📊 <b>VIEW_ONLY DASHBOARD</b>\n🔒 <b>Access Level:</b> VIEW_ONLY\n👤 <b>Admin:</b> {admin_name}",
+      "date_time": "📅 <b>Date:</b> {date}\n⏰ <b>Current Time:</b> {time} London Time\n🌍 <b>Timezone:</b> Europe/London",
+      "todays_summary_header": "📊 <b>Today's Summary:</b>",
+      "todays_summary": "├─ Total participants: <b>{total_today}</b>\n├─ Active participation windows: <b>{active_windows}/{total_types}</b>\n├─ System status: <b>✅ {system_health}</b>\n└─ Last data update: <b>{last_update}</b>",
+      "giveaway_status_header": "🎯 <b>Giveaway Status:</b>",
+      "giveaway_detail": "🎯 <b>{giveaway_type} GIVEAWAY:</b>\n├─ Prize Amount: <b>${prize} USD</b>\n├─ Today's Participants: <b>{participants}</b>\n├─ Participation Window: <b>{window_status}</b>\n├─ Activity Level: <b>{activity_level}</b>\n└─ Status: {status_description}",
+      "insights_header": "📈 <b>System Insights (Basic):</b>",
+      "insights": "├─ Most active type: <b>{most_active}</b>\n├─ Current engagement: <b>{engagement_level}</b>\n└─ System load: <b>{system_load}</b>",
+      "permissions_info": "💡 <b>Your VIEW_ONLY Permissions:</b>\n✅ View today's participation statistics\n✅ Check basic system health status\n✅ See participation window status\n❌ Advanced analytics require PAYMENT_SPECIALIST+ permissions\n❌ Pending winners require higher access levels",
+      "footer": "🔄 Use the buttons below for more information or to refresh data.",
+      "today_details_header": "📈 <b>TODAY'S DETAILED STATISTICS</b>\n🔒 <b>Access Level:</b> VIEW_ONLY",
+      "permissions_detailed": "💡 <b>VIEW_ONLY Information:</b>\n• Participation trends and historical data require PAYMENT_SPECIALIST+ permissions\n• Winner information and pending data require higher access levels\n• Advanced analytics and revenue data require PAYMENT_SPECIALIST+ permissions\n\n🔄 Statistics refresh automatically every few minutes.",
+      "error_loading": "❌ Error loading VIEW_ONLY dashboard"
+    },
+    "stats": {
+      "basic_header": "📊 <b>BASIC STATISTICS</b>\n🔒 <b>Access Level:</b> {permission_level}",
+      "advanced_header": "📊 <b>MULTI-GIVEAWAY STATISTICS</b>\n<i>Accessed by: {admin_name}</i>",
+      "combined_totals_header": "🌟 <b>COMBINED TOTALS:</b>",
+      "combined_totals": "├─ Total participants: <b>{total_participants}</b>\n├─ Total winners: <b>{total_winners}</b>\n├─ Total distributed: <b>${total_distributed}</b>",
+      "by_type_header": "📊 <b>BY GIVEAWAY TYPE:</b>",
+      "type_detail": "🎯 <b>{giveaway_type} (${prize}):</b>\n├─ Today: {today_participants} participants\n├─ Total: {total_participants} participants\n├─ Winners: {total_winners}\n├─ Distributed: ${distributed}\n└─ Pending: {pending}",
+      "basic_today_only": "🎯 <b>{giveaway_type} (${prize}):</b> {today_participants} today",
+      "total_today": "📊 <b>Total Today:</b> {total_today} participants",
+      "advanced_required": "💡 Advanced statistics require PAYMENT_SPECIALIST+ permissions",
+      "footer": "💡 Use specific commands for detailed management",
+      "error": "❌ Error getting statistics"
+    },
+    "rules_inline": {
+      "header": "🆘 <b>MULTI-GIVEAWAY RULES</b>",
+      "available_giveaways_header": "🌟 <b>AVAILABLE GIVEAWAYS:</b>",
+      "daily_rules": "💰 <b>DAILY GIVEAWAY - $250 USD</b>\n⏰ <b>Participation:</b> Monday-Friday, 1:00 AM - 4:50 PM London Time\n🎯 <b>Draw:</b> Monday-Friday at 5:00 PM London Time\n🔄 <b>Cooldown:</b> 30 days after winning",
+      "weekly_rules": "💰 <b>WEEKLY GIVEAWAY - $500 USD</b>\n⏰ <b>Participation:</b> Monday 9:00 AM - Friday 5:00 PM London Time\n🎯 <b>Draw:</b> Friday at 5:15 PM London Time\n🔄 <b>Cooldown:</b> 60 days after winning",
+      "monthly_rules": "💰 <b>MONTHLY GIVEAWAY - $1000 USD</b>\n⏰ <b>Participation:</b> Day 1 - Last Friday of month, London Time\n🎯 <b>Draw:</b> Last Friday at 5:30 PM London Time\n🔄 <b>Cooldown:</b> 90 days after winning",
+      "requirements_header": "📋 <b>REQUIREMENTS FOR ALL GIVEAWAYS:</b>",
+      "requirements": "✅ Be a member of this channel\n✅ Active MT5 LIVE account (not demo)\n✅ Minimum balance of $100 USD\n✅ One participation per giveaway type per period",
+      "important_rules_header": "🔒 <b>IMPORTANT RULES:</b>",
+      "important_rules": "• Each MT5 account belongs to the first user who registers it\n• You can participate in ALL giveaway types simultaneously\n• Independent cooldowns for each giveaway type\n• Must confirm receipt of prize if you win",
+      "need_help": "📞 <b>NEED HELP?</b>\nContact administrator: @{admin_username}",
+      "current_time": "⏰ <b>CURRENT LONDON TIME:</b>\n{current_time} UTC",
+      "error_fallback": "❌ Error loading rules. Use /help for complete information."
+    }
+  }
+}
