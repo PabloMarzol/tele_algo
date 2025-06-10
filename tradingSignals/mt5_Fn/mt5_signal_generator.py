@@ -664,14 +664,14 @@ class MT5SignalGenerator:
                         signal = None
                         
                         # Choose strategy based on name with enhanced error handling
-                        if strategy_name == 'ma_crossover':
-                            signal = self.calculate_ma_crossover(
-                                symbol, 
-                                timeframe, 
-                                config['params']['fast_length'],
-                                config['params']['slow_length']
-                            )
-                        elif strategy_name == 'rsi_reversal':
+                        # if strategy_name == 'ma_crossover':
+                        #     signal = self.calculate_ma_crossover(
+                        #         symbol, 
+                        #         timeframe, 
+                        #         config['params']['fast_length'],
+                        #         config['params']['slow_length']
+                        #     )
+                        if strategy_name == 'rsi_reversal':
                             signal = self.calculate_rsi_reversal(
                                 symbol, 
                                 timeframe,

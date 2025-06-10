@@ -281,49 +281,118 @@ async def edit_account_callback(update: Update, context: ContextTypes.DEFAULT_TY
             print(f"Error notifying admin {admin_id}: {e}")
 
 async def generate_welcome_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Generate a welcome message with a deep link for users with privacy settings."""
+    """Generate a welcome message with a deep link for users with privacy settings - FIXED VERSION."""
     query = update.callback_query
     await query.answer()
     
     callback_data = query.data
-    if callback_data.startswith("gen_welcome_"):
-        user_id = int(callback_data.split("_")[2])
+    print(f"Generate welcome link callback received: {callback_data}")
+    
+    # Handle different callback patterns
+    if callback_data == "gen_welcome_privacy":
+        # Privacy-protected user (no user ID available)
+        print("Handling privacy-protected user welcome link generation")
         
-        # Get user info if available
-        auto_welcoming_users = context.bot_data.get("auto_welcoming_users", {})
-        user_name = auto_welcoming_users.get(user_id, {}).get("name", "there")
+        user_name = context.user_data.get("privacy_user_name", "User")
+        user_source = context.user_data.get("privacy_user_source", "unknown")
         
-        # Create "start bot" deep link
-        bot_username = await context.bot.get_me()
-        bot_username = bot_username.username
-        start_link = f"https://t.me/{bot_username}?start=ref_{update.effective_user.id}"
+        # Create the start link with admin referral
+        bot_info = await context.bot.get_me()
+        bot_username = bot_info.username
+        start_link = f"https://t.me/{bot_username}?start=ref_{query.from_user.id}"
         
-        # Generate personalized welcome message
+        # Generate the copy-paste message for privacy-protected user
         welcome_template = (
-    f"<b>Hello {user_name}! 👋</b>\n\n"
-    f"🎉 <b>Thank you for your interest in VFX Trading solutions!</b>\n\n"
-    f"🚀 <b>Ready to get started?</b>\n\n"
-    f"To begin your account setup and access our premium trading services, please click the link below:\n\n"
-    f"👉 <a href='{start_link}'>Connect with VFX - REGISTRATION</a>\n\n"
-    f"<b>📋 Quick Setup Process:</b>\n\n"
-    f"<b>1.</b> 🤖 Connect with our automated assistant\n"
-    f"<b>2.</b> 📊 Answer quick questions about your trading preferences\n" 
-    f"<b>3.</b> ✅ Verify your Vortex-FX MT5 account number\n\n"
-    f"<b>🎯 What happens next?</b>\n"
-    f"Our expert team will configure your account with optimal parameters based on your unique trading profile.\n\n"
-    f"💬 <b>Questions? We're here to help!</b>\n\n"
-    f"🔥 <b>Let's build your trading success together!</b> 📈"
-)
+            f"<b>Hello {user_name}! 👋</b>\n\n"
+            f"🎉 <b>Thank you for your interest in VFX Trading solutions!</b>\n\n"
+            f"🚀 <b>Ready to get started?</b>\n\n"
+            f"To begin your account setup and access our premium trading services, please click the link below:\n\n"
+            f"👉 <a href='{start_link}'>Connect with VFX - REGISTRATION</a>\n\n"
+            f"<b>📋 Quick Setup Process:</b>\n\n"
+            f"<b>1.</b> 🤖 Connect with our automated assistant\n"
+            f"<b>2.</b> 📊 Answer quick questions about your trading preferences\n" 
+            f"<b>3.</b> ✅ Verify your Vortex-FX MT5 account number\n\n"
+            f"<b>🎯 What happens next?</b>\n"
+            f"Our expert team will configure your account with optimal parameters based on your unique trading profile.\n\n"
+            f"💬 <b>Questions? We're here to help!</b>\n\n"
+            f"🔥 <b>Let's build your trading success together!</b> 📈"
+        )
         
-        # Show the message with a copy button
         await query.edit_message_text(
-            "✅ Here's your personalized welcome message to send to the user:\n\n"
+            f"✅ <b>Welcome Message Generated for {user_name}</b>\n\n"
+            f"📋 <b>Copy and paste this message to the user:</b>\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"{welcome_template}\n\n"
-            "Copy and paste this message to the user. After they click the link, "
-            "they will be able to complete the registration process with the bot.",
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💡 <b>Instructions:</b>\n"
+            f"• Copy the message above (between the lines)\n"
+            f"• Paste it in your chat with {user_name}\n"
+            f"• When they click the link, they'll connect automatically",
             parse_mode='HTML'
         )
-
+        
+    elif callback_data.startswith("gen_welcome_"):
+        # User with known ID
+        try:
+            user_id = int(callback_data.split("_")[2])
+            print(f"Handling welcome link generation for user ID: {user_id}")
+            
+            # Get user info if available
+            auto_welcoming_users = context.bot_data.get("auto_welcoming_users", {})
+            user_name = auto_welcoming_users.get(user_id, {}).get("name", "there")
+            
+            # Create "start bot" deep link
+            bot_info = await context.bot.get_me()
+            bot_username = bot_info.username
+            start_link = f"https://t.me/{bot_username}?start=ref_{query.from_user.id}"
+            
+            # Generate personalized welcome message
+            welcome_template = (
+                f"<b>Hello {user_name}! 👋</b>\n\n"
+                f"🎉 <b>Thank you for your interest in VFX Trading solutions!</b>\n\n"
+                f"🚀 <b>Ready to get started?</b>\n\n"
+                f"To begin your account setup and access our premium trading services, please click the link below:\n\n"
+                f"👉 <a href='{start_link}'>Connect with VFX - REGISTRATION</a>\n\n"
+                f"<b>📋 Quick Setup Process:</b>\n\n"
+                f"<b>1.</b> 🤖 Connect with our automated assistant\n"
+                f"<b>2.</b> 📊 Answer quick questions about your trading preferences\n" 
+                f"<b>3.</b> ✅ Verify your Vortex-FX MT5 account number\n\n"
+                f"<b>🎯 What happens next?</b>\n"
+                f"Our expert team will configure your account with optimal parameters based on your unique trading profile.\n\n"
+                f"💬 <b>Questions? We're here to help!</b>\n\n"
+                f"🔥 <b>Let's build your trading success together!</b> 📈"
+            )
+            
+            # Show the message with proper formatting
+            await query.edit_message_text(
+                f"✅ <b>Personalized Welcome Message Generated!</b>\n\n"
+                f"📋 <b>Copy and paste this message to {user_name}:</b>\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"{welcome_template}\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"💡 <b>Instructions:</b>\n"
+                f"• Copy the message above (between the lines)\n"
+                f"• Paste it in your direct chat with {user_name}\n"
+                f"• The clickable link will work when you paste it\n"
+                f"• User will be connected to registration automatically",
+                parse_mode='HTML'
+            )
+            
+        except (ValueError, IndexError) as e:
+            print(f"Error parsing user ID from callback_data '{callback_data}': {e}")
+            await query.edit_message_text(
+                "❌ <b>Error Processing Request</b>\n\n"
+                "Invalid user ID format. Please try again or contact support.",
+                parse_mode='HTML'
+            )
+    else:
+        # Unknown callback pattern
+        print(f"Unknown callback pattern: {callback_data}")
+        await query.edit_message_text(
+            "❌ <b>Unknown Request Format</b>\n\n"
+            "Please try again or contact support.",
+            parse_mode='HTML'
+        )
 async def handle_privacy_welcome_link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Generate welcome link for privacy-protected users."""
     query = update.callback_query
@@ -1609,7 +1678,6 @@ async def handle_real_account_found(update, context, user_id, account_info, stat
     fresh_balance_info = await get_fresh_balance(user_id, account_info.get('account_number'))
     
     if not fresh_balance_info:
-        # Fallback to account_info balance if fresh fetch fails
         real_balance = float(account_info.get('balance', 0))
     else:
         real_balance = fresh_balance_info['balance']
@@ -1619,16 +1687,29 @@ async def handle_real_account_found(update, context, user_id, account_info, stat
     
     print(f"Real account found: {account_name}, Real-time Balance: ${real_balance}")
     
-    # Store account info with fresh balance
-    db.add_user({
-        "user_id": user_id,
-        "trading_account": account_number,
-        "account_owner": account_name,
-        "account_balance": real_balance,  # Now using real-time balance
-        "is_verified": True,
-        "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "balance_source": "real_time_mysql"  # Track that this is fresh data
-    })
+    # ENHANCED: Store account info with proper type handling
+    try:
+        account_data = {
+            "user_id": int(user_id),
+            "trading_account": str(account_number),
+            "account_owner": str(account_name),
+            "account_balance": float(real_balance),
+            "is_verified": True,
+            "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "balance_source": "real_time_mysql"
+        }
+        
+        # Use the enhanced add_user method
+        success = db.add_user(account_data)
+        
+        if not success:
+            print(f"❌ Failed to store account data for user {user_id}")
+            # Continue anyway, user can still proceed
+        else:
+            print(f"✅ Successfully stored account data for user {user_id}")
+            
+    except Exception as e:
+        print(f"❌ Error storing account data: {e}")
     
     # Check balance status and guide user accordingly
     if real_balance >= 100:
@@ -1668,9 +1749,9 @@ async def handle_sufficient_balance(update, context, user_id, account_info, bala
     )
     
     keyboard = [
-        [InlineKeyboardButton("🔔 Activate VIP Signals", callback_data="request_vip_signals")],
-        [InlineKeyboardButton("🤖 Activate Automated Trading", callback_data="request_vip_strategy")],
-        [InlineKeyboardButton("✨ Activate BOTH Services", callback_data="request_vip_both_services")],
+        [InlineKeyboardButton("🔔 Request VIP Signals", callback_data="request_vip_signals")],
+        [InlineKeyboardButton("🤖 Request Automated Trading", callback_data="request_vip_strategy")],
+        [InlineKeyboardButton("✨ Request BOTH Services", callback_data="request_vip_both_services")],
         [InlineKeyboardButton("📊 View My Dashboard", callback_data="back_to_dashboard")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -2327,9 +2408,10 @@ async def back_to_services_callback(update: Update, context: ContextTypes.DEFAUL
     # Reset state to service selection
     context.bot_data.setdefault("user_states", {})
     context.bot_data["user_states"][user_id] = "service_selection"
+
+
 # -------------------------------------- HELPER Flow Functions ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
-
 async def start_guided_setup(query, context, user_id):
     """Start the guided setup process."""
     # Clear any existing state
@@ -2728,12 +2810,17 @@ async def check_balance(query, context, user_id):
         return
     
     # Show loading message
-    await query.edit_message_text(
+    loadingBalance_msg = await query.edit_message_text(
         "<b>🔍 Checking Your Balance...</b>\n\n"
         "Fetching real-time data from your trading account...\n\n"
         "<b>💡 Tip:</b> You can always check your status with /myaccount",
         parse_mode='HTML'
     )
+    
+    await asyncio.sleep(1)
+    await loadingBalance_msg.delete()
+    
+    
     
     # Get fresh balance from MySQL
     fresh_balance_info = await get_fresh_balance(user_id)

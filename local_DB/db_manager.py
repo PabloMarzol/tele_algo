@@ -346,7 +346,7 @@ class TradingBotDatabase:
         return self.settings.get(key, default)
     
     def add_user(self, user_data):
-        """Add a new user to the database with schema enforcement."""
+        """Add a new user to the database with enhanced type handling."""
         # Ensure we have user_id
         if 'user_id' not in user_data:
             print("Missing user_id in data")
@@ -359,41 +359,26 @@ class TradingBotDatabase:
             print(f"Invalid user_id: {user_data['user_id']}")
             return False
         
-        # Check if user already exists - use safe comparison
+        # ENHANCED: Clean and validate data types before storing
+        cleaned_data = self._clean_user_data(user_data)
+        
+        # Check if user already exists
         try:
-            existing = self.users_df.filter(pl.col("user_id") == user_data['user_id'])
+            existing = self.users_df.filter(pl.col("user_id") == cleaned_data['user_id'])
         except Exception as e:
             print(f"Error filtering dataframe: {e}")
-            # If there's an error, assume user doesn't exist
             existing = pl.DataFrame(schema=self.users_df.schema)
         
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         if existing.height > 0:
             # User exists, update information
-            for key, value in user_data.items():
+            for key, value in cleaned_data.items():
                 if key in self.users_df.columns:
                     try:
-                        # Handle different data types
-                        if key == "user_id" or key == "risk_appetite" or key == "deposit_amount":
-                            # Convert to int
-                            if value is not None:
-                                try:
-                                    value = int(value)
-                                except (ValueError, TypeError):
-                                    value = 0
-                            else:
-                                value = 0
-                        elif key == "is_verified" or key == "banned" or key == "copier_forwarded" or key == "auto_welcomed" or key == "registration_confirmed":
-                            # Convert to boolean
-                            if isinstance(value, str):
-                                value = value.lower() in ('true', 'yes', '1', 't', 'y')
-                            else:
-                                value = bool(value)
-                        
-                        # Update column
+                        # Update column with proper type
                         self.users_df = self.users_df.with_columns([
-                            pl.when(pl.col("user_id") == user_data['user_id'])
+                            pl.when(pl.col("user_id") == cleaned_data['user_id'])
                             .then(pl.lit(value))
                             .otherwise(pl.col(key))
                             .alias(key)
@@ -402,56 +387,19 @@ class TradingBotDatabase:
                         print(f"Error updating {key} with value {value}: {e}")
             
             # Save changes
-            self.users_df.write_csv(self.users_path)
-            return True
+            try:
+                self.users_df.write_csv(self.users_path)
+                return True
+            except Exception as e:
+                print(f"Error saving CSV after update: {e}")
+                return False
         else:
-            # New user, add row with proper type handling
-            # First, build a complete user record with all schema columns
-            complete_user = {}
+            # New user, add row with complete data
+            complete_user = self._create_complete_user_record(cleaned_data, now)
             
-            # Get all columns from the schema and set defaults
-            for col in self.users_df.columns:
-                if col == "user_id":
-                    complete_user[col] = user_data.get('user_id', 0)
-                elif col in ["risk_appetite", "deposit_amount"]:
-                    complete_user[col] = user_data.get(col, 0)
-                elif col in ["is_verified", "banned", "copier_forwarded", "auto_welcomed", "registration_confirmed"]:
-                    complete_user[col] = user_data.get(col, False)
-                elif col == "join_date":
-                    complete_user[col] = user_data.get(col, now)
-                elif col == "last_active":
-                    complete_user[col] = user_data.get(col, now)
-                else:
-                    # For string columns, use empty string as default
-                    complete_user[col] = user_data.get(col, "")
-            
-            # Now add the record
             try:
                 # Create a new dataframe with just this user
-                user_df = pl.DataFrame([complete_user])
-                
-                # Ensure types match
-                for col in self.users_df.columns:
-                    if col in user_df.columns:
-                        try:
-                            user_df = user_df.with_columns([
-                                pl.col(col).cast(self.users_df.schema[col])
-                            ])
-                        except Exception as e:
-                            print(f"Error casting column {col}: {e}")
-                            # If casting fails, use a safe default
-                            if self.users_df.schema[col] == pl.Int64:
-                                user_df = user_df.with_columns([
-                                    pl.lit(0).cast(pl.Int64).alias(col)
-                                ])
-                            elif self.users_df.schema[col] == pl.Boolean:
-                                user_df = user_df.with_columns([
-                                    pl.lit(False).cast(pl.Boolean).alias(col)
-                                ])
-                            else:
-                                user_df = user_df.with_columns([
-                                    pl.lit("").cast(pl.Utf8).alias(col)
-                                ])
+                user_df = pl.DataFrame([complete_user], schema=self.users_df.schema)
                 
                 # Concatenate with main dataframe
                 self.users_df = pl.concat([self.users_df, user_df])
@@ -462,6 +410,88 @@ class TradingBotDatabase:
             except Exception as e:
                 print(f"Error adding new user: {e}")
                 return False
+
+    def _clean_user_data(self, user_data):
+        """Clean and validate user data types."""
+        cleaned = {}
+        
+        for key, value in user_data.items():
+            try:
+                if key == "user_id":
+                    cleaned[key] = int(value) if value is not None else 0
+                    
+                elif key in ["risk_appetite", "deposit_amount", "vip_granted_by"]:
+                    # Integer fields
+                    if value is None or value == "":
+                        cleaned[key] = 0
+                    else:
+                        cleaned[key] = int(float(value)) if str(value).replace('.', '').isdigit() else 0
+                        
+                elif key in ["account_balance", "qualification_balance"]:
+                    # Float fields  
+                    if value is None or value == "":
+                        cleaned[key] = 0.0
+                    else:
+                        cleaned[key] = float(value) if str(value).replace('.', '').replace('-', '').isdigit() else 0.0
+                        
+                elif key in ["is_verified", "banned", "copier_forwarded", "auto_welcomed", 
+                            "registration_confirmed", "vip_access_granted", "vip_eligible", 
+                            "vip_links_sent", "manual_vip_grant"]:
+                    # Boolean fields
+                    if isinstance(value, str):
+                        cleaned[key] = value.lower() in ('true', 'yes', '1', 't', 'y')
+                    elif value is None:
+                        cleaned[key] = False
+                    else:
+                        cleaned[key] = bool(value)
+                        
+                else:
+                    # String fields
+                    cleaned[key] = str(value) if value is not None else ""
+                    
+            except Exception as e:
+                print(f"Error cleaning {key}={value}: {e}")
+                # Set safe defaults
+                if key in ["risk_appetite", "deposit_amount", "vip_granted_by"]:
+                    cleaned[key] = 0
+                elif key in ["account_balance", "qualification_balance"]:
+                    cleaned[key] = 0.0
+                elif key in ["is_verified", "banned", "copier_forwarded", "auto_welcomed", 
+                            "registration_confirmed", "vip_access_granted", "vip_eligible", 
+                            "vip_links_sent", "manual_vip_grant"]:
+                    cleaned[key] = False
+                else:
+                    cleaned[key] = ""
+        
+        return cleaned
+
+    def _create_complete_user_record(self, cleaned_data, now):
+        """Create a complete user record with all required fields."""
+        complete_user = {}
+        
+        # Get schema from dataframe
+        schema = self.users_df.schema
+        
+        for col_name, dtype in schema.items():
+            if col_name in cleaned_data:
+                complete_user[col_name] = cleaned_data[col_name]
+            else:
+                # Set appropriate defaults based on type
+                if dtype == pl.Int64:
+                    complete_user[col_name] = 0
+                elif dtype == pl.Float64:
+                    complete_user[col_name] = 0.0
+                elif dtype == pl.Boolean:
+                    complete_user[col_name] = False
+                else:  # String/Utf8
+                    if col_name == "join_date":
+                        complete_user[col_name] = now
+                    elif col_name == "last_active":
+                        complete_user[col_name] = now
+                    else:
+                        complete_user[col_name] = ""
+        
+        return complete_user
     
     def get_user(self, user_id):
         """Get user information by user_id."""

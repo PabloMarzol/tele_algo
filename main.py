@@ -105,9 +105,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 "• Gain instant VIP access to our premium services!\n\n"
                 "<b>⏱️ This takes less than 5 minutes!</b>\n\n"
                 "<b>💡 Quick Tip:</b>\n\n"
-                "After registration, you can always check your status and edit your profile using:\n\n"
-                "<b>/myaccount</b> - Your personal dashboard 📊\n\n"
-                "Let's get started! 🚀\n\n",
+
                 "Ready to start your trading journey? 🌟"
             )
         else:
@@ -410,7 +408,7 @@ async def my_account_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         parse_mode='HTML'
     )
     
-    # Small delay to show loading (optional)
+    # Small delay to show loading 
     await asyncio.sleep(1)
     
     # Delete loading message and show dashboard
@@ -1129,7 +1127,7 @@ async def end_user_conversation(update: Update, context: ContextTypes.DEFAULT_TY
         await update.message.reply_text("You're not currently in a conversation with any user.")
 
 async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle messages forwarded by the admin from users."""
+    """Handle messages forwarded by the admin from users - FIXED VERSION."""
     # Debug output
     print(f"Received message in chat {update.effective_chat.id} from user {update.effective_user.id}")
     
@@ -1138,7 +1136,7 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
         print("Not from admin, skipping admin forward handler")
         return
     
-    # Check for forwarded message
+    # CRITICAL FIX: Check if this is a forwarded message FIRST
     is_forwarded = False
     original_sender_id = None
     original_sender_name = "Unknown User"
@@ -1172,46 +1170,46 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
         original_sender_name = update.message.forward_sender_name
         print(f"Hidden sender from forward_sender_name: {original_sender_name}")
     
-    
-    message_text = update.message.text if update.message.text else ""
-    # Try to determine source channel
-    if hasattr(update.message, 'forward_from_chat') and update.message.forward_from_chat:
-        # If we have direct information about the source chat
-        forward_chat_id = str(update.message.forward_from_chat.id)
-        if forward_chat_id == MAIN_CHANNEL_ID:
-            forwarded_from_channel = "main_channel"
-            print(f"Message identified as forwarded from main channel")
-        elif forward_chat_id == SIGNALS_CHANNEL_ID:
-            forwarded_from_channel = "signals_channel"
-            print(f"Message identified as forwarded from signals channel")
-    else:
-        # Try to infer source from content
-        if any(keyword in message_text.lower() for keyword in ["signal", "trade", "buy", "sell", "entry", "exit", "tp", "sl"]):
-            # Message likely related to trading signals
-            forwarded_from_channel = "signals_channel"
-            print(f"Message content suggests it's from signals channel")
-        else:
-            # Default to main channel if can't determine
-            forwarded_from_channel = "main_channel"
-            print(f"Defaulting to main channel as source")
-    # If it's a forwarded message
+    # IF THIS IS A FORWARDED MESSAGE - Handle the forwarded message workflow
     if is_forwarded:
-        print(f"This is a forwarded message from {original_sender_name}")
+        print(f"Processing forwarded message from {original_sender_name}")
+        
+        message_text = update.message.text if update.message.text else ""
+        
+        # Try to determine source channel
+        if hasattr(update.message, 'forward_from_chat') and update.message.forward_from_chat:
+            forward_chat_id = str(update.message.forward_from_chat.id)
+            if forward_chat_id == MAIN_CHANNEL_ID:
+                forwarded_from_channel = "main_channel"
+                print(f"Message identified as forwarded from main channel")
+            elif forward_chat_id == SIGNALS_CHANNEL_ID:
+                forwarded_from_channel = "signals_channel"
+                print(f"Message identified as forwarded from signals channel")
+        else:
+            # Try to infer source from content
+            if any(keyword in message_text.lower() for keyword in ["signal", "trade", "buy", "sell", "entry", "exit", "tp", "sl"]):
+                forwarded_from_channel = "signals_channel"
+                print(f"Message content suggests it's from signals channel")
+            else:
+                forwarded_from_channel = "main_channel"
+                print(f"Defaulting to main channel as source")
         
         # Handle user with visible info
         if original_sender_id:
+            print(f"Processing forwarded message from user with ID: {original_sender_id}")
+            
             # Store original sender ID for future communication with source channel info
             user_data = {
                 "user_id": original_sender_id,
                 "first_name": original_sender_name,
-                "last_name": "" if not hasattr(update.message.forward_origin.sender_user, 'last_name') else update.message.forward_origin.sender_user.last_name,
-                "username": "" if not hasattr(update.message.forward_origin.sender_user, 'username') else update.message.forward_origin.sender_user.username,
-                "source_channel": forwarded_from_channel,  # Set source channel
+                "last_name": "",
+                "username": "",
+                "source_channel": forwarded_from_channel,
                 "first_contact_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             db.add_user(user_data)
             
-            # AUTOMATICALLY SEND WELCOME MESSAGE TO USER - CUSTOMIZE BASED ON SOURCE CHANNEL
+            # AUTOMATICALLY SEND WELCOME MESSAGE TO USER
             try:
                 # Get the appropriate welcome message based on source channel
                 if forwarded_from_channel == "signals_channel":
@@ -1224,21 +1222,12 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
                                                config.get("messages.admin_auto_welcome", 
                                                         "Welcome to VFX Trading!"))
                 
-                # Send the welcome message directly to the user
                 # Create buttons for welcome message
                 keyboard = [
                     [InlineKeyboardButton("🚀 Start Guided Setup", callback_data="start_guided")],
-                    # [
-                    #     InlineKeyboardButton("Low Risk", callback_data="risk_low"),
-                    #     InlineKeyboardButton("Medium Risk", callback_data="risk_medium"),
-                    #     InlineKeyboardButton("High Risk", callback_data="risk_high")
-                    # ],
                     [InlineKeyboardButton("↩️ Restart Process", callback_data="restart_process")]
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
-
-                # Format same text with HTML
-                formatted_msg = welcome_msg  # Keep original message text
 
                 try:
                     # Send the welcome message directly to the user
@@ -1270,24 +1259,26 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
                     
                     # Check if it's a privacy restriction error
                     if "Forbidden: bot can't initiate conversation with a user" in str(e):
-                        # Create "start bot" deep link - this is a special link format that opens the bot when clicked
+                        # Create "start bot" deep link
                         bot_username = await context.bot.get_me()
                         bot_username = bot_username.username
                         start_link = f"https://t.me/{bot_username}?start=ref_{update.effective_user.id}"
                         
                         # Create keyboard with copy buttons
                         keyboard = [
-                            [InlineKeyboardButton("Generate Welcome Link", callback_data=f"gen_welcome_{original_sender_id}")],
-                            [InlineKeyboardButton("View User Profile", callback_data=f"view_profile_{original_sender_id}")]
+                            [InlineKeyboardButton("🔗 Generate Welcome Link", callback_data=f"gen_welcome_{original_sender_id}")],
+                            [InlineKeyboardButton("👤 View User Profile", callback_data=f"view_profile_{original_sender_id}")]
                         ]
                         reply_markup = InlineKeyboardMarkup(keyboard)
                         
                         await update.message.reply_text(
                             f"⚠️ Cannot message {original_sender_name} directly due to Telegram privacy settings.\n\n"
                             f"This means the user has not started a conversation with the bot yet.\n\n"
-                            f"Option 1: You can ask the user to click this link first:\n"
-                            f"{start_link}\n\n"
-                            f"Option 2: Click 'Generate Welcome Link' to create a personalized message for this user.",
+                            f"<b>💡 You can still try to connect manually:</b>\n"
+                            f"Click 'Generate Welcome Link' to create a personalized message for this user.\n\n"
+                            f"<b>Alternative:</b> Ask the user to click this link first:\n"
+                            f"`{start_link}`",
+                            parse_mode='HTML',
                             reply_markup=reply_markup
                         )
                     else:
@@ -1315,18 +1306,21 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
             
             # Ask admin if they want to start conversation (keep this as a backup)
             keyboard = [
-                [InlineKeyboardButton("View User Profile", callback_data=f"view_profile_{original_sender_id}")]
+                [InlineKeyboardButton("👤 View User Profile", callback_data=f"view_profile_{original_sender_id}")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             await update.message.reply_text(
-                f"Message forwarded from {original_sender_name} (ID: {original_sender_id}).\n"
-                f"Automated welcome message has been sent.",
+                f"📨 Message forwarded from {original_sender_name} (ID: {original_sender_id}).\n"
+                f"Automated welcome message has been sent.\n\n"
+                f"<b>💡 To start direct conversation:</b>\n"
+                f"Click 'View User Profile' → 'Start Conversation'",
+                parse_mode='HTML',
                 reply_markup=reply_markup
             )
             
         else:
-        # Handle privacy-protected users (no sender ID available)
+            # Handle privacy-protected users (no sender ID available)
             print(f"Privacy-protected user detected: {original_sender_name}")
             
             # Create buttons for privacy-protected user handling
@@ -1349,33 +1343,129 @@ async def handle_admin_forward(update: Update, context: ContextTypes.DEFAULT_TYP
             # Store the user info for the welcome link generation
             context.user_data["privacy_user_name"] = original_sender_name
             context.user_data["privacy_user_source"] = forwarded_from_channel
+        
+        # IMPORTANT: Return here to prevent further processing
+        return
     
-    # If it's just a regular message from the admin
-    else:
-        print("This is a regular message from admin")
-        # Check if admin is currently in a conversation with a user
-        if "current_user_conv" in context.user_data:
-            user_id = context.user_data["current_user_conv"]
-            print(f"Admin is in conversation with user {user_id}")
-            
-            # Forward the admin's reply to that user
-            try:
-                await context.bot.send_message(
-                    chat_id=user_id,
-                    text=f"Admin: {update.message.text}",
-                    parse_mode="HTML"
-                )
-                await update.message.reply_text(f"Message sent to user {user_id}")
-            except Exception as e:
-                print(f"Error sending message to user: {e}")
-                await update.message.reply_text(f"Failed to send message: {e}")
-        else:
-            print("Admin is not in a conversation with any user")
-            # Admin is not in a conversation with anyone
-            await update.message.reply_text(
-                "You're not currently in a conversation with any user. "
-                "Forward a message from a user to start a conversation."
+    # IF THIS IS NOT A FORWARDED MESSAGE - Check if admin is in active conversation
+    if "current_user_conv" in context.user_data:
+        user_id = context.user_data["current_user_conv"]
+        print(f"Admin is in conversation with user {user_id}, forwarding message")
+        
+        # Try to get user info for better error handling
+        user_info = db.get_user(user_id)
+        user_name = user_info.get('first_name', 'User') if user_info else f'User {user_id}'
+        
+        # Forward the admin's reply to that user
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=update.message.text,  # Send the raw message without "Admin:" prefix
+                parse_mode="HTML"
             )
+            await update.message.reply_text(
+                f"✅ <b>Message delivered to {user_name}</b>\n\n"
+                f"📱 Your message: \"{update.message.text[:50]}...\"\n"
+                f"👤 Sent to: {user_name} (ID: {user_id})",
+                parse_mode='HTML'
+            )
+            print(f"Successfully forwarded message to user {user_id}")
+            return
+            
+        except Exception as e:
+            print(f"Error sending message to user {user_id}: {e}")
+            
+            # Enhanced error handling based on error type
+            if "Forbidden: bot can't initiate conversation with a user" in str(e):
+                # User hasn't started the bot yet
+                bot_info = await context.bot.get_me()
+                bot_username = bot_info.username
+                start_link = f"https://t.me/{bot_username}?start=ref_{update.effective_user.id}"
+                
+                # Check if user has username for direct messaging
+                username = user_info.get('username') if user_info else None
+                
+                keyboard = [
+                    [InlineKeyboardButton("🔗 Generate Connection Link", callback_data=f"gen_connect_link_{user_id}")],
+                    [InlineKeyboardButton("📞 Get User Contact Info", callback_data=f"get_contact_info_{user_id}")],
+                    [InlineKeyboardButton("❌ End This Conversation", callback_data=f"end_conv_{user_id}")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                error_message = (
+                    f"🚫 <b>Cannot Deliver Message to {user_name}</b>\n\n"
+                    f"<b>📱 Your message:</b> \"{update.message.text[:100]}...\"\n\n"
+                    f"<b>⚠️ Issue:</b> {user_name} hasn't started a conversation with the bot yet.\n\n"
+                    f"<b>💡 Solutions:</b>\n\n"
+                )
+                
+                if username:
+                    error_message += (
+                        f"<b>🎯 Best Option:</b> Message @{username} directly\n"
+                        f"• Click their username to open chat\n"
+                        f"• Send your message directly\n"
+                        f"• Much faster than using the bot\n\n"
+                        f"<b>🔗 Alternative:</b> Send them a bot connection link\n"
+                        f"• Click 'Generate Connection Link' below\n"
+                        f"• Copy and paste the message to @{username}\n\n"
+                    )
+                else:
+                    error_message += (
+                        f"<b>🔗 Send Connection Link:</b>\n"
+                        f"• Click 'Generate Connection Link' below\n"
+                        f"• Copy the generated message\n"
+                        f"• Find {user_name} in your chats and paste it\n\n"
+                    )
+                
+                error_message += f"<b>⚙️ Quick Connect Link:</b>\n`{start_link}`"
+                
+                await update.message.reply_text(
+                    error_message,
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
+                )
+                
+            elif "Forbidden: user is deactivated" in str(e):
+                await update.message.reply_text(
+                    f"🚫 <b>User Account Deactivated</b>\n\n"
+                    f"👤 {user_name} (ID: {user_id})\n"
+                    f"⚠️ This user's Telegram account has been deactivated.\n\n"
+                    f"🔄 Use /endchat to end this conversation.",
+                    parse_mode='HTML'
+                )
+                
+            elif "Forbidden: bot was blocked by the user" in str(e):
+                await update.message.reply_text(
+                    f"🚫 <b>Bot Blocked by User</b>\n\n"
+                    f"👤 {user_name} (ID: {user_id})\n"
+                    f"⚠️ This user has blocked the bot.\n\n"
+                    f"💡 You'll need to contact them through other means.\n"
+                    f"🔄 Use /endchat to end this conversation.",
+                    parse_mode='HTML'
+                )
+                
+            else:
+                # Generic error
+                await update.message.reply_text(
+                    f"❌ <b>Delivery Failed</b>\n\n"
+                    f"👤 {user_name} (ID: {user_id})\n"
+                    f"⚠️ Error: {str(e)[:100]}\n\n"
+                    f"🔄 Use /endchat to end this conversation.",
+                    parse_mode='HTML'
+                )
+            return
+    
+    # If it's NOT a forwarded message AND admin is not in active conversation
+    print("This is a regular message from admin, but no active conversation")
+    await update.message.reply_text(
+        "💬 <b>No Active Conversation</b>\n\n"
+        "You're not currently in a conversation with any user.\n\n"
+        "<b>To start a conversation:</b>\n"
+        "• Forward a message from a user, OR\n"
+        "• Use /users to see recent users and click 'Message User'\n\n"
+        "<b>💡 Tip:</b> When you start a conversation, any regular message you send will be forwarded to that user.",
+        parse_mode='HTML'
+    )
 
 async def start_user_conversation_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """FIXED: Show clickable username to admin for direct conversation."""
@@ -1544,6 +1634,466 @@ async def handle_referral(context, user, ref_code):
     except Exception as e:
         print(f"Error processing referral: {e}")
 
+async def generate_connection_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Generate a connection link for users who haven't started the bot."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = int(callback_data.split("_")[3])  # gen_connect_link_{user_id}
+    
+    user_info = db.get_user(user_id)
+    user_name = user_info.get('first_name', 'User') if user_info else f'User {user_id}'
+    
+    # Create connection link
+    bot_info = await context.bot.get_me()
+    bot_username = bot_info.username
+    start_link = f"https://t.me/{bot_username}?start=ref_{query.from_user.id}"
+    
+    # Generate connection message
+    connection_message = (
+        f"Hi {user_name}! 👋\n\n"
+        f"I received your message and I'm ready to help you with VFX Trading!\n\n"
+        f"To continue our conversation through our secure system, please click this link:\n\n"
+        f"👉 {start_link}\n\n"
+        f"This will connect you to our automated assistant where we can discuss your trading needs in detail.\n\n"
+        f"Looking forward to helping you! 🚀"
+    )
+    
+    await query.edit_message_text(
+        f"🔗 <b>Connection Link Generated for {user_name}</b>\n\n"
+        f"📋 <b>Send this message to the user:</b>\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"{connection_message}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"💡 After they click the link and start the bot, you'll be able to message them directly through this system.",
+        parse_mode='HTML'
+    )
+
+async def get_contact_info_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show contact information for the user."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = int(callback_data.split("_")[3])  # get_contact_info_{user_id}
+    
+    user_info = db.get_user(user_id)
+    
+    if user_info:
+        contact_info = (
+            f"👤 <b>Contact Information</b>\n\n"
+            f"<b>Name:</b> {user_info.get('first_name', 'Unknown')} {user_info.get('last_name', '')}\n"
+            f"<b>Username:</b> @{user_info.get('username', 'Not available')}\n"
+            f"<b>User ID:</b> <code>{user_id}</code>\n"
+            f"<b>Source:</b> {user_info.get('source_channel', 'Unknown')}\n"
+            f"<b>First Contact:</b> {user_info.get('first_contact_date', 'Unknown')}\n\n"
+        )
+        
+        if user_info.get('username'):
+            contact_info += f"💡 <b>Best option:</b> Message @{user_info.get('username')} directly"
+        else:
+            contact_info += f"⚠️ No public username available. Use the connection link method."
+    else:
+        contact_info = f"❌ No contact information available for user {user_id}"
+    
+    await query.edit_message_text(contact_info, parse_mode='HTML')
+
+async def end_conversation_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """End the current conversation."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = int(callback_data.split("_")[2])  # end_conv_{user_id}
+    
+    # End the conversation
+    if "current_user_conv" in context.user_data:
+        del context.user_data["current_user_conv"]
+    
+    user_info = db.get_user(user_id)
+    user_name = user_info.get('first_name', 'User') if user_info else f'User {user_id}'
+    
+    await query.edit_message_text(
+        f"✅ <b>Conversation Ended</b>\n\n"
+        f"Conversation with {user_name} (ID: {user_id}) has been ended.\n\n"
+        f"💡 You can start a new conversation by forwarding a message from another user or using /users.",
+        parse_mode='HTML'
+    )
+
+async def admin_dashboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Main admin dashboard - central hub for all admin functions."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    # Get quick stats
+    total_users = db.users_df.height if hasattr(db.users_df, 'height') else 0
+    verified_users = db.users_df.filter(pl.col("is_verified") == True).height if total_users > 0 else 0
+    vip_users = db.users_df.filter(pl.col("vip_access_granted") == True).height if total_users > 0 else 0
+    active_users_7d = db.get_active_users(days=7)
+    
+    dashboard_message = (
+        f"🎛️ <b>VFX Trading Admin Dashboard</b>\n\n"
+        f"<b>📊 Quick Stats:</b>\n"
+        f"• Total Users: {total_users:,}\n"
+        f"• Verified: {verified_users:,}\n"
+        f"• VIP Members: {vip_users:,}\n"
+        f"• Active (7d): {active_users_7d:,}\n\n"
+        f"<b>🚀 What would you like to do?</b>"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("👥 Manage Users", callback_data="admin_users_menu"),
+            InlineKeyboardButton("📊 View Statistics", callback_data="admin_stats_menu")
+        ],
+        [
+            InlineKeyboardButton("🌟 VIP Management", callback_data="admin_vip_menu"),
+            InlineKeyboardButton("🔄 Copier Management", callback_data="admin_copier_menu")
+        ],
+        [
+            InlineKeyboardButton("🔍 Search Users", callback_data="admin_search_menu"),
+            InlineKeyboardButton("⚙️ System Settings", callback_data="admin_settings_menu")
+        ],
+        [
+            InlineKeyboardButton("🔄 Refresh Dashboard", callback_data="refresh_dashboard")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(dashboard_message, parse_mode='HTML', reply_markup=reply_markup)
+
+async def enhanced_users_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Enhanced user management with filters and bulk actions."""
+    if not await is_user_admin(update, context):
+        await update.message.reply_text("This command is only available to admins.")
+        return
+    
+    # Show user browser with filter options
+    await show_user_browser(update, context, filter_type="recent")
+
+async def show_user_browser(update, context, filter_type="recent", page=0, is_callback=False):
+    """Display paginated user browser with filters and actions."""
+    users_per_page = 5
+    
+    # Apply filters
+    if filter_type == "recent":
+        filtered_users = db.users_df.sort("last_active", descending=True).head(50)
+        title = "📅 Recent Users"
+    elif filter_type == "verified":
+        filtered_users = db.users_df.filter(pl.col("is_verified") == True).sort("last_active", descending=True)
+        title = "✅ Verified Users"
+    elif filter_type == "vip":
+        filtered_users = db.users_df.filter(pl.col("vip_access_granted") == True).sort("vip_granted_date", descending=True)
+        title = "🌟 VIP Users"
+    elif filter_type == "unverified":
+        filtered_users = db.users_df.filter(pl.col("is_verified") == False).sort("join_date", descending=True)
+        title = "⏳ Unverified Users"
+    elif filter_type == "high_balance":
+        filtered_users = db.users_df.filter(pl.col("account_balance") >= 100).sort("account_balance", descending=True)
+        title = "💰 High Balance Users"
+    else:
+        filtered_users = db.users_df.sort("last_active", descending=True)
+        title = "👥 All Users"
+    
+    total_filtered = filtered_users.height if hasattr(filtered_users, 'height') else 0
+    
+    if total_filtered == 0:
+        message = f"{title}\n\n❌ No users found matching this filter."
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back to Filters", callback_data="admin_users_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        if is_callback:
+            await update.callback_query.edit_message_text(message, parse_mode='HTML', reply_markup=reply_markup)
+        else:
+            await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
+        return
+    
+    # Pagination
+    start_idx = page * users_per_page
+    end_idx = min(start_idx + users_per_page, total_filtered)
+    page_users = filtered_users.slice(start_idx, users_per_page)
+    
+    # Build message
+    message = f"{title} ({total_filtered:,} total)\n\n"
+    message += f"<b>Page {page + 1} of {(total_filtered - 1) // users_per_page + 1}</b>\n\n"
+    
+    # User list with quick info
+    for i in range(page_users.height):
+        user_id = page_users["user_id"][i]
+        first_name = page_users["first_name"][i] or "Unknown"
+        last_name = page_users["last_name"][i] or ""
+        username = page_users["username"][i] or "None"
+        is_verified = page_users["is_verified"][i] if page_users["is_verified"][i] is not None else False
+        vip_access = page_users["vip_access_granted"][i] if page_users["vip_access_granted"][i] is not None else False
+        balance = page_users["account_balance"][i] if page_users["account_balance"][i] is not None else 0
+        
+        # Status indicators
+        verify_emoji = "✅" if is_verified else "⏳"
+        vip_emoji = "🌟" if vip_access else "🔒"
+        balance_emoji = "💰" if balance >= 100 else "💳" if balance > 0 else "💸"
+        
+        message += f"{i + 1}. <b>{first_name} {last_name}</b> {verify_emoji}{vip_emoji}{balance_emoji}\n"
+        message += f"   @{username} • ID: {user_id}\n"
+        if balance > 0:
+            message += f"   Balance: ${balance:,.2f}\n"
+        message += "\n"
+    
+    # Build keyboard
+    keyboard = []
+    
+    # User action buttons (one row per user)
+    for i in range(page_users.height):
+        user_id = page_users["user_id"][i]
+        first_name = page_users["first_name"][i] or "User"
+        keyboard.append([
+            InlineKeyboardButton(f"👤 {first_name}", callback_data=f"admin_user_profile_{user_id}"),
+            InlineKeyboardButton("💬", callback_data=f"admin_start_conv_{user_id}"),
+            InlineKeyboardButton("🔗", callback_data=f"admin_gen_link_{user_id}"),
+            InlineKeyboardButton("🌟", callback_data=f"admin_quick_vip_{user_id}")
+        ])
+    
+    # Pagination controls
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Previous", callback_data=f"admin_users_page_{filter_type}_{page-1}"))
+    if end_idx < total_filtered:
+        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"admin_users_page_{filter_type}_{page+1}"))
+    
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+    
+    # Filter and action buttons
+    keyboard.extend([
+        [
+            InlineKeyboardButton("🔍 Change Filter", callback_data="admin_users_menu"),
+            InlineKeyboardButton("🔄 Refresh", callback_data=f"admin_users_refresh_{filter_type}_{page}")
+        ],
+        [
+            InlineKeyboardButton("📊 Bulk Actions", callback_data=f"admin_bulk_menu_{filter_type}"),
+            InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")
+        ]
+    ])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    if is_callback:
+        await update.callback_query.edit_message_text(message, parse_mode='HTML', reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
+
+async def admin_user_profile_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show comprehensive user profile with all available actions."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = int(callback_data.split("_")[3])  # admin_user_profile_{user_id}
+    
+    await show_comprehensive_user_profile(query, context, user_id)
+
+async def show_comprehensive_user_profile(query, context, user_id):
+    """Display a comprehensive user profile with all admin actions."""
+    user_info = db.get_user(user_id)
+    
+    if not user_info:
+        await query.edit_message_text(
+            f"❌ <b>User Not Found</b>\n\nUser ID {user_id} not found in database.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Get real-time balance if possible
+    real_time_balance = user_info.get('account_balance', 0) or 0
+    trading_account = user_info.get('trading_account')
+    
+    if trading_account:
+        try:
+            mysql_db = get_mysql_connection()
+            if mysql_db and mysql_db.is_connected():
+                account_info = mysql_db.verify_account_exists(trading_account)
+                if account_info['exists']:
+                    real_time_balance = float(account_info.get('balance', 0))
+        except Exception as e:
+            print(f"Error getting real-time balance: {e}")
+    
+    # Build comprehensive profile
+    first_name = user_info.get('first_name', 'Unknown')
+    last_name = user_info.get('last_name', '')
+    username = user_info.get('username', 'None')
+    is_verified = user_info.get('is_verified', False)
+    vip_access = user_info.get('vip_access_granted', False)
+    risk_appetite = user_info.get('risk_appetite', 0)
+    deposit_amount = user_info.get('deposit_amount', 0)
+    trading_interest = user_info.get('trading_interest', 'Not specified')
+    source_channel = user_info.get('source_channel', 'Unknown')
+    join_date = user_info.get('join_date', 'Unknown')
+    last_active = user_info.get('last_active', 'Unknown')
+    
+    # Status indicators and recommendations
+    verify_status = "✅ Verified" if is_verified else "⏳ Pending"
+    vip_status = "🌟 Active" if vip_access else "🔒 Not Active"
+    balance_status = f"💰 ${real_time_balance:,.2f}"
+    
+    # Smart recommendations
+    recommendations = []
+    if not is_verified and trading_account:
+        recommendations.append("⚡ Account verification needed")
+    if is_verified and real_time_balance >= 100 and not vip_access:
+        recommendations.append("🎯 Ready for VIP access")
+    if real_time_balance > 0 and not trading_account:
+        recommendations.append("🔗 Connect trading account")
+    if vip_access and real_time_balance >= 500:
+        recommendations.append("🚀 Consider copier team")
+    
+    profile_message = (
+        f"👤 <b>User Profile: {first_name} {last_name}</b>\n\n"
+        f"<b>📋 Basic Info:</b>\n"
+        f"• Username: @{username}\n"
+        f"• User ID: <code>{user_id}</code>\n"
+        f"• Source: {source_channel.replace('_', ' ').title()}\n"
+        f"• Joined: {join_date[:10] if join_date != 'Unknown' else 'Unknown'}\n"
+        f"• Last Active: {last_active[:10] if last_active != 'Unknown' else 'Unknown'}\n\n"
+        
+        f"<b>📊 Account Status:</b>\n"
+        f"• Verification: {verify_status}\n"
+        f"• VIP Access: {vip_status}\n"
+        f"• Balance: {balance_status}\n"
+        f"• Trading Account: {trading_account or 'Not provided'}\n\n"
+        
+        f"<b>🎯 Profile Data:</b>\n"
+        f"• Risk Level: {risk_appetite}/10\n"
+        f"• Target Deposit: ${deposit_amount:,}\n"
+        f"• Interest: {trading_interest}\n\n"
+    )
+    
+    if recommendations:
+        profile_message += f"<b>💡 Recommendations:</b>\n"
+        for rec in recommendations:
+            profile_message += f"• {rec}\n"
+        profile_message += "\n"
+    
+    profile_message += f"<b>🔧 What would you like to do?</b>"
+    
+    # Build comprehensive action keyboard
+    keyboard = []
+    
+    # Communication actions
+    keyboard.append([
+        InlineKeyboardButton("💬 Start Chat", callback_data=f"admin_start_conv_{user_id}"),
+        InlineKeyboardButton("🔗 Send Link", callback_data=f"admin_gen_link_{user_id}")
+    ])
+    
+    # Account management
+    if not is_verified and trading_account:
+        keyboard.append([
+            InlineKeyboardButton("✅ Verify Account", callback_data=f"admin_verify_{user_id}"),
+            InlineKeyboardButton("🔄 Check Balance", callback_data=f"admin_check_balance_{user_id}")
+        ])
+    elif is_verified:
+        keyboard.append([
+            InlineKeyboardButton("🔄 Refresh Balance", callback_data=f"admin_check_balance_{user_id}"),
+            InlineKeyboardButton("📊 Account Details", callback_data=f"admin_account_details_{user_id}")
+        ])
+    
+    # VIP management
+    if real_time_balance >= 100 and not vip_access:
+        keyboard.append([
+            InlineKeyboardButton("🌟 Grant VIP Signals", callback_data=f"admin_grant_vip_signals_{user_id}"),
+            InlineKeyboardButton("🤖 Grant VIP Strategy", callback_data=f"admin_grant_vip_strategy_{user_id}")
+        ])
+        keyboard.append([
+            InlineKeyboardButton("✨ Grant Both VIP Services", callback_data=f"admin_grant_vip_all_{user_id}")
+        ])
+    elif vip_access:
+        keyboard.append([
+            InlineKeyboardButton("🌟 Manage VIP", callback_data=f"admin_manage_vip_{user_id}"),
+            InlineKeyboardButton("🔄 Forward to Copier", callback_data=f"admin_forward_copier_{user_id}")
+        ])
+    
+    # Profile management
+    keyboard.append([
+        InlineKeyboardButton("✏️ Edit Profile", callback_data=f"admin_edit_profile_{user_id}"),
+        InlineKeyboardButton("🔄 Reset User", callback_data=f"admin_reset_user_{user_id}")
+    ])
+    
+    # Navigation
+    keyboard.append([
+        InlineKeyboardButton("🔙 Back to Users", callback_data="admin_users_menu"),
+        InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")
+    ])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(profile_message, parse_mode='HTML', reply_markup=reply_markup)
+
+async def admin_dashboard_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle all admin dashboard callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    
+    if callback_data == "refresh_dashboard":
+        await refresh_admin_dashboard(query, context)
+        
+    elif callback_data == "admin_users_menu":
+        await show_users_filter_menu(query, context)
+        
+    elif callback_data == "admin_stats_menu":
+        await show_admin_stats(query, context)
+        
+    elif callback_data == "admin_vip_menu":
+        await show_vip_management_menu(query, context)
+        
+    elif callback_data == "admin_copier_menu":
+        await show_copier_management_menu(query, context)
+        
+    elif callback_data == "admin_search_menu":
+        await show_search_menu(query, context)
+        
+    elif callback_data == "admin_settings_menu":
+        await show_settings_menu(query, context)
+        
+    elif callback_data.startswith("admin_users_page_"):
+        parts = callback_data.split("_")
+        filter_type = parts[3]
+        page = int(parts[4])
+        await show_user_browser(query, context, filter_type, page, is_callback=True)
+        
+    elif callback_data.startswith("admin_users_refresh_"):
+        parts = callback_data.split("_")
+        filter_type = parts[3]
+        page = int(parts[4])
+        await show_user_browser(query, context, filter_type, page, is_callback=True)
+        
+    elif callback_data.startswith("admin_start_conv_"):
+        user_id = int(callback_data.split("_")[3])
+        await admin_start_conversation(query, context, user_id)
+        
+    elif callback_data.startswith("admin_gen_link_"):
+        user_id = int(callback_data.split("_")[3])
+        await admin_generate_link(query, context, user_id)
+        
+    elif callback_data.startswith("admin_quick_vip_"):
+        user_id = int(callback_data.split("_")[3])
+        await admin_quick_vip_menu(query, context, user_id)
+
+    # Handle other admin callbacks that might not be covered above
+    else:
+        print(f"Unhandled admin callback: {callback_data}")
+        await query.edit_message_text(
+            f"⚠️ <b>Function Under Development</b>\n\n"
+            f"This feature is being implemented.\n"
+            f"Please use the dashboard for available functions.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Back to Dashboard", callback_data="refresh_dashboard")]
+            ])
+        )
 
 
 # -------------------------------------- VIP and Copier Team Management ---------------------------------------------------- #
@@ -1607,7 +2157,6 @@ async def add_to_vip_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                 response = (
                     f"✅ VIP {channel_name} Access for {user_name} (ID: {user_id}):\n\n"
                     f"Channel: {channel_invite.invite_link}\n"
-                    f"Group: {group_invite.invite_link}\n\n"
                     f"These are one-time use links. Please send to the user."
                 )
                 
@@ -1623,7 +2172,6 @@ async def add_to_vip_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                         f"🎉 Congratulations! You've been added to our VIP {channel_name} channel!\n\n"
                         f"Please use these exclusive invite links to join:\n\n"
                         f"Channel: {channel_invite.invite_link}\n"
-                        f"Group: {group_invite.invite_link}\n\n"
                         f"These links will expire after one use, so please click them as soon as possible."
                     )
                     
@@ -1939,6 +2487,268 @@ async def copier_team_action_callback(update: Update, context: ContextTypes.DEFA
             reply_markup=None
         )
 
+async def handle_vip_confirmation_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle VIP access confirmation callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    
+    if callback_data.startswith("confirm_vip_"):
+        # Parse: confirm_vip_{service_type}_{user_id}
+        parts = callback_data.split("_")
+        service_type = parts[2]  # signals, strategy, or all
+        user_id = int(parts[3])
+        
+        try:
+            # First update local database VIP status
+            await update_local_db_vip_status(user_id, service_type, query.from_user.id)
+            
+            # Then grant access and send links
+            await grant_vip_access_to_user(query, context, user_id, service_type)
+            
+        except Exception as e:
+            await query.edit_message_text(
+                f"❌ <b>Error Granting VIP Access</b>\n\n"
+                f"Error: {str(e)[:200]}\n\n"
+                f"Please try again or contact technical support.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔄 Try Again", callback_data=f"admin_grant_vip_{service_type}_{user_id}")],
+                    [InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")]
+                ])
+            )
+
+async def admin_check_balance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin-triggered balance check for a user."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = int(callback_data.split("_")[3])  # admin_check_balance_{user_id}
+    
+    user_info = db.get_user(user_id)
+    if not user_info:
+        await query.edit_message_text("❌ User not found.")
+        return
+    
+    user_name = user_info.get("first_name", "User")
+    trading_account = user_info.get("trading_account")
+    
+    if not trading_account:
+        await query.edit_message_text(
+            f"⚠️ <b>No Trading Account</b>\n\n"
+            f"User {user_name} (ID: {user_id}) has no trading account registered.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Show loading message
+    loading_msg = await query.edit_message_text(
+        f"🔍 <b>Checking Balance for {user_name}</b>\n\n"
+        f"Fetching real-time data from account {trading_account}...",
+        parse_mode='HTML'
+    )
+    
+    try:
+        # Get fresh balance from MySQL
+        mysql_db = get_mysql_connection()
+        if mysql_db and mysql_db.is_connected():
+            account_info = mysql_db.verify_account_exists(trading_account)
+            if account_info['exists']:
+                current_balance = float(account_info.get('balance', 0))
+                account_name = account_info.get('name', 'Unknown')
+                
+                # Update local database
+                db.add_user({
+                    "user_id": user_id,
+                    "account_balance": current_balance,
+                    "last_balance_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+                
+                # Show results
+                balance_message = (
+                    f"💰 <b>Balance Check Results</b>\n\n"
+                    f"<b>👤 User:</b> {user_name} (ID: {user_id})\n"
+                    f"<b>📊 Account:</b> {trading_account}\n"
+                    f"<b>🏷️ Holder:</b> {account_name}\n"
+                    f"<b>💵 Balance:</b> ${current_balance:,.2f}\n"
+                    f"<b>🕒 Checked:</b> {datetime.now().strftime('%H:%M:%S')}\n\n"
+                )
+                
+                if current_balance >= 100:
+                    balance_message += f"<b>✅ Eligible for VIP access!</b>"
+                    keyboard = [
+                        [InlineKeyboardButton("🌟 Grant VIP Access", callback_data=f"admin_quick_vip_{user_id}")],
+                        [InlineKeyboardButton("👤 View Profile", callback_data=f"admin_user_profile_{user_id}")],
+                        [InlineKeyboardButton("🔄 Check Again", callback_data=f"admin_check_balance_{user_id}")]
+                    ]
+                else:
+                    needed = 100 - current_balance
+                    balance_message += f"<b>⚠️ ${needed:,.2f} more needed for VIP</b>"
+                    keyboard = [
+                        [InlineKeyboardButton("💬 Contact User", callback_data=f"admin_start_conv_{user_id}")],
+                        [InlineKeyboardButton("👤 View Profile", callback_data=f"admin_user_profile_{user_id}")],
+                        [InlineKeyboardButton("🔄 Check Again", callback_data=f"admin_check_balance_{user_id}")]
+                    ]
+                
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await loading_msg.edit_text(balance_message, parse_mode='HTML', reply_markup=reply_markup)
+                
+            else:
+                await loading_msg.edit_text(
+                    f"❌ <b>Account Not Found</b>\n\n"
+                    f"Account {trading_account} not found in trading system.",
+                    parse_mode='HTML'
+                )
+        else:
+            await loading_msg.edit_text(
+                f"⚠️ <b>Connection Error</b>\n\n"
+                f"Unable to connect to trading system.",
+                parse_mode='HTML'
+            )
+            
+    except Exception as e:
+        await loading_msg.edit_text(
+            f"❌ <b>Balance Check Failed</b>\n\n"
+            f"Error: {str(e)[:200]}",
+            parse_mode='HTML'
+        )
+
+async def admin_verify_user_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin-triggered user verification."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = int(callback_data.split("_")[2])  # admin_verify_{user_id}
+    
+    user_info = db.get_user(user_id)
+    if not user_info:
+        await query.edit_message_text("❌ User not found.")
+        return
+    
+    user_name = user_info.get("first_name", "User")
+    trading_account = user_info.get("trading_account")
+    
+    if not trading_account:
+        await query.edit_message_text(
+            f"⚠️ <b>No Trading Account</b>\n\n"
+            f"User {user_name} (ID: {user_id}) has no trading account to verify.",
+            parse_mode='HTML'
+        )
+        return
+    
+    # Mark as verified and update database
+    db.add_user({
+        "user_id": user_id,
+        "is_verified": True,
+        "verification_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "verified_by_admin": query.from_user.id
+    })
+    
+    # Notify user
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=(
+                f"✅ <b>Account Verified!</b>\n\n"
+                f"Your VortexFX account {trading_account} has been verified by our team.\n\n"
+                f"You can now access VIP services by ensuring your account has a minimum balance of $100.\n\n"
+                f"Use <b>/myaccount</b> to check your status!"
+            ),
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        print(f"Error notifying user {user_id} of verification: {e}")
+    
+    # Update admin
+    await query.edit_message_text(
+        f"✅ <b>User Verified Successfully</b>\n\n"
+        f"<b>👤 User:</b> {user_name} (ID: {user_id})\n"
+        f"<b>📊 Account:</b> {trading_account}\n"
+        f"<b>✅ Status:</b> Verified\n"
+        f"<b>🕒 Time:</b> {datetime.now().strftime('%H:%M:%S')}\n\n"
+        f"User has been notified of verification.",
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔄 Check Balance", callback_data=f"admin_check_balance_{user_id}")],
+            [InlineKeyboardButton("👤 View Profile", callback_data=f"admin_user_profile_{user_id}")],
+            [InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")]
+        ])
+    )
+
+async def admin_account_details_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show detailed account information for admin."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    user_id = int(callback_data.split("_")[3])  # admin_account_details_{user_id}
+    
+    user_info = db.get_user(user_id)
+    if not user_info:
+        await query.edit_message_text("❌ User not found.")
+        return
+    
+    user_name = user_info.get("first_name", "User")
+    trading_account = user_info.get("trading_account", "Not provided")
+    
+    # Get comprehensive account details
+    account_details = (
+        f"📋 <b>Account Details: {user_name}</b>\n\n"
+        f"<b>👤 User Information:</b>\n"
+        f"• User ID: {user_id}\n"
+        f"• Name: {user_info.get('first_name', 'Unknown')} {user_info.get('last_name', '')}\n"
+        f"• Username: @{user_info.get('username', 'None')}\n"
+        f"• Source: {user_info.get('source_channel', 'Unknown').replace('_', ' ').title()}\n\n"
+        
+        f"<b>📊 Trading Account:</b>\n"
+        f"• Account Number: {trading_account}\n"
+        f"• Account Holder: {user_info.get('account_owner', 'Unknown')}\n"
+        f"• Balance: ${user_info.get('account_balance', 0):,.2f}\n"
+        f"• Status: {user_info.get('account_status', 'Unknown')}\n\n"
+        
+        f"<b>✅ Verification:</b>\n"
+        f"• Verified: {'Yes' if user_info.get('is_verified') else 'No'}\n"
+        f"• Verification Date: {user_info.get('verification_date', 'Not set')}\n\n"
+        
+        f"<b>🌟 VIP Status:</b>\n"
+        f"• VIP Access: {'Yes' if user_info.get('vip_access_granted') else 'No'}\n"
+        f"• VIP Services: {user_info.get('vip_services_list', 'None')}\n"
+        f"• VIP Since: {user_info.get('vip_granted_date', 'Not applicable')}\n\n"
+        
+        f"<b>📈 Trading Profile:</b>\n"
+        f"• Risk Level: {user_info.get('risk_appetite', 'Not set')}/10\n"
+        f"• Target Deposit: ${user_info.get('deposit_amount', 0):,}\n"
+        f"• Trading Interest: {user_info.get('trading_interest', 'Not specified')}\n\n"
+        
+        f"<b>📅 Activity:</b>\n"
+        f"• Joined: {user_info.get('join_date', 'Unknown')}\n"
+        f"• Last Active: {user_info.get('last_active', 'Unknown')}\n"
+        f"• Last Balance Update: {user_info.get('last_balance_update', 'Never')}"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("🔄 Refresh Balance", callback_data=f"admin_check_balance_{user_id}"),
+            InlineKeyboardButton("✏️ Edit Profile", callback_data=f"admin_edit_profile_{user_id}")
+        ],
+        [
+            InlineKeyboardButton("💬 Start Conversation", callback_data=f"admin_start_conv_{user_id}"),
+            InlineKeyboardButton("🌟 Manage VIP", callback_data=f"admin_manage_vip_{user_id}")
+        ],
+        [
+            InlineKeyboardButton("🔙 Back to Profile", callback_data=f"admin_user_profile_{user_id}"),
+            InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(account_details, parse_mode='HTML', reply_markup=reply_markup)
+
+
 
 # -------------------------------------- Utility Functions ---------------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------------- #
@@ -2056,6 +2866,829 @@ async def silent_update_logger(update: Update, context: ContextTypes.DEFAULT_TYP
     
     with open("silent_chat_ids.log", "a") as f:
         f.write(f"{datetime.now()}: {chat_title} - {chat_id} ({chat_type})\n")
+
+async def refresh_admin_dashboard(query, context):
+    """Refresh the main admin dashboard."""
+    # Get fresh stats
+    total_users = db.users_df.height if hasattr(db.users_df, 'height') else 0
+    verified_users = db.users_df.filter(pl.col("is_verified") == True).height if total_users > 0 else 0
+    vip_users = db.users_df.filter(pl.col("vip_access_granted") == True).height if total_users > 0 else 0
+    active_users_7d = db.get_active_users(days=7)
+    
+    dashboard_message = (
+        f"🎛️ <b>VFX Trading Admin Dashboard</b>\n\n"
+        f"<b>📊 Quick Stats (Updated):</b>\n"
+        f"• Total Users: {total_users:,}\n"
+        f"• Verified: {verified_users:,}\n"
+        f"• VIP Members: {vip_users:,}\n"
+        f"• Active (7d): {active_users_7d:,}\n\n"
+        f"<b>🚀 What would you like to do?</b>"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("👥 Manage Users", callback_data="admin_users_menu"),
+            InlineKeyboardButton("📊 View Statistics", callback_data="admin_stats_menu")
+        ],
+        [
+            InlineKeyboardButton("🌟 VIP Management", callback_data="admin_vip_menu"),
+            InlineKeyboardButton("🔄 Copier Management", callback_data="admin_copier_menu")
+        ],
+        [
+            InlineKeyboardButton("🔍 Search Users", callback_data="admin_search_menu"),
+            InlineKeyboardButton("⚙️ System Settings", callback_data="admin_settings_menu")
+        ],
+        [
+            InlineKeyboardButton("🔄 Refresh Dashboard", callback_data="refresh_dashboard")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(dashboard_message, parse_mode='HTML', reply_markup=reply_markup)
+
+async def show_users_filter_menu(query, context):
+    """Show user filter options."""
+    filter_message = (
+        f"👥 <b>User Management</b>\n\n"
+        f"<b>🔍 Choose how to view users:</b>\n\n"
+        f"📅 <b>Recent:</b> Recently active users\n"
+        f"✅ <b>Verified:</b> Users with verified accounts\n"
+        f"🌟 <b>VIP:</b> Users with VIP access\n"
+        f"⏳ <b>Unverified:</b> Users needing verification\n"
+        f"💰 <b>High Balance:</b> Users with $100+ balance\n"
+        f"👥 <b>All Users:</b> Complete user list"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("📅 Recent Users", callback_data="admin_users_page_recent_0"),
+            InlineKeyboardButton("✅ Verified", callback_data="admin_users_page_verified_0")
+        ],
+        [
+            InlineKeyboardButton("🌟 VIP Users", callback_data="admin_users_page_vip_0"),
+            InlineKeyboardButton("⏳ Unverified", callback_data="admin_users_page_unverified_0")
+        ],
+        [
+            InlineKeyboardButton("💰 High Balance", callback_data="admin_users_page_high_balance_0"),
+            InlineKeyboardButton("👥 All Users", callback_data="admin_users_page_all_0")
+        ],
+        [
+            InlineKeyboardButton("🔙 Back to Dashboard", callback_data="refresh_dashboard")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(filter_message, parse_mode='HTML', reply_markup=reply_markup)
+
+async def admin_start_conversation(query, context, user_id):
+    """Start a conversation with a user (enhanced version)."""
+    user_info = db.get_user(user_id)
+    user_name = user_info.get('first_name', 'User') if user_info else f'User {user_id}'
+    
+    # Store the current conversation user for admin
+    context.user_data["current_user_conv"] = user_id
+    
+    try:
+        # Try to send a connection message to the user
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=(
+                f"<b>👋 Hello {user_name}!</b>\n\n"
+                f"One of our VFX Trading advisors is now available to help you.\n\n"
+                f"<b>💬 You can now chat directly with our team!</b>\n"
+                f"Feel free to ask any questions about your account or our services. ✅"
+            ),
+            parse_mode='HTML'
+        )
+        
+        await query.edit_message_text(
+            f"✅ <b>Conversation Started!</b>\n\n"
+            f"<b>👤 Connected to:</b> {user_name} (ID: {user_id})\n"
+            f"<b>💬 Status:</b> Direct conversation active\n"
+            f"<b>🕒 Started:</b> {datetime.now().strftime('%H:%M:%S')}\n\n"
+            f"<b>📱 Any message you send to the bot will now be forwarded to {user_name}</b>\n\n"
+            f"Use /endchat to end this conversation when finished.",
+            parse_mode='HTML'
+        )
+        
+    except Exception as e:
+        if "Forbidden: bot can't initiate conversation with a user" in str(e):
+            await query.edit_message_text(
+                f"🚫 <b>Cannot Connect Directly</b>\n\n"
+                f"<b>👤 User:</b> {user_name} (ID: {user_id})\n"
+                f"<b>⚠️ Issue:</b> User hasn't started the bot yet\n\n"
+                f"<b>💡 Solution:</b> Use 'Send Link' to connect with them first",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔗 Generate Link", callback_data=f"admin_gen_link_{user_id}")],
+                    [InlineKeyboardButton("🔙 Back to Profile", callback_data=f"admin_user_profile_{user_id}")]
+                ])
+            )
+        else:
+            await query.edit_message_text(
+                f"❌ <b>Connection Failed</b>\n\n"
+                f"Error: {str(e)[:100]}",
+                parse_mode='HTML'
+            )
+
+async def admin_generate_link(query, context, user_id):
+    """Generate connection link for user (enhanced version)."""
+    user_info = db.get_user(user_id)
+    user_name = user_info.get('first_name', 'User') if user_info else f'User {user_id}'
+    username = user_info.get('username') if user_info else None
+    
+    # Create connection link
+    bot_info = await context.bot.get_me()
+    bot_username = bot_info.username
+    start_link = f"https://t.me/{bot_username}?start=ref_{query.from_user.id}"
+    
+    # Generate personalized message
+    connection_message = (
+        f"Hi {user_name}! 👋\n\n"
+        f"I'm reaching out from VFX Trading to help you with your account setup.\n\n"
+        f"To continue our conversation securely through our system, please click this link:\n\n"
+        f"👉 <a href='{start_link}'>Connect with VFX - REGISTRATION</a>\n\n"
+        f"This will connect you to our automated assistant where we can discuss:\n"
+        f"• Your trading goals and preferences\n"
+        f"• Account verification and funding\n"
+        f"• VIP service access\n\n"
+        f"Looking forward to helping you succeed! 🚀"
+    )
+    
+    instructions = (
+        f"🔗 <b>Connection Link Generated for {user_name}</b>\n\n"
+        f"📋 <b>Send this message to the user:</b>\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"{connection_message}\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    )
+    
+    if username:
+        instructions += f"💡 <b>Best option:</b> Message @{username} directly with the text above"
+    else:
+        instructions += f"💡 <b>Copy the message above and send it to {user_name} in your chats"
+    
+    await query.edit_message_text(
+        instructions,
+        parse_mode='HTML',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔙 Back to Profile", callback_data=f"admin_user_profile_{user_id}")],
+            [InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")]
+        ])
+    )
+
+async def admin_quick_vip_menu(query, context, user_id):
+    """Show quick VIP grant options."""
+    user_info = db.get_user(user_id)
+    user_name = user_info.get('first_name', 'User') if user_info else f'User {user_id}'
+    balance = user_info.get('account_balance', 0) or 0
+    
+    if balance < 100:
+        await query.edit_message_text(
+            f"⚠️ <b>Insufficient Balance</b>\n\n"
+            f"<b>User:</b> {user_name}\n"
+            f"<b>Balance:</b> ${balance:,.2f}\n"
+            f"<b>Required:</b> $100.00\n\n"
+            f"User needs more funding for VIP access.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Back to Profile", callback_data=f"admin_user_profile_{user_id}")]
+            ])
+        )
+        return
+    
+    quick_vip_message = (
+        f"🌟 <b>Quick VIP Grant for {user_name}</b>\n\n"
+        f"<b>💰 Balance:</b> ${balance:,.2f} ✅\n"
+        f"<b>✅ Eligible for VIP access</b>\n\n"
+        f"<b>Which service would you like to grant?</b>"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("🔔 VIP Signals Only", callback_data=f"admin_grant_vip_signals_{user_id}"),
+            InlineKeyboardButton("🤖 VIP Strategy Only", callback_data=f"admin_grant_vip_strategy_{user_id}")
+        ],
+        [
+            InlineKeyboardButton("✨ Both VIP Services", callback_data=f"admin_grant_vip_all_{user_id}")
+        ],
+        [
+            InlineKeyboardButton("🔙 Back to Profile", callback_data=f"admin_user_profile_{user_id}")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+async def show_admin_stats(query, context):
+    """Show comprehensive statistics dashboard."""
+    try:
+        # Get comprehensive stats
+        total_users = db.users_df.height if hasattr(db.users_df, 'height') else 0
+        verified_users = db.users_df.filter(pl.col("is_verified") == True).height if total_users > 0 else 0
+        vip_users = db.users_df.filter(pl.col("vip_access_granted") == True).height if total_users > 0 else 0
+        unverified_users = total_users - verified_users
+        
+        # Activity stats
+        active_users_1d = db.get_active_users(days=1)
+        active_users_7d = db.get_active_users(days=7)
+        active_users_30d = db.get_active_users(days=30)
+        
+        # Balance stats
+        high_balance_users = 0
+        total_balance = 0
+        avg_balance = 0
+        
+        if total_users > 0:
+            try:
+                # Get users with balance >= $100
+                high_balance_users = db.users_df.filter(pl.col("account_balance") >= 100).height
+                
+                # Calculate total and average balance
+                balance_data = db.users_df.select(pl.col("account_balance")).fill_null(0)
+                if balance_data.height > 0:
+                    total_balance = balance_data.sum().item()
+                    avg_balance = total_balance / total_users
+                    
+            except Exception as e:
+                print(f"Error calculating balance stats: {e}")
+        
+        # Source channel breakdown
+        source_stats = {}
+        try:
+            if total_users > 0:
+                sources = db.users_df.group_by("source_channel").count()
+                for i in range(sources.height):
+                    channel = sources["source_channel"][i] or "Unknown"
+                    count = sources["count"][i]
+                    source_stats[channel] = count
+        except Exception as e:
+            print(f"Error calculating source stats: {e}")
+        
+        # Format stats message
+        stats_message = (
+            f"📊 <b>VFX Trading Statistics Dashboard</b>\n\n"
+            
+            f"<b>👥 User Overview:</b>\n"
+            f"• Total Users: {total_users:,}\n"
+            f"• ✅ Verified: {verified_users:,} ({(verified_users/total_users*100):.1f}%)\n"
+            f"• ⏳ Unverified: {unverified_users:,} ({(unverified_users/total_users*100):.1f}%)\n"
+            f"• 🌟 VIP Members: {vip_users:,} ({(vip_users/total_users*100):.1f}%)\n\n"
+            
+            f"<b>📈 Activity Metrics:</b>\n"
+            f"• Active Today: {active_users_1d:,}\n"
+            f"• Active (7 days): {active_users_7d:,}\n"
+            f"• Active (30 days): {active_users_30d:,}\n\n"
+            
+            f"<b>💰 Financial Overview:</b>\n"
+            f"• High Balance ($100+): {high_balance_users:,}\n"
+            f"• Total Balance: ${total_balance:,.2f}\n"
+            f"• Average Balance: ${avg_balance:,.2f}\n\n"
+        )
+        
+        if source_stats:
+            stats_message += f"<b>📍 User Sources:</b>\n"
+            for source, count in sorted(source_stats.items(), key=lambda x: x[1], reverse=True):
+                percentage = (count/total_users*100) if total_users > 0 else 0
+                source_display = source.replace('_', ' ').title()
+                stats_message += f"• {source_display}: {count:,} ({percentage:.1f}%)\n"
+            stats_message += "\n"
+        
+        stats_message += f"<b>🕒 Last Updated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("📊 Detailed Reports", callback_data="admin_detailed_reports"),
+                InlineKeyboardButton("📈 Growth Metrics", callback_data="admin_growth_metrics")
+            ],
+            [
+                InlineKeyboardButton("💰 Financial Analysis", callback_data="admin_financial_analysis"),
+                InlineKeyboardButton("📍 Source Analysis", callback_data="admin_source_analysis")
+            ],
+            [
+                InlineKeyboardButton("🔄 Refresh Stats", callback_data="admin_stats_menu"),
+                InlineKeyboardButton("📋 Export Data", callback_data="admin_export_data")
+            ],
+            [
+                InlineKeyboardButton("🔙 Back to Dashboard", callback_data="refresh_dashboard")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(stats_message, parse_mode='HTML', reply_markup=reply_markup)
+        
+    except Exception as e:
+        await query.edit_message_text(
+            f"❌ <b>Error Loading Statistics</b>\n\n"
+            f"Error: {str(e)[:200]}\n\n"
+            f"Please try again or contact technical support.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Retry", callback_data="admin_stats_menu")],
+                [InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")]
+            ])
+        )
+
+async def show_vip_management_menu(query, context):
+    """Show VIP management options."""
+    try:
+        # Get VIP stats
+        total_users = db.users_df.height if hasattr(db.users_df, 'height') else 0
+        vip_users = db.users_df.filter(pl.col("vip_access_granted") == True).height if total_users > 0 else 0
+        vip_eligible = db.users_df.filter(pl.col("account_balance") >= 100).height if total_users > 0 else 0
+        pending_requests = 0
+        
+        try:
+            pending_requests = db.users_df.filter(pl.col("vip_request_status") == "pending").height
+        except:
+            pass
+        
+        # VIP service breakdown
+        signals_users = 0
+        strategy_users = 0
+        both_services = 0
+        
+        try:
+            if vip_users > 0:
+                vip_data = db.users_df.filter(pl.col("vip_access_granted") == True)
+                for i in range(vip_data.height):
+                    services = vip_data["vip_services"][i] or ""
+                    if services == "signals":
+                        signals_users += 1
+                    elif services == "strategy":
+                        strategy_users += 1
+                    elif services == "all":
+                        both_services += 1
+        except Exception as e:
+            print(f"Error calculating VIP service breakdown: {e}")
+        
+        vip_message = (
+            f"🌟 <b>VIP Management Dashboard</b>\n\n"
+            
+            f"<b>📊 VIP Overview:</b>\n"
+            f"• Total VIP Members: {vip_users:,}\n"
+            f"• VIP Eligible (Balance $100+): {vip_eligible:,}\n"
+            f"• Pending Requests: {pending_requests:,}\n"
+            f"• VIP Conversion Rate: {(vip_users/total_users*100):.1f}%\n\n"
+            
+            f"<b>🎯 Service Breakdown:</b>\n"
+            f"• 🔔 Signals Only: {signals_users:,}\n"
+            f"• 🤖 Strategy Only: {strategy_users:,}\n"
+            f"• ✨ Both Services: {both_services:,}\n\n"
+            
+            f"<b>🚀 What would you like to do?</b>"
+        )
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("👥 View VIP Users", callback_data="admin_users_page_vip_0"),
+                InlineKeyboardButton("⏳ Pending Requests", callback_data="admin_vip_pending")
+            ],
+            [
+                InlineKeyboardButton("💰 VIP Eligible Users", callback_data="admin_users_page_high_balance_0"),
+                InlineKeyboardButton("🎯 Grant VIP Access", callback_data="admin_vip_grant_menu")
+            ],
+            [
+                InlineKeyboardButton("📊 VIP Analytics", callback_data="admin_vip_analytics"),
+                InlineKeyboardButton("⚙️ VIP Settings", callback_data="admin_vip_settings")
+            ],
+            [
+                InlineKeyboardButton("🔄 Bulk VIP Actions", callback_data="admin_vip_bulk"),
+                InlineKeyboardButton("📧 VIP Messaging", callback_data="admin_vip_messaging")
+            ],
+            [
+                InlineKeyboardButton("🔙 Back to Dashboard", callback_data="refresh_dashboard")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(vip_message, parse_mode='HTML', reply_markup=reply_markup)
+        
+    except Exception as e:
+        await query.edit_message_text(
+            f"❌ <b>Error Loading VIP Management</b>\n\n"
+            f"Error: {str(e)[:200]}",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Retry", callback_data="admin_vip_menu")],
+                [InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")]
+            ])
+        )
+
+async def show_copier_management_menu(query, context):
+    """Show copier team management options."""
+    try:
+        # Get copier stats
+        total_users = db.users_df.height if hasattr(db.users_df, 'height') else 0
+        copier_forwarded = 0
+        copier_active = 0
+        copier_rejected = 0
+        
+        try:
+            copier_forwarded = db.users_df.filter(pl.col("copier_forwarded") == True).height
+            copier_active = db.users_df.filter(pl.col("copier_status") == "active").height
+            copier_rejected = db.users_df.filter(pl.col("copier_status") == "rejected").height
+        except:
+            pass
+        
+        # Get recent copier activity
+        recent_forwards = 0
+        try:
+            from datetime import datetime, timedelta
+            recent_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+            recent_forwards = db.users_df.filter(
+                (pl.col("copier_forwarded_date") >= recent_date) & 
+                (pl.col("copier_forwarded") == True)
+            ).height
+        except:
+            pass
+        
+        copier_message = (
+            f"🔄 <b>Copier Team Management</b>\n\n"
+            
+            f"<b>📊 Copier Overview:</b>\n"
+            f"• Total Forwarded: {copier_forwarded:,}\n"
+            f"• Active in System: {copier_active:,}\n"
+            f"• Rejected: {copier_rejected:,}\n"
+            f"• Recent Forwards (7d): {recent_forwards:,}\n\n"
+            
+            f"<b>📈 Success Rate:</b>\n"
+        )
+        
+        if copier_forwarded > 0:
+            success_rate = (copier_active / copier_forwarded) * 100
+            copier_message += f"• Acceptance Rate: {success_rate:.1f}%\n"
+        else:
+            copier_message += f"• Acceptance Rate: N/A\n"
+        
+        copier_message += (
+            f"\n<b>🎯 Management Options:</b>\n"
+            f"• Forward eligible users to copier team\n"
+            f"• Monitor copier system performance\n"
+            f"• Manage user account integration\n"
+            f"• Handle copier team communications"
+        )
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("👥 View Copier Users", callback_data="admin_copier_users"),
+                InlineKeyboardButton("⏳ Pending Reviews", callback_data="admin_copier_pending")
+            ],
+            [
+                InlineKeyboardButton("🎯 Forward to Copier", callback_data="admin_copier_forward_menu"),
+                InlineKeyboardButton("📊 Copier Analytics", callback_data="admin_copier_analytics")
+            ],
+            [
+                InlineKeyboardButton("✅ Active Accounts", callback_data="admin_copier_active"),
+                InlineKeyboardButton("❌ Rejected Accounts", callback_data="admin_copier_rejected")
+            ],
+            [
+                InlineKeyboardButton("⚙️ Copier Settings", callback_data="admin_copier_settings"),
+                InlineKeyboardButton("💬 Team Messages", callback_data="admin_copier_messages")
+            ],
+            [
+                InlineKeyboardButton("🔙 Back to Dashboard", callback_data="refresh_dashboard")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(copier_message, parse_mode='HTML', reply_markup=reply_markup)
+        
+    except Exception as e:
+        await query.edit_message_text(
+            f"❌ <b>Error Loading Copier Management</b>\n\n"
+            f"Error: {str(e)[:200]}",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Retry", callback_data="admin_copier_menu")],
+                [InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")]
+            ])
+        )
+
+async def show_search_menu(query, context):
+    """Show search and filter options."""
+    search_message = (
+        f"🔍 <b>Search & Filter Users</b>\n\n"
+        
+        f"<b>🎯 Quick Searches:</b>\n"
+        f"• Search by user ID or username\n"
+        f"• Find users by account number\n"
+        f"• Filter by balance range\n"
+        f"• Search by registration date\n\n"
+        
+        f"<b>📊 Advanced Filters:</b>\n"
+        f"• Combine multiple criteria\n"
+        f"• Export search results\n"
+        f"• Save common searches\n"
+        f"• Bulk actions on results\n\n"
+        
+        f"<b>💡 Search Tips:</b>\n"
+        f"• Use partial matches for names\n"
+        f"• Date ranges for time-based filters\n"
+        f"• Balance ranges for financial analysis"
+    )
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("🆔 Search by User ID", callback_data="admin_search_user_id"),
+            InlineKeyboardButton("👤 Search by Name", callback_data="admin_search_name")
+        ],
+        [
+            InlineKeyboardButton("📊 Search by Account", callback_data="admin_search_account"),
+            InlineKeyboardButton("💰 Search by Balance", callback_data="admin_search_balance")
+        ],
+        [
+            InlineKeyboardButton("📅 Search by Date", callback_data="admin_search_date"),
+            InlineKeyboardButton("🌟 Search VIP Status", callback_data="admin_search_vip")
+        ],
+        [
+            InlineKeyboardButton("🔧 Advanced Search", callback_data="admin_search_advanced"),
+            InlineKeyboardButton("📋 Recent Searches", callback_data="admin_search_recent")
+        ],
+        [
+            InlineKeyboardButton("💾 Saved Searches", callback_data="admin_search_saved"),
+            InlineKeyboardButton("📊 Quick Stats", callback_data="admin_search_stats")
+        ],
+        [
+            InlineKeyboardButton("🔙 Back to Dashboard", callback_data="refresh_dashboard")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(search_message, parse_mode='HTML', reply_markup=reply_markup)
+
+async def show_settings_menu(query, context):
+    """Show system settings and configuration options."""
+    try:
+        # Get current system status
+        total_users = db.users_df.height if hasattr(db.users_df, 'height') else 0
+        
+        # Check MySQL connection
+        mysql_status = "🟢 Connected"
+        try:
+            mysql_db = get_mysql_connection()
+            if not mysql_db.is_connected():
+                mysql_status = "🔴 Disconnected"
+        except:
+            mysql_status = "🔴 Error"
+        
+        # Get scheduled job status (simplified check)
+        job_status = "🟢 Active"
+        try:
+            # You can add more sophisticated job checking here
+            job_status = "🟢 Active"
+        except:
+            job_status = "🔴 Inactive"
+        
+        settings_message = (
+            f"⚙️ <b>System Settings & Configuration</b>\n\n"
+            
+            f"<b>🔧 System Status:</b>\n"
+            f"• Database: {mysql_status}\n"
+            f"• Scheduled Jobs: {job_status}\n"
+            f"• Total Users: {total_users:,}\n"
+            f"• Bot Uptime: Active ✅\n\n"
+            
+            f"<b>📋 Configuration Options:</b>\n"
+            f"• Message scheduling settings\n"
+            f"• VIP access parameters\n"
+            f"• Channel management\n"
+            f"• Admin permissions\n"
+            f"• Database maintenance\n\n"
+            
+            f"<b>🛠️ Available Tools:</b>\n"
+            f"• Backup and restore data\n"
+            f"• Update system messages\n"
+            f"• Monitor performance\n"
+            f"• Export/import settings"
+        )
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("📧 Message Settings", callback_data="admin_settings_messages"),
+                InlineKeyboardButton("🌟 VIP Settings", callback_data="admin_settings_vip")
+            ],
+            [
+                InlineKeyboardButton("📺 Channel Settings", callback_data="admin_settings_channels"),
+                InlineKeyboardButton("👥 Admin Settings", callback_data="admin_settings_admins")
+            ],
+            [
+                InlineKeyboardButton("🗄️ Database Tools", callback_data="admin_settings_database"),
+                InlineKeyboardButton("📊 Performance Monitor", callback_data="admin_settings_performance")
+            ],
+            [
+                InlineKeyboardButton("💾 Backup & Export", callback_data="admin_settings_backup"),
+                InlineKeyboardButton("🔄 System Maintenance", callback_data="admin_settings_maintenance")
+            ],
+            [
+                InlineKeyboardButton("📋 View Logs", callback_data="admin_settings_logs"),
+                InlineKeyboardButton("⚙️ Advanced Config", callback_data="admin_settings_advanced")
+            ],
+            [
+                InlineKeyboardButton("🔙 Back to Dashboard", callback_data="refresh_dashboard")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(settings_message, parse_mode='HTML', reply_markup=reply_markup)
+        
+    except Exception as e:
+        await query.edit_message_text(
+            f"❌ <b>Error Loading Settings</b>\n\n"
+            f"Error: {str(e)[:200]}",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Retry", callback_data="admin_settings_menu")],
+                [InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")]
+            ])
+        )
+
+async def handle_all_admin_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Enhanced handler for all admin dashboard callbacks."""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_data = query.data
+    
+    # Main dashboard callbacks
+    if callback_data == "refresh_dashboard":
+        await refresh_admin_dashboard(query, context)
+        
+    elif callback_data == "admin_users_menu":
+        await show_users_filter_menu(query, context)
+        
+    elif callback_data == "admin_stats_menu":
+        await show_admin_stats(query, context)
+        
+    elif callback_data == "admin_vip_menu":
+        await show_vip_management_menu(query, context)
+        
+    elif callback_data == "admin_copier_menu":
+        await show_copier_management_menu(query, context)
+        
+    elif callback_data == "admin_search_menu":
+        await show_search_menu(query, context)
+        
+    elif callback_data == "admin_settings_menu":
+        await show_settings_menu(query, context)
+    
+    # User management callbacks
+    elif callback_data.startswith("admin_users_page_"):
+        parts = callback_data.split("_")
+        filter_type = parts[3]
+        page = int(parts[4])
+        await show_user_browser(query, context, filter_type, page, is_callback=True)
+        
+    elif callback_data.startswith("admin_users_refresh_"):
+        parts = callback_data.split("_")
+        filter_type = parts[3]
+        page = int(parts[4])
+        await show_user_browser(query, context, filter_type, page, is_callback=True)
+        
+    elif callback_data.startswith("admin_user_profile_"):
+        user_id = int(callback_data.split("_")[3])
+        await show_comprehensive_user_profile(query, context, user_id)
+    
+    # VIP management callbacks
+    elif callback_data.startswith("admin_grant_vip_signals_"):
+        user_id = int(callback_data.split("_")[4])
+        await grant_vip_access_enhanced(query, context, user_id, "signals")
+        
+    elif callback_data.startswith("admin_grant_vip_strategy_"):
+        user_id = int(callback_data.split("_")[4])
+        await grant_vip_access_enhanced(query, context, user_id, "strategy")
+        
+    elif callback_data.startswith("admin_grant_vip_all_"):
+        user_id = int(callback_data.split("_")[4])
+        await grant_vip_access_enhanced(query, context, user_id, "all")
+    
+    # Communication callbacks
+    elif callback_data.startswith("admin_start_conv_"):
+        user_id = int(callback_data.split("_")[3])
+        await admin_start_conversation(query, context, user_id)
+        
+    elif callback_data.startswith("admin_gen_link_"):
+        user_id = int(callback_data.split("_")[3])
+        await admin_generate_link(query, context, user_id)
+        
+    elif callback_data.startswith("admin_quick_vip_"):
+        user_id = int(callback_data.split("_")[3])
+        await admin_quick_vip_menu(query, context, user_id)
+    
+    # Placeholder callbacks for not-yet-implemented features
+    elif callback_data in [
+        "admin_detailed_reports", "admin_growth_metrics", "admin_financial_analysis",
+        "admin_source_analysis", "admin_export_data", "admin_vip_pending",
+        "admin_vip_grant_menu", "admin_vip_analytics", "admin_vip_settings",
+        "admin_vip_bulk", "admin_vip_messaging", "admin_copier_users",
+        "admin_copier_pending", "admin_copier_forward_menu", "admin_copier_analytics",
+        "admin_copier_active", "admin_copier_rejected", "admin_copier_settings",
+        "admin_copier_messages", "admin_search_user_id", "admin_search_name",
+        "admin_search_account", "admin_search_balance", "admin_search_date",
+        "admin_search_vip", "admin_search_advanced", "admin_search_recent",
+        "admin_search_saved", "admin_search_stats", "admin_settings_messages",
+        "admin_settings_vip", "admin_settings_channels", "admin_settings_admins",
+        "admin_settings_database", "admin_settings_performance", "admin_settings_backup",
+        "admin_settings_maintenance", "admin_settings_logs", "admin_settings_advanced"
+    ]:
+        await query.edit_message_text(
+            f"⚙️ <b>Feature Under Development</b>\n\n"
+            f"This feature is currently being implemented.\n"
+            f"Please check back in a future update!\n\n"
+            f"<b>Available now:</b>\n"
+            f"• User management ✅\n"
+            f"• VIP access granting ✅\n"
+            f"• Basic statistics ✅\n"
+            f"• User conversations ✅",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Back", callback_data="refresh_dashboard")]
+            ])
+        )
+    
+    # Unknown callback
+    else:
+        print(f"Unhandled admin callback: {callback_data}")
+        await query.edit_message_text(
+            f"⚠️ <b>Unknown Action</b>\n\n"
+            f"This action is not recognized.\n"
+            f"Please try using the dashboard menu.",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Dashboard", callback_data="refresh_dashboard")]
+            ])
+        )
+
+async def grant_vip_access_enhanced(query, context, user_id, service_type):
+    """Enhanced VIP access granting with comprehensive error handling."""
+    try:
+        user_info = db.get_user(user_id)
+        if not user_info:
+            await query.edit_message_text(
+                f"❌ <b>User Not Found</b>\n\nUser ID {user_id} not found in database.",
+                parse_mode='HTML'
+            )
+            return
+        
+        user_name = user_info.get("first_name", "User")
+        account_number = user_info.get("trading_account", "Unknown")
+        
+        # Check balance eligibility
+        account_balance = user_info.get("account_balance", 0) or 0
+        if account_balance < 100:
+            await query.edit_message_text(
+                f"⚠️ <b>Insufficient Balance</b>\n\n"
+                f"<b>User:</b> {user_name} (ID: {user_id})\n"
+                f"<b>Balance:</b> ${account_balance:,.2f}\n"
+                f"<b>Required:</b> $100.00\n\n"
+                f"User needs more funding for VIP access.",
+                parse_mode='HTML',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("💬 Contact User", callback_data=f"admin_start_conv_{user_id}")],
+                    [InlineKeyboardButton("🔙 Back", callback_data=f"admin_user_profile_{user_id}")]
+                ])
+            )
+            return
+        
+        # Show confirmation
+        service_names = {
+            "signals": "VIP Signals",
+            "strategy": "VIP Strategy", 
+            "all": "All VIP Services (Signals + Strategy + Prop Capital)"
+        }
+        
+        service_name = service_names.get(service_type, service_type)
+        
+        confirmation_message = (
+            f"✅ <b>Confirm VIP Access Grant</b>\n\n"
+            f"<b>👤 User:</b> {user_name} (ID: {user_id})\n"
+            f"<b>📊 Account:</b> {account_number}\n"
+            f"<b>💰 Balance:</b> ${account_balance:,.2f} ✅\n"
+            f"<b>🎯 Service:</b> {service_name}\n\n"
+            f"<b>This will:</b>\n"
+            f"• Generate exclusive invite links\n"
+            f"• Send them directly to the user\n"
+            f"• Update their VIP status in database\n"
+            f"• Grant immediate access to channels\n\n"
+            f"<b>Proceed with granting access?</b>"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("✅ Grant Access Now", callback_data=f"confirm_vip_{service_type}_{user_id}")],
+            [InlineKeyboardButton("❌ Cancel", callback_data=f"admin_user_profile_{user_id}")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(confirmation_message, parse_mode='HTML', reply_markup=reply_markup)
+        
+    except Exception as e:
+        await query.edit_message_text(
+            f"❌ <b>Error Processing Request</b>\n\n"
+            f"Error: {str(e)[:200]}",
+            parse_mode='HTML',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔙 Back", callback_data="refresh_dashboard")]
+            ])
+        )
+
 
 
 # -------------------------------------- Admin Command Functions ---------------------------------------------------- #
@@ -2954,6 +4587,29 @@ def main() -> None:
     manager_application.add_handler(CallbackQueryHandler(handle_privacy_welcome_link, pattern=r"^gen_welcome_privacy$"))
     manager_application.add_handler(CallbackQueryHandler(show_privacy_instructions, pattern=r"^show_privacy_instructions$"))
     manager_application.add_handler(CallbackQueryHandler(explain_services_callback, pattern=r"^explain_services$"))
+    manager_application.add_handler(CallbackQueryHandler(generate_connection_link_callback, pattern=r"^gen_connect_link_\d+$"))
+    manager_application.add_handler(CallbackQueryHandler(get_contact_info_callback, pattern=r"^get_contact_info_\d+$"))
+    manager_application.add_handler(CallbackQueryHandler(end_conversation_callback, pattern=r"^end_conv_\d+$"))
+    manager_application.add_handler(CallbackQueryHandler(handle_vip_confirmation_callbacks, pattern=r"^confirm_vip_"))
+
+    # Admin balance check callbacks
+    manager_application.add_handler(CallbackQueryHandler(
+        admin_check_balance_callback, 
+        pattern=r"^admin_check_balance_\d+$"
+    ))
+
+    # Admin verification callbacks
+    manager_application.add_handler(CallbackQueryHandler(
+        admin_verify_user_callback, 
+        pattern=r"^admin_verify_\d+$"
+    ))
+
+    # Admin account details callbacks
+    manager_application.add_handler(CallbackQueryHandler(
+        admin_account_details_callback, 
+        pattern=r"^admin_account_details_\d+$"
+    ))
+    
     
     # User Management System #
     manager_application.add_handler(CommandHandler("myaccount", my_account_command))
@@ -2985,9 +4641,25 @@ def main() -> None:
     manager_application.add_handler(CallbackQueryHandler(waiting_for_email_callback, pattern=r"^waiting_for_email$"))
     manager_application.add_handler(CallbackQueryHandler(try_later_callback, pattern=r"^try_later$"))
     manager_application.add_handler(CallbackQueryHandler(complete_setup_callback, pattern=r"^complete_setup$"))
+    manager_application.add_handler(CallbackQueryHandler(back_to_services_callback, pattern=r"^back_to_services$"))
     
+    manager_application.add_handler(CallbackQueryHandler(
+        handle_all_admin_callbacks, 
+        pattern=r"^(admin_|refresh_dashboard)"
+    ))
     
-    
+    # manager_application.add_handler(CallbackQueryHandler(
+    #     admin_grant_vip_signals_callback, 
+    #     pattern=r"^admin_grant_vip_signals_\d+$"
+    # ))
+    # manager_application.add_handler(CallbackQueryHandler(
+    #     admin_grant_vip_strategy_callback, 
+    #     pattern=r"^admin_grant_vip_strategy_\d+$"
+    # ))
+    # manager_application.add_handler(CallbackQueryHandler(
+    #     admin_grant_vip_all_callback, 
+    #     pattern=r"^admin_grant_vip_all_\d+$"
+    # ))
     
     # User registration flow
     manager_application.add_handler(MessageHandler(
@@ -3015,7 +4687,7 @@ def main() -> None:
     manager_application.add_handler(manual_entry_handler)
     
     # ===== ADMIN COMMANDS =====
-    # Manager bot commands (no signal commands)
+    # Manager bot commands
     manager_application.add_handler(CommandHandler("users", list_users_command))
     manager_application.add_handler(CommandHandler("endchat", end_user_conversation))
     manager_application.add_handler(CommandHandler("startform", start_form_command))
@@ -3025,7 +4697,9 @@ def main() -> None:
     manager_application.add_handler(CommandHandler("debugdb", debug_db_command))
     manager_application.add_handler(CommandHandler("resetuser", reset_user_registration_command))
     manager_application.add_handler(CommandHandler("debugvip", debug_vip_status_command))
-
+    manager_application.add_handler(CommandHandler("admin_panel", admin_dashboard_command))
+    manager_application.add_handler(CommandHandler("admin", admin_dashboard_command))
+    manager_application.add_handler(CommandHandler("manage_users", enhanced_users_command))
     
     # MySQL commands
     manager_application.add_handler(CommandHandler("testmysql", test_mysql_command))
